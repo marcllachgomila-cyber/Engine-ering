@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 
-type Topic = "power" | "torque" | "topspeed";
+type Topic = "power" | "torque" | "topspeed" | "acceleration";
 
 const TOPIC_LABELS: Record<Topic, string> = {
   power: "Peak Power",
   torque: "Peak Torque",
   topspeed: "Theoretical Top Speed",
+  acceleration: "Max Acceleration",
 };
 
 const TIPS: Record<Topic, string[]> = {
@@ -28,6 +29,12 @@ const TIPS: Record<Topic, string[]> = {
     "Raise the redline. It lets top gear pull to a higher road speed before hitting the limiter.",
     "Go turbo or supercharged. Forced induction is the most direct lever on power-per-liter, which is the most direct lever on top speed.",
     "Don't worry about the extra weight from a bigger build. It mainly hurts acceleration and launch traction, not top speed.",
+  ],
+  acceleration: [
+    "Chase power-to-weight, not raw power. This model derives weight from your engine's own size, so a smaller, boosted engine often accelerates harder than a huge one with similar output.",
+    "Mind the traction limit. Wheel force is capped by tire grip, so beyond a point extra torque just spins the tires off the line instead of adding acceleration.",
+    "Go turbo. Its torque plateau kicks in earlier and holds through more of the rev range than a peaky NA curve, keeping wheel force high through every gear.",
+    "Push the redline a little higher. It keeps first gear's strong torque band pulling longer before the first shift, which helps the initial launch.",
   ],
 };
 
