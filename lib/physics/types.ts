@@ -46,14 +46,16 @@ export interface Telemetry {
 
 export interface SimulationResult {
   telemetry: Telemetry[];
-  zeroToHundredS: number;
+  runDurationS: number;
+  topSpeedKph: number;
+  reachedHundredAtS: number | null;
   peakHp: number;
   peakHpRpm: number;
   peakTorqueNm: number;
   peakTorqueRpm: number;
   weightKg: number;
   powerToWeightHpPerTonne: number;
-  estimatedTopSpeedKph: number;
+  theoreticalTopSpeedKph: number;
 }
 
 export interface CarSpec {

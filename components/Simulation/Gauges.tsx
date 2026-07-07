@@ -108,9 +108,10 @@ interface GaugesProps {
   rpm: number;
   redlineRpm: number;
   speedKph: number;
+  maxSpeedKph?: number;
 }
 
-export default function Gauges({ rpm, redlineRpm, speedKph }: GaugesProps) {
+export default function Gauges({ rpm, redlineRpm, speedKph, maxSpeedKph = 180 }: GaugesProps) {
   return (
     <div className="flex gap-6 sm:gap-10">
       <Gauge
@@ -121,7 +122,7 @@ export default function Gauges({ rpm, redlineRpm, speedKph }: GaugesProps) {
         unit=""
         accentColor="#f59e0b"
       />
-      <Gauge value={speedKph} max={180} label="Speed" unit="kph" accentColor="#38bdf8" />
+      <Gauge value={speedKph} max={maxSpeedKph} label="Speed" unit="kph" accentColor="#38bdf8" />
     </div>
   );
 }

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Engine Builder",
-  description: "Design your own engine, run it 0-100 kph, and find its closest real-world match.",
+  description: "Design your own engine, run a 10-second acceleration test, and find its closest real-world match.",
 };
 
 export default function RootLayout({
@@ -27,9 +27,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-50">
-        {children}
-      </body>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

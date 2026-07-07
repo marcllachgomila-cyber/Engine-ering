@@ -5,8 +5,8 @@ import { EngineConfig, EngineCurves, SimulationResult, Telemetry, VehicleSpec } 
 const AIR_DENSITY_KG_M3 = 1.225;
 const G = 9.81;
 const DT = 0.02;
-const TARGET_SPEED_MS = 100 / 3.6;
-const MAX_SIM_TIME_S = 60;
+const RUN_DURATION_S = 10;
+const HUNDRED_KPH_MS = 100 / 3.6;
 
 function rpmFromSpeed(
   speedMs: number,
@@ -61,12 +61,13 @@ export function simulate(engine: EngineConfig): SimulationResult {
   let distanceM = 0;
   let gear = 1;
   let t = 0;
+  let reachedHundredAtS: number | null = null;
 
   const telemetry: Telemetry[] = [];
   const rollingForce = vehicle.rollingResistanceCoefficient * vehicle.weightKg * G;
   const tractionLimit = vehicle.tireGripMu * vehicle.weightKg * G;
 
-  while (speedMs < TARGET_SPEED_MS && t < MAX_SIM_TIME_S) {
+  while (t < RUN_DURATION_S) {
     const gearRatio = vehicle.gearRatios[gear - 1];
     let rpm = Math.max(rpmFromSpeed(speedMs, gearRatio, vehicle), curves.idleRpm);
 
@@ -97,6 +98,10 @@ export function simulate(engine: EngineConfig): SimulationResult {
     distanceM += speedMs * DT;
     t += DT;
 
+    if (reachedHundredAtS === null && speedMs >= HUNDRED_KPH_MS) {
+      reachedHundredAtS = t;
+    }
+
     telemetry.push({
       t,
       speedKph: speedMs * 3.6,
@@ -109,15 +114,19 @@ export function simulate(engine: EngineConfig): SimulationResult {
     });
   }
 
+  const topSpeedKph = telemetry.length > 0 ? telemetry[telemetry.length - 1].speedKph : 0;
+
   return {
     telemetry,
-    zeroToHundredS: t,
+    runDurationS: t,
+    topSpeedKph,
+    reachedHundredAtS,
     peakHp: curves.peakPowerHp,
     peakHpRpm: curves.peakPowerRpm,
     peakTorqueNm: curves.peakTorqueNm,
     peakTorqueRpm: curves.peakTorqueRpm,
     weightKg: vehicle.weightKg,
     powerToWeightHpPerTonne: curves.peakPowerHp / (vehicle.weightKg / 1000),
-    estimatedTopSpeedKph: estimateTopSpeedKph(curves, vehicle),
+    theoreticalTopSpeedKph: estimateTopSpeedKph(curves, vehicle),
   };
 }

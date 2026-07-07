@@ -9,24 +9,29 @@ interface HarmonicVoice {
 interface HarmonicSpec {
   multiplier: number;
   amp: number;
+  type: OscillatorType;
 }
 
 function harmonicProfile(cylinders: number, layout: EngineLayout): HarmonicSpec[] {
   // Inline layouts fire more evenly, giving a smoother harmonic spectrum
   // dominated by the fundamental. V/flat layouts have uneven firing
   // intervals, which emphasizes odd harmonics and gives a rougher, more
-  // textured note. More cylinders add higher-harmonic content (smoother
-  // top end, closer to a continuous wail at high RPM).
-  const unevenBoost = layout === "v" ? 1.6 : layout === "flat" ? 1.3 : 1.0;
-  const highCylinderBoost = Math.min(1 + cylinders / 24, 1.5);
+  // textured note. More cylinders add a touch more upper-harmonic content
+  // (smoother top end), kept modest so the note stays deep rather than shrill.
+  const unevenBoost = layout === "v" ? 1.3 : layout === "flat" ? 1.15 : 1.0;
+  const highCylinderBoost = Math.min(1 + cylinders / 32, 1.25);
 
+  // Pure sine partials for precise spectral control (a sawtooth voice already
+  // carries its own full harmonic series, so stacking more sawtooths at each
+  // multiple double-counts high-frequency energy and reads as shrill). Only
+  // the fundamental keeps some sawtooth grit; a sub an octave below adds the
+  // low-end rumble a real exhaust note has.
   return [
-    { multiplier: 1, amp: 1.0 },
-    { multiplier: 2, amp: 0.55 },
-    { multiplier: 3, amp: 0.32 * unevenBoost },
-    { multiplier: 4, amp: 0.22 * highCylinderBoost },
-    { multiplier: 6, amp: 0.14 * highCylinderBoost },
-    { multiplier: 8, amp: 0.08 * highCylinderBoost },
+    { multiplier: 0.5, amp: 0.5, type: "sine" },
+    { multiplier: 1, amp: 0.9, type: "sawtooth" },
+    { multiplier: 2, amp: 0.32, type: "sine" },
+    { multiplier: 3, amp: 0.18 * unevenBoost, type: "sine" },
+    { multiplier: 4, amp: 0.1 * highCylinderBoost, type: "sine" },
   ];
 }
 
@@ -64,13 +69,13 @@ export class EngineAudioEngine {
 
     this.filter = this.ctx.createBiquadFilter();
     this.filter.type = "lowpass";
-    this.filter.frequency.value = 800;
-    this.filter.Q.value = 0.7;
+    this.filter.frequency.value = 400;
+    this.filter.Q.value = 0.8;
     this.filter.connect(this.master);
 
     for (const spec of harmonicProfile(engine.cylinders, engine.layout)) {
       const osc = this.ctx.createOscillator();
-      osc.type = "sawtooth";
+      osc.type = spec.type;
       const gain = this.ctx.createGain();
       gain.gain.value = spec.amp;
       osc.connect(gain);
@@ -93,8 +98,8 @@ export class EngineAudioEngine {
     this.noiseSource.loop = true;
     const noiseFilter = this.ctx.createBiquadFilter();
     noiseFilter.type = "bandpass";
-    noiseFilter.frequency.value = 500;
-    noiseFilter.Q.value = 0.6;
+    noiseFilter.frequency.value = 320;
+    noiseFilter.Q.value = 0.7;
     this.noiseGain = this.ctx.createGain();
     this.noiseGain.gain.value = 0;
     this.noiseSource.connect(noiseFilter);
@@ -123,13 +128,13 @@ export class EngineAudioEngine {
     });
 
     const rpmFraction = Math.min(1, rpm / redlineRpm);
-    this.filter.frequency.setTargetAtTime(500 + rpmFraction * 5000, now, 0.05);
-    this.noiseGain.gain.setTargetAtTime(0.015 + rpmFraction * 0.05, now, 0.05);
+    this.filter.frequency.setTargetAtTime(400 + rpmFraction * 1900, now, 0.05);
+    this.noiseGain.gain.setTargetAtTime(0.012 + rpmFraction * 0.035, now, 0.05);
 
     if (this.turboWhine) {
       const spoolFraction = Math.min(1, Math.max(0, (rpmFraction - 0.2) / 0.55));
-      this.turboWhine.osc.frequency.setTargetAtTime(1800 + spoolFraction * 4500, now, 0.08);
-      this.turboWhine.gain.gain.setTargetAtTime(spoolFraction * 0.07, now, 0.08);
+      this.turboWhine.osc.frequency.setTargetAtTime(1400 + spoolFraction * 2600, now, 0.08);
+      this.turboWhine.gain.gain.setTargetAtTime(spoolFraction * 0.05, now, 0.08);
     }
   }
 

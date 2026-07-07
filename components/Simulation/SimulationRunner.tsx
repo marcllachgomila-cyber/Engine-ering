@@ -6,6 +6,7 @@ import { EngineConfig, SimulationResult, Telemetry } from "@/lib/physics/types";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import Gauges from "./Gauges";
 import LiveStatsPanel from "./LiveStatsPanel";
+import PowerGraph from "./PowerGraph";
 
 interface SimulationRunnerProps {
   engine: EngineConfig;
@@ -65,17 +66,25 @@ export default function SimulationRunner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
 
+  const maxSpeedKph = Math.max(180, Math.ceil((result.topSpeedKph * 1.15) / 20) * 20);
+
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center gap-8">
       <h2 className="text-2xl font-bold text-slate-50">
-        Running 0–100 kph&hellip;
+        Accelerating for {result.runDurationS.toFixed(0)}s&hellip;
       </h2>
       <Gauges
         rpm={current?.rpm ?? 0}
         redlineRpm={engine.redlineRpm}
         speedKph={current?.speedKph ?? 0}
+        maxSpeedKph={maxSpeedKph}
       />
       <LiveStatsPanel telemetry={current} />
+      <PowerGraph
+        telemetry={result.telemetry}
+        currentT={current?.t ?? 0}
+        peakHp={result.peakHp}
+      />
     </div>
   );
 }

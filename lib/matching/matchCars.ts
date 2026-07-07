@@ -11,7 +11,6 @@ interface DerivedStats {
   peakHp: number;
   peakTorqueNm: number;
   powerToWeightHpPerTonne: number;
-  zeroToHundredS: number;
 }
 
 function statsFromCar(car: CarSpec): DerivedStats {
@@ -23,7 +22,6 @@ function statsFromCar(car: CarSpec): DerivedStats {
     peakHp: car.hp,
     peakTorqueNm: car.torqueNm,
     powerToWeightHpPerTonne: car.hp / (car.weightKg / 1000),
-    zeroToHundredS: car.zeroToHundredS,
   };
 }
 
@@ -39,7 +37,6 @@ function statsFromResult(
     peakHp: result.peakHp,
     peakTorqueNm: result.peakTorqueNm,
     powerToWeightHpPerTonne: result.powerToWeightHpPerTonne,
-    zeroToHundredS: result.zeroToHundredS,
   };
 }
 
@@ -48,8 +45,7 @@ type NumericKey =
   | "cylinders"
   | "peakHp"
   | "peakTorqueNm"
-  | "powerToWeightHpPerTonne"
-  | "zeroToHundredS";
+  | "powerToWeightHpPerTonne";
 
 const NUMERIC_WEIGHTS: Record<NumericKey, number> = {
   displacementL: 1,
@@ -57,7 +53,6 @@ const NUMERIC_WEIGHTS: Record<NumericKey, number> = {
   peakHp: 1.5,
   peakTorqueNm: 1.2,
   powerToWeightHpPerTonne: 1.5,
-  zeroToHundredS: 1.5,
 };
 
 const ASPIRATION_MISMATCH_PENALTY = 1.0;

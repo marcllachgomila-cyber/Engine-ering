@@ -78,8 +78,8 @@ export default function EngineForm({ value, onChange, onSubmit }: EngineFormProp
           Build Your Engine
         </h1>
         <p className="text-slate-400 mt-2">
-          Configure every parameter, then run it 0–100 kph and see which real
-          cars come closest.
+          Configure every parameter, then run a 10-second acceleration test
+          and see which real cars come closest.
         </p>
       </div>
 
@@ -193,7 +193,7 @@ export default function EngineForm({ value, onChange, onSubmit }: EngineFormProp
         onClick={onSubmit}
         className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-lg py-4 transition-colors"
       >
-        Start 0–100 kph Run
+        Start 10s Acceleration Run
       </button>
     </div>
   );
