@@ -1,0 +1,64 @@
+import { EngineConfig, SimulationResult } from "@/lib/physics/types";
+
+interface ResultsSummaryProps {
+  engine: EngineConfig;
+  result: SimulationResult;
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-4">
+      <div className="text-xs uppercase tracking-wider text-slate-500">
+        {label}
+      </div>
+      <div className="mt-1 text-xl font-mono font-bold text-slate-50 tabular-nums">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+export default function ResultsSummary({ engine, result }: ResultsSummaryProps) {
+  return (
+    <div className="w-full max-w-3xl mx-auto space-y-6">
+      <div className="text-center">
+        <div className="text-sm uppercase tracking-widest text-amber-400">
+          0&ndash;100 kph
+        </div>
+        <div className="text-6xl font-mono font-black text-slate-50 mt-1">
+          {result.zeroToHundredS.toFixed(2)}s
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <Stat
+          label="Peak Power"
+          value={`${Math.round(result.peakHp)} hp @ ${Math.round(
+            result.peakHpRpm,
+          ).toLocaleString()} rpm`}
+        />
+        <Stat
+          label="Peak Torque"
+          value={`${Math.round(result.peakTorqueNm)} Nm @ ${Math.round(
+            result.peakTorqueRpm,
+          ).toLocaleString()} rpm`}
+        />
+        <Stat
+          label="Power / Weight"
+          value={`${Math.round(result.powerToWeightHpPerTonne)} hp/t`}
+        />
+        <Stat
+          label="Est. Weight"
+          value={`${Math.round(result.weightKg).toLocaleString()} kg`}
+        />
+        <Stat
+          label="Est. Top Speed"
+          value={`${Math.round(result.estimatedTopSpeedKph)} kph`}
+        />
+        <Stat
+          label="Configuration"
+          value={`${engine.cylinders}-cyl ${engine.layout}, ${engine.displacementL.toFixed(1)}L`}
+        />
+      </div>
+    </div>
+  );
+}
