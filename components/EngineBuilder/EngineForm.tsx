@@ -1,6 +1,7 @@
 "use client";
 
-import { EngineConfig, EngineLayout, RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
+import { EngineConfig, EngineLayout, FuelType, RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
+import { DIESEL_MAX_REDLINE_RPM } from "@/lib/physics/defaults";
 
 const CYLINDER_OPTIONS = [3, 4, 5, 6, 8, 10, 12, 16];
 
@@ -26,6 +27,11 @@ const ASPIRATION_LABELS: Record<EngineConfig["aspiration"], string> = {
   na: "Naturally Aspirated",
   turbo: "Turbocharged",
   supercharged: "Supercharged",
+};
+
+const FUEL_TYPE_LABELS: Record<FuelType, string> = {
+  petrol: "Petrol",
+  diesel: "Diesel",
 };
 
 const TEST_TYPE_LABELS: Record<TestType, string> = {
@@ -105,11 +111,20 @@ export default function EngineForm({
   onSubmit,
 }: EngineFormProps) {
   const validLayouts = VALID_LAYOUTS[value.cylinders] ?? ["inline"];
+  const redlineMax = value.fuelType === "diesel" ? DIESEL_MAX_REDLINE_RPM : 11000;
 
   const setCylinders = (cylinders: number) => {
     const layouts = VALID_LAYOUTS[cylinders] ?? ["inline"];
     const layout = layouts.includes(value.layout) ? value.layout : layouts[0];
     onChange({ ...value, cylinders, layout });
+  };
+
+  const setFuelType = (fuelType: FuelType) => {
+    const redlineRpm =
+      fuelType === "diesel"
+        ? Math.min(value.redlineRpm, DIESEL_MAX_REDLINE_RPM)
+        : value.redlineRpm;
+    onChange({ ...value, fuelType, redlineRpm });
   };
 
   return (
@@ -199,7 +214,7 @@ export default function EngineForm({
           <input
             type="range"
             min={4500}
-            max={11000}
+            max={redlineMax}
             step={100}
             value={value.redlineRpm}
             onChange={(e) =>
@@ -207,6 +222,34 @@ export default function EngineForm({
             }
             className="w-full accent-amber-500"
           />
+          {value.fuelType === "diesel" && (
+            <p className="text-xs text-slate-500 mt-1">
+              Capped at {DIESEL_MAX_REDLINE_RPM.toLocaleString()} RPM - diesels
+              don&apos;t rev like petrol engines.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-2">
+            Fuel
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(FUEL_TYPE_LABELS) as FuelType[]).map((f) => (
+              <OptionButton
+                key={f}
+                active={value.fuelType === f}
+                onClick={() => setFuelType(f)}
+              >
+                {FUEL_TYPE_LABELS[f]}
+              </OptionButton>
+            ))}
+          </div>
+          {value.fuelType === "diesel" && (
+            <p className="text-xs text-slate-500 mt-2">
+              More torque per liter than petrol, but redline is capped low.
+            </p>
+          )}
         </div>
 
         <div>
@@ -341,60 +384,129 @@ export default function EngineForm({
           </p>
         </div>
 
-        <div>
-          <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium text-slate-300">
-              Front Wheel Diameter
-            </label>
-            <span className="text-lg font-mono text-amber-400">
-              {test.frontWheelDiameterIn}&Prime;
-            </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
+              Front Wheel
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-baseline justify-between mb-1">
+                  <label className="text-sm font-medium text-slate-300">
+                    Diameter
+                  </label>
+                  <span className="text-lg font-mono text-amber-400">
+                    {test.frontWheelDiameterIn}&Prime;
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={20}
+                  max={32}
+                  step={1}
+                  value={test.frontWheelDiameterIn}
+                  onChange={(e) =>
+                    onTestChange({
+                      ...test,
+                      frontWheelDiameterIn: parseInt(e.target.value, 10),
+                    })
+                  }
+                  className="w-full accent-amber-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">Recommended: 25&Prime;</p>
+              </div>
+              <div>
+                <div className="flex items-baseline justify-between mb-1">
+                  <label className="text-sm font-medium text-slate-300">
+                    Width
+                  </label>
+                  <span className="text-lg font-mono text-amber-400">
+                    {test.frontWheelWidthMm}mm
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={185}
+                  max={335}
+                  step={5}
+                  value={test.frontWheelWidthMm}
+                  onChange={(e) =>
+                    onTestChange({
+                      ...test,
+                      frontWheelWidthMm: parseInt(e.target.value, 10),
+                    })
+                  }
+                  className="w-full accent-amber-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">Recommended: 235mm</p>
+              </div>
+            </div>
           </div>
-          <input
-            type="range"
-            min={20}
-            max={32}
-            step={1}
-            value={test.frontWheelDiameterIn}
-            onChange={(e) =>
-              onTestChange({
-                ...test,
-                frontWheelDiameterIn: parseInt(e.target.value, 10),
-              })
-            }
-            className="w-full accent-amber-500"
-          />
-          <p className="text-xs text-slate-500 mt-1">Recommended: 25&Prime;</p>
-        </div>
 
-        <div>
-          <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium text-slate-300">
-              Rear Wheel Diameter
-            </label>
-            <span className="text-lg font-mono text-amber-400">
-              {test.rearWheelDiameterIn}&Prime;
-            </span>
+          <div>
+            <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
+              Rear Wheel
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-baseline justify-between mb-1">
+                  <label className="text-sm font-medium text-slate-300">
+                    Diameter
+                  </label>
+                  <span className="text-lg font-mono text-amber-400">
+                    {test.rearWheelDiameterIn}&Prime;
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={20}
+                  max={32}
+                  step={1}
+                  value={test.rearWheelDiameterIn}
+                  onChange={(e) =>
+                    onTestChange({
+                      ...test,
+                      rearWheelDiameterIn: parseInt(e.target.value, 10),
+                    })
+                  }
+                  className="w-full accent-amber-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">Recommended: 26&Prime;</p>
+              </div>
+              <div>
+                <div className="flex items-baseline justify-between mb-1">
+                  <label className="text-sm font-medium text-slate-300">
+                    Width
+                  </label>
+                  <span className="text-lg font-mono text-amber-400">
+                    {test.rearWheelWidthMm}mm
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={185}
+                  max={335}
+                  step={5}
+                  value={test.rearWheelWidthMm}
+                  onChange={(e) =>
+                    onTestChange({
+                      ...test,
+                      rearWheelWidthMm: parseInt(e.target.value, 10),
+                    })
+                  }
+                  className="w-full accent-amber-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Recommended: 275mm - wider rear (drive) tires add grip.
+                </p>
+              </div>
+            </div>
           </div>
-          <input
-            type="range"
-            min={20}
-            max={32}
-            step={1}
-            value={test.rearWheelDiameterIn}
-            onChange={(e) =>
-              onTestChange({
-                ...test,
-                rearWheelDiameterIn: parseInt(e.target.value, 10),
-              })
-            }
-            className="w-full accent-amber-500"
-          />
-          <p className="text-xs text-slate-500 mt-1">
-            Recommended: 26&Prime; - a wider rear tire (the drive wheels) adds
-            grip; bigger wheels overall add rotating mass.
-          </p>
         </div>
+        <p className="text-xs text-slate-500">
+          Bigger wheels overall add rotating mass, which costs a little
+          acceleration.
+        </p>
       </SectionCard>
 
       <button

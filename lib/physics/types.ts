@@ -1,5 +1,6 @@
 export type EngineLayout = "inline" | "v" | "flat" | "w";
 export type Aspiration = "na" | "turbo" | "supercharged";
+export type FuelType = "petrol" | "diesel";
 
 export interface EngineConfig {
   cylinders: number;
@@ -7,6 +8,7 @@ export interface EngineConfig {
   displacementL: number;
   redlineRpm: number;
   aspiration: Aspiration;
+  fuelType: FuelType;
 }
 
 export type TestType = "zeroToHundred" | "tenSecond" | "drag500m";
@@ -20,6 +22,8 @@ export interface TestConfig {
   condition: RoadCondition;
   frontWheelDiameterIn: number;
   rearWheelDiameterIn: number;
+  frontWheelWidthMm: number;
+  rearWheelWidthMm: number;
 }
 
 export interface EngineCurves {

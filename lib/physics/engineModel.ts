@@ -1,16 +1,24 @@
-import { Aspiration, EngineConfig, EngineCurves } from "./types";
+import { Aspiration, EngineConfig, EngineCurves, FuelType } from "./types";
 
 const IDLE_RPM = 900;
 
-function torquePerLiter(aspiration: Aspiration): number {
-  switch (aspiration) {
-    case "na":
-      return 100;
-    case "turbo":
-      return 155;
-    case "supercharged":
-      return 145;
-  }
+// Diesels make substantially more torque per liter than petrol (higher
+// compression ratio, long-stroke design) but pay for it with a much lower
+// redline ceiling, enforced separately in the UI.
+const DIESEL_TORQUE_MULTIPLIER = 1.35;
+
+function torquePerLiter(aspiration: Aspiration, fuelType: FuelType): number {
+  const base = (() => {
+    switch (aspiration) {
+      case "na":
+        return 100;
+      case "turbo":
+        return 155;
+      case "supercharged":
+        return 145;
+    }
+  })();
+  return fuelType === "diesel" ? base * DIESEL_TORQUE_MULTIPLIER : base;
 }
 
 function cylinderFactor(cylinders: number): number {
@@ -20,15 +28,20 @@ function cylinderFactor(cylinders: number): number {
   return Math.min(Math.max(factor, 0.9), 1.15);
 }
 
-function peakTorqueFraction(aspiration: Aspiration): number {
-  switch (aspiration) {
-    case "na":
-      return 0.45;
-    case "supercharged":
-      return 0.5;
-    case "turbo":
-      return 0.55;
-  }
+function peakTorqueFraction(aspiration: Aspiration, fuelType: FuelType): number {
+  const base = (() => {
+    switch (aspiration) {
+      case "na":
+        return 0.45;
+      case "supercharged":
+        return 0.5;
+      case "turbo":
+        return 0.55;
+    }
+  })();
+  // Diesels build boost/cylinder pressure earlier and don't rev out, so
+  // their torque peak sits noticeably lower in the band than petrol's.
+  return fuelType === "diesel" ? base - 0.12 : base;
 }
 
 function curveSigmas(aspiration: Aspiration): { rise: number; fall: number } {
@@ -59,11 +72,11 @@ function shapeMultiplier(
 }
 
 export function buildEngineCurves(engine: EngineConfig): EngineCurves {
-  const { displacementL, cylinders, redlineRpm, aspiration } = engine;
+  const { displacementL, cylinders, redlineRpm, aspiration, fuelType } = engine;
 
   const peakTorqueNm =
-    displacementL * torquePerLiter(aspiration) * cylinderFactor(cylinders);
-  const peakFraction = peakTorqueFraction(aspiration);
+    displacementL * torquePerLiter(aspiration, fuelType) * cylinderFactor(cylinders);
+  const peakFraction = peakTorqueFraction(aspiration, fuelType);
 
   const torqueAt = (rpm: number): number => {
     const clampedRpm = Math.min(Math.max(rpm, IDLE_RPM), redlineRpm);

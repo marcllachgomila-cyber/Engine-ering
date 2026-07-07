@@ -7,17 +7,25 @@ const TURBO_HARDWARE_KG = 25;
 const SUPERCHARGER_HARDWARE_KG = 35;
 
 const LAUNCH_RATIO = 3.6;
-const TOP_RATIO = 0.85;
+// Reference top-gear ratio for a 6-speed box. More gears spread the same
+// launch-to-top range further, so each extra gear makes top gear ~7%
+// taller (numerically lower); fewer gears make it shorter. This is what
+// lets picking more gears meaningfully raise theoretical top speed, the
+// same way a taller final-drive/overdrive gear does in a real car.
+const TOP_RATIO_AT_SIX_SPEED = 0.85;
+const TOP_RATIO_STEP = 0.93;
 const FINAL_DRIVE = 3.9;
 
 // Reference wheel sizes the base chassis weight/traction figures assume.
-// Deviating from these adds/removes rotating mass (harder to spin up bigger
-// wheels) and, for the rear (drive) tire, changes the contact patch and
-// therefore the traction limit.
+// Diameter mainly changes gearing (rpm-to-speed) and rotating mass; width
+// is what actually puts more rubber on the road, so it drives grip.
 const REFERENCE_FRONT_DIAMETER_IN = 25;
 const REFERENCE_REAR_DIAMETER_IN = 26;
+const REFERENCE_FRONT_WIDTH_MM = 235;
+const REFERENCE_REAR_WIDTH_MM = 275;
 const ROTATING_MASS_PER_INCH_KG = 3.5;
-const REAR_GRIP_PER_INCH = 0.008;
+const WIDTH_MASS_PER_MM_KG = 0.15;
+const REAR_GRIP_PER_MM = 0.0018;
 
 export function wheelDiameterToRadiusM(diameterIn: number): number {
   return (diameterIn * 0.0254) / 2;
@@ -36,27 +44,30 @@ export function deriveVehicle(
   if (engine.aspiration === "turbo") weightKg += TURBO_HARDWARE_KG;
   if (engine.aspiration === "supercharged") weightKg += SUPERCHARGER_HARDWARE_KG;
 
-  // Bigger wheels/tires add rotating mass, which behaves like extra
-  // effective weight under acceleration (more inertia to spin up).
+  // Bigger wheels/tires (diameter and width alike) add rotating mass, which
+  // behaves like extra effective weight under acceleration.
   weightKg +=
     (test.frontWheelDiameterIn - REFERENCE_FRONT_DIAMETER_IN) *
       ROTATING_MASS_PER_INCH_KG +
     (test.rearWheelDiameterIn - REFERENCE_REAR_DIAMETER_IN) *
-      ROTATING_MASS_PER_INCH_KG;
+      ROTATING_MASS_PER_INCH_KG +
+    (test.frontWheelWidthMm - REFERENCE_FRONT_WIDTH_MM) * WIDTH_MASS_PER_MM_KG +
+    (test.rearWheelWidthMm - REFERENCE_REAR_WIDTH_MM) * WIDTH_MASS_PER_MM_KG;
 
   const gearCount = test.gearCount;
+  const topRatio = TOP_RATIO_AT_SIX_SPEED * Math.pow(TOP_RATIO_STEP, gearCount - 6);
   const gearRatios = Array.from({ length: gearCount }, (_, i) =>
-    LAUNCH_RATIO * Math.pow(TOP_RATIO / LAUNCH_RATIO, i / (gearCount - 1)),
+    LAUNCH_RATIO * Math.pow(topRatio / LAUNCH_RATIO, i / (gearCount - 1)),
   );
 
   // A wider rear (drive) tire puts more rubber on the road; a narrower one
   // less. This is the only wheel-size effect on grip - the model is RWD, so
-  // front tire size doesn't factor into traction, only rotating mass.
+  // the front tire doesn't factor into traction, only rotating mass.
   const rearGripMultiplier = Math.min(
-    1.15,
+    1.25,
     Math.max(
-      0.85,
-      1 + (test.rearWheelDiameterIn - REFERENCE_REAR_DIAMETER_IN) * REAR_GRIP_PER_INCH,
+      0.8,
+      1 + (test.rearWheelWidthMm - REFERENCE_REAR_WIDTH_MM) * REAR_GRIP_PER_MM,
     ),
   );
 

@@ -6,6 +6,7 @@ export const DEFAULT_ENGINE: EngineConfig = {
   displacementL: 2.0,
   redlineRpm: 7000,
   aspiration: "na",
+  fuelType: "petrol",
 };
 
 export const DEFAULT_TEST_CONFIG: TestConfig = {
@@ -16,4 +17,8 @@ export const DEFAULT_TEST_CONFIG: TestConfig = {
   condition: "dry",
   frontWheelDiameterIn: 25,
   rearWheelDiameterIn: 26,
+  frontWheelWidthMm: 235,
+  rearWheelWidthMm: 275,
 };
+
+export const DIESEL_MAX_REDLINE_RPM = 5200;

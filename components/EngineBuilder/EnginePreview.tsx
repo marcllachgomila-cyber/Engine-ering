@@ -50,7 +50,7 @@ function computeBanks(cylinders: number, layout: EngineLayout): Bank[] {
 
 const CYL_SPACING = 0.5;
 const CYL_RADIUS = 0.2;
-const CYL_HEIGHT = 1.0;
+const CYL_HEIGHT = 0.85;
 const BLOCK_HALF_HEIGHT = 0.45;
 
 function EngineMesh({ engine }: { engine: EngineConfig }) {
@@ -62,7 +62,9 @@ function EngineMesh({ engine }: { engine: EngineConfig }) {
   );
   const maxCount = Math.max(...banks.map((b) => b.count));
   const blockLength = maxCount * CYL_SPACING + 0.7;
-  const scale = Math.min(1.3, Math.max(0.45, 3.1 / blockLength));
+  // Normalizes overall model size so it stays well within the camera's
+  // frame at every orbit angle, regardless of cylinder count/layout.
+  const scale = Math.min(1.05, Math.max(0.4, 2.5 / blockLength));
 
   useFrame((_, delta) => {
     const rotationsPerSecond = 0.25 + engine.redlineRpm / 9000;
@@ -137,7 +139,7 @@ export default function EnginePreview({ engine }: { engine: EngineConfig }) {
   return (
     <Canvas
       shadows
-      camera={{ position: [3.2, 2.0, 3.2], fov: 38 }}
+      camera={{ position: [4.8, 3.1, 4.8], fov: 34 }}
       gl={{ alpha: true }}
     >
       <ambientLight intensity={0.9} />

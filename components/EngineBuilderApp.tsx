@@ -99,7 +99,7 @@ export default function EngineBuilderApp() {
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-16">
         {step === "build" && (
-          <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
+          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
             <EngineForm
               value={engine}
               onChange={setEngine}
@@ -112,7 +112,7 @@ export default function EngineBuilderApp() {
                 <div className="text-xs uppercase tracking-wider text-slate-400 mb-2">
                   Live Preview
                 </div>
-                <div className="w-full h-72 relative">
+                <div className="w-full h-96 relative">
                   <div className="absolute inset-x-8 bottom-4 h-8 rounded-full bg-black/50 blur-xl" />
                   <EnginePreview engine={engine} />
                 </div>

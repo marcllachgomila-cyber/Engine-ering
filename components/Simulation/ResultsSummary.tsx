@@ -1,5 +1,6 @@
 import { EngineConfig, SimulationResult } from "@/lib/physics/types";
 import { resultHeadline } from "@/lib/testResultLabel";
+import PowerGraph from "./PowerGraph";
 
 interface ResultsSummaryProps {
   engine: EngineConfig;
@@ -71,6 +72,13 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
         <Stat
           label="Configuration"
           value={`${engine.cylinders}-cyl ${engine.layout}, ${engine.displacementL.toFixed(1)}L`}
+        />
+      </div>
+      <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-4">
+        <PowerGraph
+          telemetry={result.telemetry}
+          currentT={result.telemetry[result.telemetry.length - 1]?.t ?? 0}
+          peakHp={result.peakHp}
         />
       </div>
     </div>

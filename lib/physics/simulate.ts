@@ -74,6 +74,13 @@ function estimateTopSpeedKph(
   const topGearRatio = vehicle.gearRatios[vehicle.gearRatios.length - 1];
   const rollingForce = vehicle.rollingResistanceCoefficient * vehicle.weightKg * G;
 
+  // Torque vs RPM isn't monotonic (it rises, peaks, then tapers), so in a
+  // fixed, tall top gear the drive-force-minus-resistance margin can dip
+  // negative at a low speed (weak low-RPM torque) and then recover once RPM
+  // climbs into the engine's strong torque band. Breaking on the first
+  // negative margin would understate top speed by stopping at that early
+  // dip - scan the full range and keep the highest speed that ever balances,
+  // only stopping once the redline itself becomes the limiter.
   let lastValidSpeedMs = 0;
   const stepMs = 0.2;
   for (let speedMs = stepMs; speedMs < 130; speedMs += stepMs) {
@@ -93,8 +100,9 @@ function estimateTopSpeedKph(
       relativeSpeedMs *
       relativeSpeedMs;
 
-    if (driveForce <= dragForce + rollingForce) break;
-    lastValidSpeedMs = speedMs;
+    if (driveForce > dragForce + rollingForce) {
+      lastValidSpeedMs = speedMs;
+    }
   }
 
   return lastValidSpeedMs * 3.6;
