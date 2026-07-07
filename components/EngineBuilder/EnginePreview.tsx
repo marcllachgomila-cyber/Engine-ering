@@ -1,5 +1,9 @@
 "use client";
 
+import { useMemo, useRef } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
+import * as THREE from "three";
 import { EngineConfig, EngineLayout } from "@/lib/physics/types";
 
 interface Bank {
@@ -13,139 +17,142 @@ function splitEvenly(total: number, banks: number): number[] {
   return Array.from({ length: banks }, (_, i) => base + (i < remainder ? 1 : 0));
 }
 
+// Bank angle is measured from the +Y (up) axis, rotating toward +Z.
 function computeBanks(cylinders: number, layout: EngineLayout): Bank[] {
   switch (layout) {
     case "inline":
-      return [{ angleDeg: -90, count: cylinders }];
+      return [{ angleDeg: 0, count: cylinders }];
     case "flat": {
       const [a, b] = splitEvenly(cylinders, 2);
       return [
-        { angleDeg: 180, count: a },
-        { angleDeg: 0, count: b },
+        { angleDeg: -90, count: a },
+        { angleDeg: 90, count: b },
       ];
     }
     case "v": {
       const [a, b] = splitEvenly(cylinders, 2);
       return [
-        { angleDeg: -122, count: a },
-        { angleDeg: -58, count: b },
+        { angleDeg: -32, count: a },
+        { angleDeg: 32, count: b },
       ];
     }
     case "w": {
       const [a, b, c, d] = splitEvenly(cylinders, 4);
       return [
-        { angleDeg: -138, count: a },
-        { angleDeg: -106, count: b },
-        { angleDeg: -74, count: c },
-        { angleDeg: -42, count: d },
+        { angleDeg: -55, count: a },
+        { angleDeg: -20, count: b },
+        { angleDeg: 20, count: c },
+        { angleDeg: 55, count: d },
       ];
     }
   }
 }
 
-const LAYOUT_CODE: Record<EngineLayout, string> = {
-  inline: "I",
-  v: "V",
-  flat: "F",
-  w: "W",
-};
+const CYL_SPACING = 0.5;
+const CYL_RADIUS = 0.2;
+const CYL_HEIGHT = 1.0;
+const BLOCK_HALF_HEIGHT = 0.45;
 
-const ASPIRATION_LABEL: Record<EngineConfig["aspiration"], string> = {
-  na: "N/A",
-  turbo: "TURBO",
-  supercharged: "S/C",
-};
+function EngineMesh({ engine }: { engine: EngineConfig }) {
+  const flywheelRef = useRef<THREE.Mesh>(null);
 
-const ORIGIN_X = 150;
-const ORIGIN_Y = 220;
-const CYLINDER_SPACING = 21;
-const FIRST_CYLINDER_DIST = 34;
-const CYLINDER_RADIUS = 9;
+  const banks = useMemo(
+    () => computeBanks(engine.cylinders, engine.layout),
+    [engine.cylinders, engine.layout],
+  );
+  const maxCount = Math.max(...banks.map((b) => b.count));
+  const blockLength = maxCount * CYL_SPACING + 0.7;
+  const scale = Math.min(1.3, Math.max(0.45, 3.1 / blockLength));
 
-export default function EnginePreview({ engine }: { engine: EngineConfig }) {
-  const banks = computeBanks(engine.cylinders, engine.layout);
-  const spinDuration = Math.max(0.4, 3.2 - engine.redlineRpm / 4200);
+  useFrame((_, delta) => {
+    const rotationsPerSecond = 0.25 + engine.redlineRpm / 9000;
+    if (flywheelRef.current) {
+      flywheelRef.current.rotation.z += delta * rotationsPerSecond * Math.PI * 2;
+    }
+  });
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-      <div className="text-xs uppercase tracking-wider text-slate-500 mb-3">
-        Live Preview
-      </div>
-      <svg viewBox="0 0 300 260" className="w-full h-auto">
-        {banks.map((bank, bankIndex) => {
-          const angleRad = (bank.angleDeg * Math.PI) / 180;
-          const dx = Math.cos(angleRad);
-          const dy = Math.sin(angleRad);
-          const lastDist = FIRST_CYLINDER_DIST + (bank.count - 1) * CYLINDER_SPACING;
-          return (
-            <g key={bankIndex}>
-              <line
-                x1={ORIGIN_X}
-                y1={ORIGIN_Y}
-                x2={ORIGIN_X + dx * (lastDist + CYLINDER_RADIUS)}
-                y2={ORIGIN_Y + dy * (lastDist + CYLINDER_RADIUS)}
-                stroke="#3f4652"
-                strokeWidth={18}
-                strokeLinecap="round"
-              />
-              {Array.from({ length: bank.count }, (_, i) => {
-                const dist = FIRST_CYLINDER_DIST + i * CYLINDER_SPACING;
-                const cx = ORIGIN_X + dx * dist;
-                const cy = ORIGIN_Y + dy * dist;
-                return (
-                  <circle
-                    key={i}
-                    cx={cx}
-                    cy={cy}
-                    r={CYLINDER_RADIUS}
-                    fill="#1a1d23"
-                    stroke="#f59e0b"
-                    strokeWidth={2}
-                  />
-                );
-              })}
-            </g>
-          );
-        })}
+    <group scale={scale}>
+      {/* engine block */}
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[blockLength, BLOCK_HALF_HEIGHT * 2, 0.95]} />
+        <meshStandardMaterial color="#82868f" metalness={0.25} roughness={0.55} />
+      </mesh>
 
-        <circle cx={ORIGIN_X} cy={ORIGIN_Y} r={16} fill="#0d0f13" stroke="#52545c" strokeWidth={2} />
-        <g style={{ transformOrigin: `${ORIGIN_X}px ${ORIGIN_Y}px` }}>
-          <animateTransform
-            attributeName="transform"
-            type="rotate"
-            from={`0 ${ORIGIN_X} ${ORIGIN_Y}`}
-            to={`360 ${ORIGIN_X} ${ORIGIN_Y}`}
-            dur={`${spinDuration}s`}
-            repeatCount="indefinite"
-          />
-          <line
-            x1={ORIGIN_X}
-            y1={ORIGIN_Y}
-            x2={ORIGIN_X}
-            y2={ORIGIN_Y - 12}
-            stroke="#f59e0b"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-          />
-        </g>
-      </svg>
+      {/* cylinder banks */}
+      {banks.map((bank, bankIndex) => {
+        const angleRad = (bank.angleDeg * Math.PI) / 180;
+        const dirY = Math.cos(angleRad);
+        const dirZ = Math.sin(angleRad);
+        const startX = -((bank.count - 1) * CYL_SPACING) / 2;
+        return (
+          <group key={bankIndex}>
+            {Array.from({ length: bank.count }, (_, i) => {
+              const x = startX + i * CYL_SPACING;
+              const midDist = BLOCK_HALF_HEIGHT + CYL_HEIGHT / 2;
+              const y = dirY * midDist;
+              const z = dirZ * midDist;
+              const capDist = BLOCK_HALF_HEIGHT + CYL_HEIGHT + 0.05;
+              return (
+                <group key={i} position={[x, y, z]} rotation={[angleRad, 0, 0]}>
+                  <mesh castShadow>
+                    <cylinderGeometry args={[CYL_RADIUS, CYL_RADIUS, CYL_HEIGHT, 20]} />
+                    <meshStandardMaterial color="#71767f" metalness={0.3} roughness={0.5} />
+                  </mesh>
+                  <mesh position={[0, capDist - midDist, 0]}>
+                    <cylinderGeometry
+                      args={[CYL_RADIUS * 1.08, CYL_RADIUS * 1.08, 0.08, 20]}
+                    />
+                    <meshStandardMaterial color="#f59e0b" metalness={0.3} roughness={0.45} />
+                  </mesh>
+                </group>
+              );
+            })}
+          </group>
+        );
+      })}
 
-      <div className="flex items-center justify-between mt-2">
-        <div className="font-mono font-bold text-lg text-slate-50">
-          {LAYOUT_CODE[engine.layout]}
-          {engine.cylinders}
-        </div>
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-          <span>{engine.displacementL.toFixed(1)}L</span>
-          <span aria-hidden>&middot;</span>
-          <span>{engine.redlineRpm.toLocaleString()} RPM</span>
-          {engine.aspiration !== "na" && (
-            <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold">
-              {ASPIRATION_LABEL[engine.aspiration]}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
+      {/* flywheel */}
+      <mesh ref={flywheelRef} position={[-blockLength / 2 - 0.12, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <cylinderGeometry args={[0.5, 0.5, 0.12, 32]} />
+        <meshStandardMaterial color="#54585f" metalness={0.35} roughness={0.45} />
+      </mesh>
+      <mesh position={[-blockLength / 2 - 0.19, 0.32, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <boxGeometry args={[0.06, 0.16, 0.02]} />
+        <meshStandardMaterial color="#f59e0b" metalness={0.3} roughness={0.45} />
+      </mesh>
+
+      {/* turbo/supercharger accessory */}
+      {engine.aspiration !== "na" && (
+        <mesh position={[blockLength / 2 + 0.28, -0.15, 0.3]} castShadow>
+          <sphereGeometry args={[0.24, 16, 16]} />
+          <meshStandardMaterial color="#d4d7dc" metalness={0.4} roughness={0.35} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+export default function EnginePreview({ engine }: { engine: EngineConfig }) {
+  return (
+    <Canvas
+      shadows
+      camera={{ position: [3.2, 2.0, 3.2], fov: 38 }}
+      gl={{ alpha: true }}
+    >
+      <ambientLight intensity={0.9} />
+      <directionalLight position={[4, 6, 4]} intensity={1.8} castShadow />
+      <directionalLight position={[-3, 2, -3]} intensity={0.6} />
+      <pointLight position={[0, 2.5, 1]} color="#f59e0b" intensity={1.0} />
+      <EngineMesh engine={engine} />
+      <OrbitControls
+        enablePan={false}
+        enableZoom={false}
+        autoRotate
+        autoRotateSpeed={2.4}
+        minPolarAngle={Math.PI / 4}
+        maxPolarAngle={Math.PI / 1.7}
+      />
+    </Canvas>
   );
 }

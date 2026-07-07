@@ -9,6 +9,19 @@ export interface EngineConfig {
   aspiration: Aspiration;
 }
 
+export type TestType = "zeroToHundred" | "tenSecond" | "drag500m";
+export type RoadCondition = "dry" | "wet" | "rain" | "wind";
+
+export interface TestConfig {
+  testType: TestType;
+  gearCount: number;
+  wheelSpinPercent: number;
+  tractionControl: boolean;
+  condition: RoadCondition;
+  frontWheelDiameterIn: number;
+  rearWheelDiameterIn: number;
+}
+
 export interface EngineCurves {
   torqueAt: (rpm: number) => number;
   powerAt: (rpm: number) => number;
@@ -28,6 +41,7 @@ export interface VehicleSpec {
   drivetrainEfficiency: number;
   tireGripMu: number;
   wheelRadiusM: number;
+  frontWheelRadiusM: number;
   gearRatios: number[];
   finalDrive: number;
   shiftRpm: number;
@@ -46,9 +60,12 @@ export interface Telemetry {
 
 export interface SimulationResult {
   telemetry: Telemetry[];
-  runDurationS: number;
-  topSpeedKph: number;
+  testType: TestType;
+  elapsedS: number;
+  finalSpeedKph: number;
+  finalDistanceM: number;
   reachedHundredAtS: number | null;
+  timedOut: boolean;
   peakHp: number;
   peakHpRpm: number;
   peakTorqueNm: number;

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { simulate } from "@/lib/physics/simulate";
-import { EngineConfig, SimulationResult, Telemetry } from "@/lib/physics/types";
+import { EngineConfig, SimulationResult, Telemetry, TestConfig } from "@/lib/physics/types";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import Gauges from "./Gauges";
 import LiveStatsPanel from "./LiveStatsPanel";
@@ -10,16 +10,24 @@ import PowerGraph from "./PowerGraph";
 
 interface SimulationRunnerProps {
   engine: EngineConfig;
+  test: TestConfig;
   audioEngine: EngineAudioEngine;
   onComplete: (result: SimulationResult) => void;
 }
 
+const RUNNING_LABELS: Record<TestConfig["testType"], string> = {
+  zeroToHundred: "Running 0–100 kph…",
+  tenSecond: "Accelerating for 10s…",
+  drag500m: "Running the 500m…",
+};
+
 export default function SimulationRunner({
   engine,
+  test,
   audioEngine,
   onComplete,
 }: SimulationRunnerProps) {
-  const result = useMemo(() => simulate(engine), [engine]);
+  const result = useMemo(() => simulate(engine, test), [engine, test]);
   const [current, setCurrent] = useState<Telemetry | null>(
     result.telemetry[0] ?? null,
   );
@@ -66,12 +74,12 @@ export default function SimulationRunner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
 
-  const maxSpeedKph = Math.max(180, Math.ceil((result.topSpeedKph * 1.15) / 20) * 20);
+  const maxSpeedKph = Math.max(180, Math.ceil((result.finalSpeedKph * 1.15) / 20) * 20);
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center gap-8">
       <h2 className="text-2xl font-bold text-slate-50">
-        Accelerating for {result.runDurationS.toFixed(0)}s&hellip;
+        {RUNNING_LABELS[test.testType]}
       </h2>
       <Gauges
         rpm={current?.rpm ?? 0}

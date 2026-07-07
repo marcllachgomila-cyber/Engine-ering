@@ -1,22 +1,25 @@
-import { CarSpec, EngineConfig, SimulationResult } from "./physics/types";
+import { CarSpec, EngineConfig, SimulationResult, TestConfig } from "./physics/types";
 
 export interface SavedEngine {
   id: string;
   savedAt: number;
   engine: EngineConfig;
+  test: TestConfig;
+  elapsedS: number;
+  finalSpeedKph: number;
+  finalDistanceM: number;
   peakHp: number;
   peakHpRpm: number;
   peakTorqueNm: number;
   peakTorqueRpm: number;
   weightKg: number;
   powerToWeightHpPerTonne: number;
-  topSpeedKph: number;
   theoreticalTopSpeedKph: number;
   reachedHundredAtS: number | null;
   topMatch: { make: string; model: string; year: number } | null;
 }
 
-const STORAGE_KEY = "engine-builder.favorites.v1";
+const STORAGE_KEY = "engine-builder.favorites.v2";
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -67,6 +70,7 @@ export function getFavoritesServerSnapshot(): SavedEngine[] {
 
 export function addFavorite(
   engine: EngineConfig,
+  test: TestConfig,
   result: SimulationResult,
   topMatchCar: CarSpec | null,
 ): void {
@@ -74,13 +78,16 @@ export function addFavorite(
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     savedAt: Date.now(),
     engine,
+    test,
+    elapsedS: result.elapsedS,
+    finalSpeedKph: result.finalSpeedKph,
+    finalDistanceM: result.finalDistanceM,
     peakHp: result.peakHp,
     peakHpRpm: result.peakHpRpm,
     peakTorqueNm: result.peakTorqueNm,
     peakTorqueRpm: result.peakTorqueRpm,
     weightKg: result.weightKg,
     powerToWeightHpPerTonne: result.powerToWeightHpPerTonne,
-    topSpeedKph: result.topSpeedKph,
     theoreticalTopSpeedKph: result.theoreticalTopSpeedKph,
     reachedHundredAtS: result.reachedHundredAtS,
     topMatch: topMatchCar

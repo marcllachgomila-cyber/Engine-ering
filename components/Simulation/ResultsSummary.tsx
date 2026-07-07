@@ -1,4 +1,5 @@
 import { EngineConfig, SimulationResult } from "@/lib/physics/types";
+import { resultHeadline } from "@/lib/testResultLabel";
 
 interface ResultsSummaryProps {
   engine: EngineConfig;
@@ -19,20 +20,28 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export default function ResultsSummary({ engine, result }: ResultsSummaryProps) {
+  const headline = resultHeadline(result);
+
+  let subtext = headline.sub;
+  if (result.testType === "tenSecond") {
+    subtext =
+      result.reachedHundredAtS !== null
+        ? `0–100 kph in ${result.reachedHundredAtS.toFixed(2)}s`
+        : "Didn't reach 100 kph in the run";
+  }
+
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6">
       <div className="text-center">
         <div className="text-sm uppercase tracking-widest text-amber-400">
-          Top Speed after {result.runDurationS.toFixed(0)}s
+          {headline.label}
         </div>
         <div className="text-6xl font-mono font-black text-slate-50 mt-1">
-          {Math.round(result.topSpeedKph)} kph
+          {headline.value}
         </div>
-        <div className="mt-2 text-sm font-mono text-slate-400">
-          {result.reachedHundredAtS !== null
-            ? `0–100 kph in ${result.reachedHundredAtS.toFixed(2)}s`
-            : "Didn't reach 100 kph in the run"}
-        </div>
+        {subtext && (
+          <div className="mt-2 text-sm font-mono text-slate-400">{subtext}</div>
+        )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Stat

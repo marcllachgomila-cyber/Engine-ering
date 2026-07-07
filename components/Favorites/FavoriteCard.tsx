@@ -1,4 +1,5 @@
 import { SavedEngine } from "@/lib/favorites";
+import { resultHeadline, TEST_TYPE_LABELS } from "@/lib/testResultLabel";
 
 interface FavoriteCardProps {
   favorite: SavedEngine;
@@ -19,7 +20,13 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 }
 
 export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) {
-  const { engine } = favorite;
+  const { engine, test } = favorite;
+  const headline = resultHeadline({
+    testType: test.testType,
+    elapsedS: favorite.elapsedS,
+    finalSpeedKph: favorite.finalSpeedKph,
+    timedOut: false,
+  });
 
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
@@ -30,7 +37,8 @@ export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) 
             {engine.displacementL.toFixed(1)}L {engine.aspiration}
           </div>
           <div className="text-xs text-slate-500 mt-0.5">
-            Saved {new Date(favorite.savedAt).toLocaleDateString()}
+            Saved {new Date(favorite.savedAt).toLocaleDateString()} &middot;{" "}
+            {TEST_TYPE_LABELS[test.testType]}
           </div>
           {favorite.topMatch && (
             <div className="text-sm text-slate-400 mt-1 truncate">
@@ -53,10 +61,7 @@ export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) 
           label="Peak Torque"
           value={`${Math.round(favorite.peakTorqueNm)} Nm`}
         />
-        <MiniStat
-          label="Top Speed (10s)"
-          value={`${Math.round(favorite.topSpeedKph)} kph`}
-        />
+        <MiniStat label={headline.label} value={headline.value} />
         <MiniStat
           label="Theoretical Top"
           value={`${Math.round(favorite.theoreticalTopSpeedKph)} kph`}

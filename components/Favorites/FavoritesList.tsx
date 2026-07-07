@@ -4,11 +4,11 @@ import { useMemo, useState } from "react";
 import { SavedEngine } from "@/lib/favorites";
 import FavoriteCard from "./FavoriteCard";
 
-type SortKey = "newest" | "topSpeed" | "peakHp" | "theoreticalTopSpeed" | "peakTorque";
+type SortKey = "newest" | "finalSpeed" | "peakHp" | "theoreticalTopSpeed" | "peakTorque";
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "newest", label: "Newest" },
-  { key: "topSpeed", label: "Top Speed" },
+  { key: "finalSpeed", label: "Final Speed" },
   { key: "peakHp", label: "Peak Power" },
   { key: "theoreticalTopSpeed", label: "Theoretical Top Speed" },
   { key: "peakTorque", label: "Peak Torque" },
@@ -17,8 +17,8 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 function sortFavorites(favorites: SavedEngine[], key: SortKey): SavedEngine[] {
   const copy = [...favorites];
   switch (key) {
-    case "topSpeed":
-      return copy.sort((a, b) => b.topSpeedKph - a.topSpeedKph);
+    case "finalSpeed":
+      return copy.sort((a, b) => b.finalSpeedKph - a.finalSpeedKph);
     case "peakHp":
       return copy.sort((a, b) => b.peakHp - a.peakHp);
     case "theoreticalTopSpeed":

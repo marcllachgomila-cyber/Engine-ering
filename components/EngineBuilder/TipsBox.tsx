@@ -28,80 +28,89 @@ const TIPS: Record<Topic, string[]> = {
     "Maximize peak power. Theoretical top speed is where drive force in top gear matches aerodynamic drag, so more power pushes that point higher.",
     "Raise the redline. It lets top gear pull to a higher road speed before hitting the limiter.",
     "Go turbo or supercharged. Forced induction is the most direct lever on power-per-liter, which is the most direct lever on top speed.",
-    "Don't worry about the extra weight from a bigger build. It mainly hurts acceleration and launch traction, not top speed.",
+    "Avoid the Wind condition. A headwind straight off the nose only ever adds drag, which caps top speed lower.",
   ],
   acceleration: [
-    "Chase power-to-weight, not raw power. This model derives weight from your engine's own size, so a smaller, boosted engine often accelerates harder than a huge one with similar output.",
+    "Chase power-to-weight, not raw power. Vehicle weight is derived from your engine's own size, so a smaller, boosted engine often accelerates harder than a huge one with similar output.",
     "Mind the traction limit. Wheel force is capped by tire grip, so beyond a point extra torque just spins the tires off the line instead of adding acceleration.",
     "Go turbo. Its torque plateau kicks in earlier and holds through more of the rev range than a peaky NA curve, keeping wheel force high through every gear.",
-    "Push the redline a little higher. It keeps first gear's strong torque band pulling longer before the first shift, which helps the initial launch.",
+    "Test in dry conditions. Wet and rain cut tire grip substantially, capping how much force you can put down.",
   ],
 };
 
+const RECOMMENDED: Record<Topic, string> = {
+  power:
+    "Turbocharged, 6–8L displacement, 9,000+ RPM redline, more cylinders (10–16) for a bit more top-end.",
+  torque:
+    "Turbocharged, push displacement toward 8.0L. Cylinder count and redline barely move this one, so spend your budget elsewhere.",
+  topspeed:
+    "Turbocharged or supercharged, 9,000+ RPM redline, 7–8 gears (keeps top gear pulling longer), Dry or Wet conditions (never Wind).",
+  acceleration:
+    "Wheel Spin at 10%, Traction Control On, Dry conditions, rear wheel diameter 28–30\" (more grip), front wheel diameter 20–22\" (less rotating mass), 5–6 gears (fewer, longer-pulling gears), Turbocharged aspiration.",
+};
+
 export default function TipsBox() {
-  const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState<Topic | null>(null);
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/60">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-5 py-3 text-left"
-      >
+      <div className="px-5 py-3 border-b border-slate-800/80">
         <span className="flex items-center gap-2 text-sm font-medium text-amber-400">
           <span aria-hidden>&#128161;</span> Tuning Tips
         </span>
-        <span className="text-slate-500 text-sm">{open ? "Hide" : "Show"}</span>
-      </button>
-      {open && (
-        <div className="px-5 pb-5">
-          {!topic ? (
-            <>
-              <p className="text-sm text-slate-400 mb-3">
-                What do you want to improve?
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(Object.keys(TOPIC_LABELS) as Topic[]).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTopic(t)}
-                    className="px-3 py-1.5 rounded-lg text-sm border border-slate-700 text-slate-300 hover:border-amber-500 hover:text-amber-400 transition-colors"
-                  >
-                    {TOPIC_LABELS[t]}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-200">
-                  Improving {TOPIC_LABELS[topic]}
-                </p>
+      </div>
+      <div className="px-5 py-5">
+        {!topic ? (
+          <>
+            <p className="text-sm text-slate-400 mb-3">
+              What do you want to improve?
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(TOPIC_LABELS) as Topic[]).map((t) => (
                 <button
+                  key={t}
                   type="button"
-                  onClick={() => setTopic(null)}
-                  className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                  onClick={() => setTopic(t)}
+                  className="px-3 py-1.5 rounded-lg text-sm border border-slate-700 text-slate-300 hover:border-amber-500 hover:text-amber-400 transition-colors"
                 >
-                  Choose another
+                  {TOPIC_LABELS[t]}
                 </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-slate-200">
+                Improving {TOPIC_LABELS[topic]}
+              </p>
+              <button
+                type="button"
+                onClick={() => setTopic(null)}
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                Choose another
+              </button>
+            </div>
+            <ul className="space-y-2">
+              {TIPS[topic].map((tip) => (
+                <li key={tip} className="text-sm text-slate-300 flex gap-2">
+                  <span className="text-amber-400 shrink-0" aria-hidden>
+                    &bull;
+                  </span>
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 pt-4 border-t border-slate-800">
+              <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
+                Recommended Settings
               </div>
-              <ul className="space-y-2">
-                {TIPS[topic].map((tip) => (
-                  <li key={tip} className="text-sm text-slate-300 flex gap-2">
-                    <span className="text-amber-400 shrink-0" aria-hidden>
-                      &bull;
-                    </span>
-                    <span>{tip}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      )}
+              <p className="text-sm text-slate-300">{RECOMMENDED[topic]}</p>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

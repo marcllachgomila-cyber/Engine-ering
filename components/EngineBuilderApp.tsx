@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useState, useSyncExternalStore } from "react";
-import { EngineConfig, MatchResult, SimulationResult } from "@/lib/physics/types";
+import { EngineConfig, MatchResult, SimulationResult, TestConfig } from "@/lib/physics/types";
+import { DEFAULT_ENGINE, DEFAULT_TEST_CONFIG } from "@/lib/physics/defaults";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import { findClosestCars } from "@/lib/matching/matchCars";
 import {
@@ -21,17 +22,10 @@ import FavoritesList from "./Favorites/FavoritesList";
 
 type Step = "build" | "simulate" | "results" | "favorites";
 
-const DEFAULT_ENGINE: EngineConfig = {
-  cylinders: 4,
-  layout: "inline",
-  displacementL: 2.0,
-  redlineRpm: 7000,
-  aspiration: "na",
-};
-
 export default function EngineBuilderApp() {
   const [step, setStep] = useState<Step>("build");
   const [engine, setEngine] = useState<EngineConfig>(DEFAULT_ENGINE);
+  const [test, setTest] = useState<TestConfig>(DEFAULT_TEST_CONFIG);
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [audioEngine, setAudioEngine] = useState<EngineAudioEngine | null>(null);
@@ -71,9 +65,9 @@ export default function EngineBuilderApp() {
 
   const handleSaveFavorite = useCallback(() => {
     if (!result) return;
-    addFavorite(engine, result, matches[0]?.car ?? null);
+    addFavorite(engine, test, result, matches[0]?.car ?? null);
     setSaved(true);
-  }, [engine, result, matches]);
+  }, [engine, test, result, matches]);
 
   const handleRemoveFavorite = useCallback((id: string) => {
     removeFavorite(id);
@@ -105,10 +99,24 @@ export default function EngineBuilderApp() {
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-16">
         {step === "build" && (
-          <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
-            <EngineForm value={engine} onChange={setEngine} onSubmit={handleStart} />
+          <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
+            <EngineForm
+              value={engine}
+              onChange={setEngine}
+              test={test}
+              onTestChange={setTest}
+              onSubmit={handleStart}
+            />
             <div className="lg:sticky lg:top-8 space-y-6">
-              <EnginePreview engine={engine} />
+              <div className="flex flex-col items-center">
+                <div className="text-xs uppercase tracking-wider text-slate-400 mb-2">
+                  Live Preview
+                </div>
+                <div className="w-full h-72 relative">
+                  <div className="absolute inset-x-8 bottom-4 h-8 rounded-full bg-black/50 blur-xl" />
+                  <EnginePreview engine={engine} />
+                </div>
+              </div>
               <TipsBox />
             </div>
           </div>
@@ -116,6 +124,7 @@ export default function EngineBuilderApp() {
         {step === "simulate" && audioEngine && (
           <SimulationRunner
             engine={engine}
+            test={test}
             audioEngine={audioEngine}
             onComplete={handleComplete}
           />

@@ -1,6 +1,6 @@
 "use client";
 
-import { EngineConfig, EngineLayout } from "@/lib/physics/types";
+import { EngineConfig, EngineLayout, RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
 
 const CYLINDER_OPTIONS = [3, 4, 5, 6, 8, 10, 12, 16];
 
@@ -28,9 +28,26 @@ const ASPIRATION_LABELS: Record<EngineConfig["aspiration"], string> = {
   supercharged: "Supercharged",
 };
 
+const TEST_TYPE_LABELS: Record<TestType, string> = {
+  zeroToHundred: "0–100 kph",
+  tenSecond: "10-Second",
+  drag500m: "500m Drag",
+};
+
+const CONDITION_LABELS: Record<RoadCondition, string> = {
+  dry: "Dry",
+  wet: "Wet",
+  rain: "Rain",
+  wind: "Headwind",
+};
+
+const GEAR_COUNT_OPTIONS = [5, 6, 7, 8];
+
 interface EngineFormProps {
   value: EngineConfig;
   onChange: (config: EngineConfig) => void;
+  test: TestConfig;
+  onTestChange: (test: TestConfig) => void;
   onSubmit: () => void;
 }
 
@@ -63,7 +80,30 @@ function OptionButton({
   );
 }
 
-export default function EngineForm({ value, onChange, onSubmit }: EngineFormProps) {
+function SectionCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+        {title}
+      </h2>
+      {children}
+    </div>
+  );
+}
+
+export default function EngineForm({
+  value,
+  onChange,
+  test,
+  onTestChange,
+  onSubmit,
+}: EngineFormProps) {
   const validLayouts = VALID_LAYOUTS[value.cylinders] ?? ["inline"];
 
   const setCylinders = (cylinders: number) => {
@@ -79,12 +119,12 @@ export default function EngineForm({ value, onChange, onSubmit }: EngineFormProp
           Build Your Engine
         </h1>
         <p className="text-slate-400 mt-2">
-          Configure every parameter, then run a 10-second acceleration test
-          and see which real cars come closest.
+          Configure every parameter, choose your test, and see which real cars
+          come closest.
         </p>
       </div>
 
-      <div className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+      <SectionCard title="Engine">
         <div>
           <div className="flex items-baseline justify-between mb-2">
             <label className="text-sm font-medium text-slate-300">
@@ -187,14 +227,182 @@ export default function EngineForm({ value, onChange, onSubmit }: EngineFormProp
             )}
           </div>
         </div>
-      </div>
+
+        <div>
+          <div className="flex items-baseline justify-between mb-2">
+            <label className="text-sm font-medium text-slate-300">
+              Gears
+            </label>
+            <span className="text-lg font-mono text-amber-400">
+              {test.gearCount}-speed
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {GEAR_COUNT_OPTIONS.map((g) => (
+              <OptionButton
+                key={g}
+                active={test.gearCount === g}
+                onClick={() => onTestChange({ ...test, gearCount: g })}
+              >
+                {g}
+              </OptionButton>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Test">
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-2">
+            Test Type
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(TEST_TYPE_LABELS) as TestType[]).map((t) => (
+              <OptionButton
+                key={t}
+                active={test.testType === t}
+                onClick={() => onTestChange({ ...test, testType: t })}
+              >
+                {TEST_TYPE_LABELS[t]}
+              </OptionButton>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-2">
+            Conditions
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(CONDITION_LABELS) as RoadCondition[]).map((c) => (
+              <OptionButton
+                key={c}
+                active={test.condition === c}
+                onClick={() => onTestChange({ ...test, condition: c })}
+              >
+                {CONDITION_LABELS[c]}
+              </OptionButton>
+            ))}
+          </div>
+          {test.condition === "wind" && (
+            <p className="text-xs text-slate-500 mt-2">
+              A steady headwind straight off the nose - it only ever adds drag.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <div className="flex items-baseline justify-between mb-1">
+            <label className="text-sm font-medium text-slate-300">
+              Wheel Spin
+            </label>
+            <span className="text-lg font-mono text-amber-400">
+              {test.wheelSpinPercent}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={test.wheelSpinPercent}
+            onChange={(e) =>
+              onTestChange({ ...test, wheelSpinPercent: parseInt(e.target.value, 10) })
+            }
+            className="w-full accent-amber-500"
+          />
+          <p className="text-xs text-slate-500 mt-1">
+            Recommended: 10% - a little intentional slip uses the tire&apos;s
+            peak grip; too little or too much both waste it.
+          </p>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-2">
+            Traction Control
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <OptionButton
+              active={test.tractionControl}
+              onClick={() => onTestChange({ ...test, tractionControl: true })}
+            >
+              On
+            </OptionButton>
+            <OptionButton
+              active={!test.tractionControl}
+              onClick={() => onTestChange({ ...test, tractionControl: false })}
+            >
+              Off
+            </OptionButton>
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            Off risks wheelspin costing you grip once torque exceeds the
+            tires&apos; limit.
+          </p>
+        </div>
+
+        <div>
+          <div className="flex items-baseline justify-between mb-1">
+            <label className="text-sm font-medium text-slate-300">
+              Front Wheel Diameter
+            </label>
+            <span className="text-lg font-mono text-amber-400">
+              {test.frontWheelDiameterIn}&Prime;
+            </span>
+          </div>
+          <input
+            type="range"
+            min={20}
+            max={32}
+            step={1}
+            value={test.frontWheelDiameterIn}
+            onChange={(e) =>
+              onTestChange({
+                ...test,
+                frontWheelDiameterIn: parseInt(e.target.value, 10),
+              })
+            }
+            className="w-full accent-amber-500"
+          />
+          <p className="text-xs text-slate-500 mt-1">Recommended: 25&Prime;</p>
+        </div>
+
+        <div>
+          <div className="flex items-baseline justify-between mb-1">
+            <label className="text-sm font-medium text-slate-300">
+              Rear Wheel Diameter
+            </label>
+            <span className="text-lg font-mono text-amber-400">
+              {test.rearWheelDiameterIn}&Prime;
+            </span>
+          </div>
+          <input
+            type="range"
+            min={20}
+            max={32}
+            step={1}
+            value={test.rearWheelDiameterIn}
+            onChange={(e) =>
+              onTestChange({
+                ...test,
+                rearWheelDiameterIn: parseInt(e.target.value, 10),
+              })
+            }
+            className="w-full accent-amber-500"
+          />
+          <p className="text-xs text-slate-500 mt-1">
+            Recommended: 26&Prime; - a wider rear tire (the drive wheels) adds
+            grip; bigger wheels overall add rotating mass.
+          </p>
+        </div>
+      </SectionCard>
 
       <button
         type="button"
         onClick={onSubmit}
         className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-lg py-4 transition-colors"
       >
-        Start 10s Acceleration Run
+        Start {TEST_TYPE_LABELS[test.testType]} Run
       </button>
     </div>
   );

@@ -1,12 +1,57 @@
 import { buildEngineCurves } from "./engineModel";
 import { deriveVehicle } from "./vehicleModel";
-import { EngineConfig, EngineCurves, SimulationResult, Telemetry, VehicleSpec } from "./types";
+import {
+  EngineConfig,
+  EngineCurves,
+  RoadCondition,
+  SimulationResult,
+  Telemetry,
+  TestConfig,
+  VehicleSpec,
+} from "./types";
 
 const AIR_DENSITY_KG_M3 = 1.225;
 const G = 9.81;
 const DT = 0.02;
-const RUN_DURATION_S = 10;
 const HUNDRED_KPH_MS = 100 / 3.6;
+const DRAG_DISTANCE_M = 500;
+const TEN_SECOND_DURATION_S = 10;
+const SAFETY_MAX_TIME_S = 60;
+
+// Wheel spin is modeled as a slip window: a little intentional slip (around
+// the recommended 10%) actually uses the tire's peak grip, while too little
+// or too much both waste it - launching too clean under-uses the tire, and
+// spinning too much just burns rubber instead of moving the car.
+function wheelSpinEfficiency(wheelSpinPercent: number): number {
+  const optimal = 10;
+  const distance = Math.abs(wheelSpinPercent - optimal);
+  return Math.max(0.55, 1 - distance / 100);
+}
+
+function conditionGripMultiplier(condition: RoadCondition): number {
+  switch (condition) {
+    case "dry":
+      return 1.0;
+    case "wind":
+      return 1.0;
+    case "wet":
+      return 0.75;
+    case "rain":
+      return 0.55;
+  }
+}
+
+// The "wind" condition is a steady headwind straight off the nose, which
+// only ever adds to the relative airspeed (and therefore drag) - it never
+// helps.
+function conditionHeadwindMs(condition: RoadCondition): number {
+  return condition === "wind" ? 12 : 0;
+}
+
+// With traction control off, once the tires break loose the car is at the
+// mercy of kinetic friction (lower than static) until grip is regained,
+// instead of the smooth, modulated cap traction control provides.
+const UNCONTROLLED_SLIP_PENALTY = 0.75;
 
 function rpmFromSpeed(
   speedMs: number,
@@ -24,6 +69,7 @@ function rpmFromSpeed(
 function estimateTopSpeedKph(
   curves: EngineCurves,
   vehicle: VehicleSpec,
+  headwindMs: number,
 ): number {
   const topGearRatio = vehicle.gearRatios[vehicle.gearRatios.length - 1];
   const rollingForce = vehicle.rollingResistanceCoefficient * vehicle.weightKg * G;
@@ -38,13 +84,14 @@ function estimateTopSpeedKph(
     const driveForce =
       (torqueNm * topGearRatio * vehicle.finalDrive * vehicle.drivetrainEfficiency) /
       vehicle.wheelRadiusM;
+    const relativeSpeedMs = speedMs + headwindMs;
     const dragForce =
       0.5 *
       AIR_DENSITY_KG_M3 *
       vehicle.dragCoefficient *
       vehicle.frontalAreaM2 *
-      speedMs *
-      speedMs;
+      relativeSpeedMs *
+      relativeSpeedMs;
 
     if (driveForce <= dragForce + rollingForce) break;
     lastValidSpeedMs = speedMs;
@@ -53,9 +100,16 @@ function estimateTopSpeedKph(
   return lastValidSpeedMs * 3.6;
 }
 
-export function simulate(engine: EngineConfig): SimulationResult {
+export function simulate(engine: EngineConfig, test: TestConfig): SimulationResult {
   const curves = buildEngineCurves(engine);
-  const vehicle = deriveVehicle(engine, curves);
+  const vehicle = deriveVehicle(engine, curves, test);
+
+  const headwindMs = conditionHeadwindMs(test.condition);
+  const effectiveMu =
+    vehicle.tireGripMu *
+    conditionGripMultiplier(test.condition) *
+    wheelSpinEfficiency(test.wheelSpinPercent);
+  const tractionLimit = effectiveMu * vehicle.weightKg * G;
 
   let speedMs = 0;
   let distanceM = 0;
@@ -65,9 +119,20 @@ export function simulate(engine: EngineConfig): SimulationResult {
 
   const telemetry: Telemetry[] = [];
   const rollingForce = vehicle.rollingResistanceCoefficient * vehicle.weightKg * G;
-  const tractionLimit = vehicle.tireGripMu * vehicle.weightKg * G;
 
-  while (t < RUN_DURATION_S) {
+  const shouldContinue = (): boolean => {
+    if (t >= SAFETY_MAX_TIME_S) return false;
+    switch (test.testType) {
+      case "tenSecond":
+        return t < TEN_SECOND_DURATION_S;
+      case "drag500m":
+        return distanceM < DRAG_DISTANCE_M;
+      case "zeroToHundred":
+        return speedMs < HUNDRED_KPH_MS;
+    }
+  };
+
+  while (shouldContinue()) {
     const gearRatio = vehicle.gearRatios[gear - 1];
     let rpm = Math.max(rpmFromSpeed(speedMs, gearRatio, vehicle), curves.idleRpm);
 
@@ -81,15 +146,24 @@ export function simulate(engine: EngineConfig): SimulationResult {
     const engineForce =
       (torqueNm * gearRatio * vehicle.finalDrive * vehicle.drivetrainEfficiency) /
       vehicle.wheelRadiusM;
-    const driveForce = Math.min(engineForce, tractionLimit);
 
+    let driveForce: number;
+    if (engineForce <= tractionLimit) {
+      driveForce = engineForce;
+    } else if (test.tractionControl) {
+      driveForce = tractionLimit;
+    } else {
+      driveForce = tractionLimit * UNCONTROLLED_SLIP_PENALTY;
+    }
+
+    const relativeSpeedMs = speedMs + headwindMs;
     const dragForce =
       0.5 *
       AIR_DENSITY_KG_M3 *
       vehicle.dragCoefficient *
       vehicle.frontalAreaM2 *
-      speedMs *
-      speedMs;
+      relativeSpeedMs *
+      relativeSpeedMs;
 
     const netForce = driveForce - dragForce - rollingForce;
     const accelMs2 = netForce / vehicle.weightKg;
@@ -114,19 +188,28 @@ export function simulate(engine: EngineConfig): SimulationResult {
     });
   }
 
-  const topSpeedKph = telemetry.length > 0 ? telemetry[telemetry.length - 1].speedKph : 0;
+  const last = telemetry[telemetry.length - 1] ?? null;
+  const timedOut =
+    test.testType === "zeroToHundred"
+      ? reachedHundredAtS === null
+      : test.testType === "drag500m"
+        ? (last?.distanceM ?? 0) < DRAG_DISTANCE_M
+        : false;
 
   return {
     telemetry,
-    runDurationS: t,
-    topSpeedKph,
+    testType: test.testType,
+    elapsedS: t,
+    finalSpeedKph: last?.speedKph ?? 0,
+    finalDistanceM: last?.distanceM ?? 0,
     reachedHundredAtS,
+    timedOut,
     peakHp: curves.peakPowerHp,
     peakHpRpm: curves.peakPowerRpm,
     peakTorqueNm: curves.peakTorqueNm,
     peakTorqueRpm: curves.peakTorqueRpm,
     weightKg: vehicle.weightKg,
     powerToWeightHpPerTonne: curves.peakPowerHp / (vehicle.weightKg / 1000),
-    theoreticalTopSpeedKph: estimateTopSpeedKph(curves, vehicle),
+    theoreticalTopSpeedKph: estimateTopSpeedKph(curves, vehicle, headwindMs),
   };
 }
