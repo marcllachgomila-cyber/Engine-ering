@@ -7,27 +7,42 @@
 
 body {
   color: #f8fafc;
-  background-color: #14171d;
+  background-color: #1b1c1e;
   background-image:
+    /* pegboard dots - workshop wall */
+    radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.05) 1.4px,
+      transparent 1.4px
+    ),
+    /* diamond-plate floor texture */
     repeating-linear-gradient(
       45deg,
-      rgba(255, 255, 255, 0.035) 0,
-      rgba(255, 255, 255, 0.035) 1px,
-      transparent 1px,
-      transparent 7px
+      rgba(255, 255, 255, 0.05) 0,
+      rgba(255, 255, 255, 0.05) 2px,
+      transparent 2px,
+      transparent 17px
     ),
     repeating-linear-gradient(
       -45deg,
-      rgba(255, 255, 255, 0.035) 0,
-      rgba(255, 255, 255, 0.035) 1px,
-      transparent 1px,
-      transparent 7px
+      rgba(255, 255, 255, 0.05) 0,
+      rgba(255, 255, 255, 0.05) 2px,
+      transparent 2px,
+      transparent 17px
     ),
+    /* hanging shop light over the workbench */
     radial-gradient(
-      ellipse 1200px 700px at 50% -10%,
-      rgba(245, 158, 11, 0.07),
-      transparent 60%
+      circle 480px at 50% 0%,
+      rgba(245, 158, 11, 0.18),
+      transparent 65%
     ),
-    radial-gradient(ellipse 1200px 1000px at 50% 100%, transparent 40%, #090a0d 100%);
+    /* ambient vignette */
+    radial-gradient(ellipse 1400px 1100px at 50% 100%, transparent 30%, #08090a 100%);
+  background-size:
+    28px 28px,
+    auto,
+    auto,
+    auto,
+    auto;
   background-attachment: fixed;
 }

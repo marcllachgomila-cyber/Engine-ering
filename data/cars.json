@@ -46,5 +46,5 @@
   { "make": "BMW", "model": "M760Li", "year": 2019, "cylinders": 12, "layout": "v", "displacementL": 6.6, "aspiration": "turbo", "hp": 601, "torqueNm": 800, "weightKg": 2200, "zeroToHundredS": 3.7 },
   { "make": "Lamborghini", "model": "Aventador", "year": 2020, "cylinders": 12, "layout": "v", "displacementL": 6.5, "aspiration": "na", "hp": 730, "torqueNm": 690, "weightKg": 1575, "zeroToHundredS": 2.9 },
   { "make": "Ferrari", "model": "812 Superfast", "year": 2020, "cylinders": 12, "layout": "v", "displacementL": 6.5, "aspiration": "na", "hp": 789, "torqueNm": 718, "weightKg": 1525, "zeroToHundredS": 2.9 },
-  { "make": "Bugatti", "model": "Chiron", "year": 2018, "cylinders": 16, "layout": "v", "displacementL": 8.0, "aspiration": "turbo", "hp": 1500, "torqueNm": 1600, "weightKg": 1996, "zeroToHundredS": 2.4 }
+  { "make": "Bugatti", "model": "Chiron", "year": 2018, "cylinders": 16, "layout": "w", "displacementL": 8.0, "aspiration": "turbo", "hp": 1500, "torqueNm": 1600, "weightKg": 1996, "zeroToHundredS": 2.4 }
 ]

@@ -1,4 +1,4 @@
-export type EngineLayout = "inline" | "v" | "flat";
+export type EngineLayout = "inline" | "v" | "flat" | "w";
 export type Aspiration = "na" | "turbo" | "supercharged";
 
 export interface EngineConfig {

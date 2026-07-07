@@ -1,39 +1,4 @@
-import { Aspiration, EngineConfig, EngineLayout } from "../physics/types";
-
-interface HarmonicVoice {
-  osc: OscillatorNode;
-  gain: GainNode;
-  multiplier: number;
-}
-
-interface HarmonicSpec {
-  multiplier: number;
-  amp: number;
-  type: OscillatorType;
-}
-
-function harmonicProfile(cylinders: number, layout: EngineLayout): HarmonicSpec[] {
-  // Inline layouts fire more evenly, giving a smoother harmonic spectrum
-  // dominated by the fundamental. V/flat layouts have uneven firing
-  // intervals, which emphasizes odd harmonics and gives a rougher, more
-  // textured note. More cylinders add a touch more upper-harmonic content
-  // (smoother top end), kept modest so the note stays deep rather than shrill.
-  const unevenBoost = layout === "v" ? 1.3 : layout === "flat" ? 1.15 : 1.0;
-  const highCylinderBoost = Math.min(1 + cylinders / 32, 1.25);
-
-  // Pure sine partials for precise spectral control (a sawtooth voice already
-  // carries its own full harmonic series, so stacking more sawtooths at each
-  // multiple double-counts high-frequency energy and reads as shrill). Only
-  // the fundamental keeps some sawtooth grit; a sub an octave below adds the
-  // low-end rumble a real exhaust note has.
-  return [
-    { multiplier: 0.5, amp: 0.5, type: "sine" },
-    { multiplier: 1, amp: 0.9, type: "sawtooth" },
-    { multiplier: 2, amp: 0.32, type: "sine" },
-    { multiplier: 3, amp: 0.18 * unevenBoost, type: "sine" },
-    { multiplier: 4, amp: 0.1 * highCylinderBoost, type: "sine" },
-  ];
-}
+import { EngineConfig, EngineLayout } from "../physics/types";
 
 function createNoiseBuffer(ctx: AudioContext): AudioBuffer {
   const bufferSize = ctx.sampleRate * 2;
@@ -45,44 +10,123 @@ function createNoiseBuffer(ctx: AudioContext): AudioBuffer {
   return buffer;
 }
 
+// Uneven-firing layouts (banks fire in staggered pairs rather than evenly
+// spaced) get a slower secondary amplitude wobble layered on top of the
+// main firing pulse, giving V/flat/W engines their characteristic "burble"
+// instead of an inline engine's smoother, more even chug.
+function unevenFiringDepth(layout: EngineLayout): number {
+  switch (layout) {
+    case "v":
+      return 0.22;
+    case "w":
+      return 0.3;
+    case "flat":
+      return 0.18;
+    case "inline":
+      return 0;
+  }
+}
+
 export class EngineAudioEngine {
   private ctx: AudioContext;
   private master: GainNode;
-  private filter: BiquadFilterNode;
-  private voices: HarmonicVoice[] = [];
-  private turboWhine: { osc: OscillatorNode; gain: GainNode } | null = null;
+
+  // Low tonal "block resonance" layer - always stays in a deep, bounded
+  // register (roughly 40-190Hz) regardless of cylinder count or redline, so
+  // pitch never climbs into a shrill whistle. Two slightly detuned voices
+  // give it beating/weight, like a real engine block resonating.
+  private toneFilter: BiquadFilterNode;
+  private toneOscA: OscillatorNode;
+  private toneOscB: OscillatorNode;
+
+  // Broadband "growl" layer - filtered noise whose amplitude is modulated
+  // (not its pitch) at the actual cylinder firing rate. This is what
+  // differentiates a lopey 3-cylinder idle from a smooth-buzzing V12 without
+  // ever turning the firing rate into an audible musical pitch.
   private noiseSource: AudioBufferSourceNode;
-  private noiseGain: GainNode;
+  private noiseFilter: BiquadFilterNode;
+  private noiseAmGain: GainNode;
+  private firingOsc: OscillatorNode;
+  private firingModDepth: GainNode;
+  private unevenOsc: OscillatorNode | null;
+  private unevenModDepth: GainNode | null;
+
+  private turboWhine: { osc: OscillatorNode; gain: GainNode } | null = null;
+
   private cylinders: number;
-  private aspiration: Aspiration;
   private started = false;
   private disposed = false;
 
   constructor(engine: EngineConfig) {
     this.cylinders = engine.cylinders;
-    this.aspiration = engine.aspiration;
 
     this.ctx = new AudioContext();
     this.master = this.ctx.createGain();
     this.master.gain.value = 0.0001;
     this.master.connect(this.ctx.destination);
 
-    this.filter = this.ctx.createBiquadFilter();
-    this.filter.type = "lowpass";
-    this.filter.frequency.value = 400;
-    this.filter.Q.value = 0.8;
-    this.filter.connect(this.master);
+    // Tonal layer
+    this.toneFilter = this.ctx.createBiquadFilter();
+    this.toneFilter.type = "lowpass";
+    this.toneFilter.frequency.value = 250;
+    this.toneFilter.Q.value = 0.7;
+    this.toneFilter.connect(this.master);
 
-    for (const spec of harmonicProfile(engine.cylinders, engine.layout)) {
-      const osc = this.ctx.createOscillator();
-      osc.type = spec.type;
-      const gain = this.ctx.createGain();
-      gain.gain.value = spec.amp;
-      osc.connect(gain);
-      gain.connect(this.filter);
-      this.voices.push({ osc, gain, multiplier: spec.multiplier });
+    const toneGain = this.ctx.createGain();
+    toneGain.gain.value = 0.55;
+    toneGain.connect(this.toneFilter);
+
+    this.toneOscA = this.ctx.createOscillator();
+    this.toneOscA.type = "sawtooth";
+    this.toneOscA.connect(toneGain);
+
+    this.toneOscB = this.ctx.createOscillator();
+    this.toneOscB.type = "sawtooth";
+    this.toneOscB.connect(toneGain);
+
+    // Growl layer: noise -> bandpass -> amplitude-modulated gain -> master
+    this.noiseSource = this.ctx.createBufferSource();
+    this.noiseSource.buffer = createNoiseBuffer(this.ctx);
+    this.noiseSource.loop = true;
+
+    this.noiseFilter = this.ctx.createBiquadFilter();
+    this.noiseFilter.type = "bandpass";
+    this.noiseFilter.frequency.value = 300;
+    this.noiseFilter.Q.value = 0.8;
+
+    this.noiseAmGain = this.ctx.createGain();
+    this.noiseAmGain.gain.value = 0.3;
+
+    this.noiseSource.connect(this.noiseFilter);
+    this.noiseFilter.connect(this.noiseAmGain);
+    this.noiseAmGain.connect(this.master);
+
+    // Modulator: an inaudible oscillator (never connected to the destination
+    // graph directly) whose output drives the growl gain's AudioParam,
+    // amplitude-modulating the noise at the cylinder firing rate.
+    this.firingOsc = this.ctx.createOscillator();
+    this.firingOsc.type = "sine";
+    this.firingModDepth = this.ctx.createGain();
+    this.firingModDepth.gain.value = 0.22;
+    this.firingOsc.connect(this.firingModDepth);
+    this.firingModDepth.connect(this.noiseAmGain.gain);
+
+    const depth = unevenFiringDepth(engine.layout);
+    if (depth > 0) {
+      this.unevenOsc = this.ctx.createOscillator();
+      this.unevenOsc.type = "sine";
+      this.unevenModDepth = this.ctx.createGain();
+      this.unevenModDepth.gain.value = depth;
+      this.unevenOsc.connect(this.unevenModDepth);
+      this.unevenModDepth.connect(this.noiseAmGain.gain);
+    } else {
+      this.unevenOsc = null;
+      this.unevenModDepth = null;
     }
 
+    // Turbo/supercharger whistle - the one layer that's genuinely supposed
+    // to be high-pitched, since that's what forced induction actually sounds
+    // like spooling up.
     if (engine.aspiration !== "na") {
       const osc = this.ctx.createOscillator();
       osc.type = "sine";
@@ -92,49 +136,44 @@ export class EngineAudioEngine {
       gain.connect(this.master);
       this.turboWhine = { osc, gain };
     }
-
-    this.noiseSource = this.ctx.createBufferSource();
-    this.noiseSource.buffer = createNoiseBuffer(this.ctx);
-    this.noiseSource.loop = true;
-    const noiseFilter = this.ctx.createBiquadFilter();
-    noiseFilter.type = "bandpass";
-    noiseFilter.frequency.value = 320;
-    noiseFilter.Q.value = 0.7;
-    this.noiseGain = this.ctx.createGain();
-    this.noiseGain.gain.value = 0;
-    this.noiseSource.connect(noiseFilter);
-    noiseFilter.connect(this.noiseGain);
-    this.noiseGain.connect(this.master);
   }
 
   start(): void {
     if (this.started || this.disposed) return;
     this.started = true;
     const now = this.ctx.currentTime;
-    this.voices.forEach(({ osc }) => osc.start(now));
-    this.turboWhine?.osc.start(now);
+    this.toneOscA.start(now);
+    this.toneOscB.start(now);
     this.noiseSource.start(now);
-    this.master.gain.setTargetAtTime(0.45, now, 0.05);
+    this.firingOsc.start(now);
+    this.unevenOsc?.start(now);
+    this.turboWhine?.osc.start(now);
+    this.master.gain.setTargetAtTime(0.5, now, 0.05);
   }
 
   update(rpm: number, redlineRpm: number): void {
     if (!this.started || this.disposed) return;
     const now = this.ctx.currentTime;
+    const rpmFraction = Math.min(1, Math.max(0, rpm / redlineRpm));
 
-    // 4-stroke: each cylinder fires once every two crank revolutions.
+    // Deep tonal body, always bounded low so it never reads as a whistle.
+    const baseFreq = 42 + rpmFraction * 150;
+    this.toneOscA.frequency.setTargetAtTime(baseFreq, now, 0.04);
+    this.toneOscB.frequency.setTargetAtTime(baseFreq * 1.008, now, 0.04);
+    this.toneFilter.frequency.setTargetAtTime(180 + rpmFraction * 420, now, 0.05);
+
+    // Firing rate only modulates the growl's amplitude/texture, never a pitch.
     const firingFreqHz = (rpm * this.cylinders) / 120;
-    this.voices.forEach(({ osc, multiplier }) => {
-      osc.frequency.setTargetAtTime(firingFreqHz * multiplier, now, 0.03);
-    });
+    this.firingOsc.frequency.setTargetAtTime(firingFreqHz, now, 0.03);
+    this.unevenOsc?.frequency.setTargetAtTime(firingFreqHz / 2, now, 0.03);
 
-    const rpmFraction = Math.min(1, rpm / redlineRpm);
-    this.filter.frequency.setTargetAtTime(400 + rpmFraction * 1900, now, 0.05);
-    this.noiseGain.gain.setTargetAtTime(0.012 + rpmFraction * 0.035, now, 0.05);
+    this.noiseFilter.frequency.setTargetAtTime(260 + rpmFraction * 420, now, 0.05);
+    this.noiseAmGain.gain.setTargetAtTime(0.28 + rpmFraction * 0.22, now, 0.05);
 
     if (this.turboWhine) {
       const spoolFraction = Math.min(1, Math.max(0, (rpmFraction - 0.2) / 0.55));
-      this.turboWhine.osc.frequency.setTargetAtTime(1400 + spoolFraction * 2600, now, 0.08);
-      this.turboWhine.gain.gain.setTargetAtTime(spoolFraction * 0.05, now, 0.08);
+      this.turboWhine.osc.frequency.setTargetAtTime(1200 + spoolFraction * 2200, now, 0.08);
+      this.turboWhine.gain.gain.setTargetAtTime(spoolFraction * 0.045, now, 0.08);
     }
   }
 
@@ -148,22 +187,20 @@ export class EngineAudioEngine {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.voices.forEach(({ osc }) => {
+    const stopAll: (OscillatorNode | AudioBufferSourceNode | undefined | null)[] = [
+      this.toneOscA,
+      this.toneOscB,
+      this.noiseSource,
+      this.firingOsc,
+      this.unevenOsc,
+      this.turboWhine?.osc,
+    ];
+    for (const node of stopAll) {
       try {
-        osc.stop();
+        node?.stop();
       } catch {
         // already stopped
       }
-    });
-    try {
-      this.turboWhine?.osc.stop();
-    } catch {
-      // already stopped
-    }
-    try {
-      this.noiseSource.stop();
-    } catch {
-      // already stopped
     }
     void this.ctx.close();
   }

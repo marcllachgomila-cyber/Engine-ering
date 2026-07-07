@@ -12,13 +12,14 @@ const VALID_LAYOUTS: Record<number, EngineLayout[]> = {
   8: ["v"],
   10: ["v"],
   12: ["v"],
-  16: ["v"],
+  16: ["v", "w"],
 };
 
 const LAYOUT_LABELS: Record<EngineLayout, string> = {
   inline: "Inline",
   v: "V",
   flat: "Flat / Boxer",
+  w: "W",
 };
 
 const ASPIRATION_LABELS: Record<EngineConfig["aspiration"], string> = {
@@ -72,7 +73,7 @@ export default function EngineForm({ value, onChange, onSubmit }: EngineFormProp
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-8">
+    <div className="w-full space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-slate-50 tracking-tight">
           Build Your Engine
@@ -111,7 +112,7 @@ export default function EngineForm({ value, onChange, onSubmit }: EngineFormProp
             Layout
           </label>
           <div className="flex flex-wrap gap-2">
-            {(["inline", "v", "flat"] as EngineLayout[]).map((layout) => (
+            {(["inline", "v", "flat", "w"] as EngineLayout[]).map((layout) => (
               <OptionButton
                 key={layout}
                 active={value.layout === layout}
