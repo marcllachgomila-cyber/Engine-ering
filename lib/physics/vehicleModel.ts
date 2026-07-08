@@ -32,6 +32,12 @@ const REAR_GRIP_PER_MM = 0.0018;
 const OPTIMAL_TYRE_PRESSURE_PSI = 32;
 const GRIP_LOSS_PER_PSI = 0.012;
 
+// Under hard acceleration, weight transfers toward the rear axle - RWD cars
+// are pushed onto their drive wheels by that transfer (grip goes up right
+// when you need it), while FWD cars have weight lifted off their drive
+// wheels at the exact same moment, making them more prone to wheelspin.
+const FWD_TRACTION_PENALTY = 0.88;
+
 export function wheelDiameterToRadiusM(diameterIn: number): number {
   return (diameterIn * 0.0254) / 2;
 }
@@ -67,15 +73,17 @@ export function deriveVehicle(
     LAUNCH_RATIO * Math.pow(topRatio / LAUNCH_RATIO, i / (gearCount - 1)),
   );
 
-  // A wider rear (drive) tire puts more rubber on the road; a narrower one
-  // less. This is the only wheel-size effect on grip - the model is RWD, so
-  // the front tire doesn't factor into traction, only rotating mass.
-  const rearGripMultiplier = Math.min(
+  // Whichever axle is driven is the one that puts power down, so its tire
+  // width (contact patch) and diameter (gearing) are what matter for
+  // traction and the rpm-to-speed relationship - not always the rear.
+  const isRwd = engine.drivetrain === "rwd";
+  const driveWidthMm = isRwd ? chassis.rearWheelWidthMm : chassis.frontWheelWidthMm;
+  const driveReferenceWidthMm = isRwd ? REFERENCE_REAR_WIDTH_MM : REFERENCE_FRONT_WIDTH_MM;
+  const driveDiameterIn = isRwd ? chassis.rearWheelDiameterIn : chassis.frontWheelDiameterIn;
+
+  const driveGripMultiplier = Math.min(
     1.25,
-    Math.max(
-      0.8,
-      1 + (chassis.rearWheelWidthMm - REFERENCE_REAR_WIDTH_MM) * REAR_GRIP_PER_MM,
-    ),
+    Math.max(0.8, 1 + (driveWidthMm - driveReferenceWidthMm) * REAR_GRIP_PER_MM),
   );
 
   const pressureGripMultiplier = Math.max(
@@ -85,14 +93,16 @@ export function deriveVehicle(
         GRIP_LOSS_PER_PSI,
   );
 
+  const drivetrainGripMultiplier = isRwd ? 1 : FWD_TRACTION_PENALTY;
+
   return {
     weightKg,
     dragCoefficient: preset.dragCoefficient,
     frontalAreaM2: preset.frontalAreaM2,
     rollingResistanceCoefficient: 0.013,
     drivetrainEfficiency: 0.85,
-    tireGripMu: rearGripMultiplier * pressureGripMultiplier,
-    wheelRadiusM: wheelDiameterToRadiusM(chassis.rearWheelDiameterIn),
+    tireGripMu: driveGripMultiplier * pressureGripMultiplier * drivetrainGripMultiplier,
+    wheelRadiusM: wheelDiameterToRadiusM(driveDiameterIn),
     frontWheelRadiusM: wheelDiameterToRadiusM(chassis.frontWheelDiameterIn),
     gearRatios,
     finalDrive: FINAL_DRIVE,

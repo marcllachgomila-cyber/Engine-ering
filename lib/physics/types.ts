@@ -1,6 +1,7 @@
 export type EngineLayout = "inline" | "v" | "flat" | "w";
 export type Aspiration = "na" | "turbo" | "supercharged";
 export type FuelType = "petrol" | "diesel";
+export type Drivetrain = "fwd" | "rwd";
 
 export interface EngineConfig {
   cylinders: number;
@@ -11,6 +12,7 @@ export interface EngineConfig {
   aspiration: Aspiration;
   fuelType: FuelType;
   gearCount: number;
+  drivetrain: Drivetrain;
 }
 
 export type BodyType = "minivan" | "suv" | "supercar";
@@ -39,6 +41,8 @@ export interface TestConfig {
 export interface EngineCurves {
   torqueAt: (rpm: number) => number;
   powerAt: (rpm: number) => number;
+  frictionTorqueAt: (rpm: number) => number;
+  combustionTorqueAt: (rpm: number) => number;
   idleRpm: number;
   redlineRpm: number;
   maxRevRpm: number;
@@ -108,4 +112,19 @@ export interface CarSpec {
 export interface MatchResult {
   car: CarSpec;
   distance: number;
+}
+
+export interface ForcePoint {
+  speedKph: number;
+  forceN: number;
+}
+
+export interface GearForceCurve {
+  gear: number;
+  points: ForcePoint[];
+}
+
+export interface TractiveForceData {
+  gearCurves: GearForceCurve[];
+  resistanceCurve: ForcePoint[];
 }

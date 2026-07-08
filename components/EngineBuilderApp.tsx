@@ -23,24 +23,13 @@ import EngineForm from "./EngineBuilder/EngineForm";
 import TestForm from "./EngineBuilder/TestForm";
 import EnginePreview from "./EngineBuilder/EnginePreview";
 import TipsBox from "./EngineBuilder/TipsBox";
+import StepNav from "./EngineBuilder/StepNav";
 import SimulationRunner from "./Simulation/SimulationRunner";
 import ResultsSummary from "./Simulation/ResultsSummary";
 import MatchList from "./Matches/MatchList";
 import FavoritesList from "./Favorites/FavoritesList";
 
 type Step = "chassis" | "engine" | "test" | "simulate" | "results" | "favorites";
-
-function BackLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="text-sm text-slate-500 hover:text-slate-300 transition-colors mb-2"
-    >
-      &larr; {children}
-    </button>
-  );
-}
 
 export default function EngineBuilderApp() {
   const [step, setStep] = useState<Step>("chassis");
@@ -121,6 +110,7 @@ export default function EngineBuilderApp() {
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-16">
         {step === "chassis" && (
           <div className="w-full max-w-3xl">
+            <StepNav current="chassis" onNavigate={(s) => setStep(s)} />
             <ChassisForm
               value={chassis}
               onChange={setChassis}
@@ -132,7 +122,7 @@ export default function EngineBuilderApp() {
         {step === "engine" && (
           <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
             <div>
-              <BackLink onClick={() => setStep("chassis")}>Back to Chassis</BackLink>
+              <StepNav current="engine" onNavigate={(s) => setStep(s)} />
               <EngineForm
                 value={engine}
                 onChange={setEngine}
@@ -156,7 +146,7 @@ export default function EngineBuilderApp() {
 
         {step === "test" && (
           <div className="w-full max-w-3xl">
-            <BackLink onClick={() => setStep("engine")}>Back to Engine</BackLink>
+            <StepNav current="test" onNavigate={(s) => setStep(s)} />
             <TestForm value={test} onChange={setTest} onSubmit={handleRunTest} />
           </div>
         )}
@@ -172,7 +162,7 @@ export default function EngineBuilderApp() {
         )}
         {step === "results" && result && (
           <div className="w-full flex flex-col items-center gap-10">
-            <ResultsSummary engine={engine} result={result} />
+            <ResultsSummary engine={engine} chassis={chassis} result={result} />
             <MatchList matches={matches} />
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button

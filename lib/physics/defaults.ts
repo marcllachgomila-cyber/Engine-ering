@@ -9,6 +9,7 @@ export const DEFAULT_ENGINE: EngineConfig = {
   aspiration: "na",
   fuelType: "petrol",
   gearCount: 6,
+  drivetrain: "rwd",
 };
 
 export interface BodyTypePreset {

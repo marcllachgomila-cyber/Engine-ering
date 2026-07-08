@@ -1,6 +1,6 @@
 "use client";
 
-import { EngineConfig, EngineLayout, FuelType } from "@/lib/physics/types";
+import { Drivetrain, EngineConfig, EngineLayout, FuelType } from "@/lib/physics/types";
 import { DIESEL_MAX_REDLINE_RPM } from "@/lib/physics/defaults";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
 
@@ -37,6 +37,11 @@ const FUEL_TYPE_LABELS: Record<FuelType, string> = {
 
 const GEAR_COUNT_OPTIONS = [5, 6, 7, 8];
 const MAX_REV_OVER_REDLINE_CAP = 1500;
+
+const DRIVETRAIN_LABELS: Record<Drivetrain, string> = {
+  fwd: "Front-Wheel Drive",
+  rwd: "Rear-Wheel Drive",
+};
 
 interface EngineFormProps {
   value: EngineConfig;
@@ -218,6 +223,27 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
               </OptionButton>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-2">
+            Drivetrain
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(DRIVETRAIN_LABELS) as Drivetrain[]).map((d) => (
+              <OptionButton
+                key={d}
+                active={value.drivetrain === d}
+                onClick={() => onChange({ ...value, drivetrain: d })}
+              >
+                {DRIVETRAIN_LABELS[d]}
+              </OptionButton>
+            ))}
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            RWD gets a traction boost from weight shifting onto the drive
+            wheels under acceleration; FWD loses a little grip the same way.
+          </p>
         </div>
       </SectionCard>
 

@@ -6,7 +6,7 @@ import { ChassisConfig, EngineConfig, SimulationResult, Telemetry, TestConfig } 
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import Gauges from "./Gauges";
 import LiveStatsPanel from "./LiveStatsPanel";
-import PowerGraph from "./PowerGraph";
+import TimeSeriesGraph from "./TimeSeriesGraph";
 
 interface SimulationRunnerProps {
   engine: EngineConfig;
@@ -90,10 +90,13 @@ export default function SimulationRunner({
         maxSpeedKph={maxSpeedKph}
       />
       <LiveStatsPanel telemetry={current} />
-      <PowerGraph
+      <TimeSeriesGraph
         telemetry={result.telemetry}
         currentT={current?.t ?? 0}
-        peakHp={result.peakHp}
+        getValue={(s) => s.hp}
+        peakValue={result.peakHp}
+        color="#9085e9"
+        label="Power (hp)"
       />
     </div>
   );

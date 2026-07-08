@@ -1,9 +1,18 @@
-import { EngineConfig, SimulationResult } from "@/lib/physics/types";
+"use client";
+
+import { useMemo } from "react";
+import { ChassisConfig, EngineConfig, SimulationResult } from "@/lib/physics/types";
+import { buildEngineCurves } from "@/lib/physics/engineModel";
+import { deriveVehicle } from "@/lib/physics/vehicleModel";
+import { computeTractiveForceData } from "@/lib/physics/tractiveForce";
 import { resultHeadline } from "@/lib/testResultLabel";
-import PowerGraph from "./PowerGraph";
+import TimeSeriesGraph from "./TimeSeriesGraph";
+import CombustionFrictionGraph from "./CombustionFrictionGraph";
+import TractiveForceGraph from "./TractiveForceGraph";
 
 interface ResultsSummaryProps {
   engine: EngineConfig;
+  chassis: ChassisConfig;
   result: SimulationResult;
 }
 
@@ -20,7 +29,15 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function ResultsSummary({ engine, result }: ResultsSummaryProps) {
+function GraphCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-4">
+      {children}
+    </div>
+  );
+}
+
+export default function ResultsSummary({ engine, chassis, result }: ResultsSummaryProps) {
   const headline = resultHeadline(result);
 
   let subtext = headline.sub;
@@ -34,6 +51,17 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
           : "Didn't reach 100 kph in the run";
     }
   }
+
+  const { curves, tractiveData } = useMemo(() => {
+    const builtCurves = buildEngineCurves(engine);
+    const vehicle = deriveVehicle(engine, builtCurves, chassis);
+    return {
+      curves: builtCurves,
+      tractiveData: computeTractiveForceData(builtCurves, vehicle),
+    };
+  }, [engine, chassis]);
+
+  const finalT = result.telemetry[result.telemetry.length - 1]?.t ?? 0;
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6">
@@ -78,13 +106,43 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
           value={`${engine.cylinders}-cyl ${engine.layout}, ${engine.displacementL.toFixed(1)}L`}
         />
       </div>
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-4">
-        <PowerGraph
+
+      <GraphCard>
+        <TimeSeriesGraph
           telemetry={result.telemetry}
-          currentT={result.telemetry[result.telemetry.length - 1]?.t ?? 0}
-          peakHp={result.peakHp}
+          currentT={finalT}
+          getValue={(s) => s.rpm}
+          peakValue={engine.maxRevRpm}
+          color="#f59e0b"
+          label="RPM vs Time"
         />
-      </div>
+      </GraphCard>
+      <GraphCard>
+        <TimeSeriesGraph
+          telemetry={result.telemetry}
+          currentT={finalT}
+          getValue={(s) => s.hp}
+          peakValue={result.peakHp}
+          color="#9085e9"
+          label="Power (hp) vs Time"
+        />
+      </GraphCard>
+      <GraphCard>
+        <TimeSeriesGraph
+          telemetry={result.telemetry}
+          currentT={finalT}
+          getValue={(s) => s.torqueNm}
+          peakValue={result.peakTorqueNm}
+          color="#38bdf8"
+          label="Engine Torque (Nm) vs Time"
+        />
+      </GraphCard>
+      <GraphCard>
+        <CombustionFrictionGraph curves={curves} />
+      </GraphCard>
+      <GraphCard>
+        <TractiveForceGraph data={tractiveData} />
+      </GraphCard>
     </div>
   );
 }

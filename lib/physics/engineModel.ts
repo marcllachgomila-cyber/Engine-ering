@@ -93,6 +93,21 @@ export function buildEngineCurves(engine: EngineConfig): EngineCurves {
     return (torqueNm * rpm * ((2 * Math.PI) / 60)) / 745.7;
   };
 
+  // Internal friction (mechanical rubbing + pumping losses) grows with
+  // engine size (more cylinders/displacement = more friction surfaces) and
+  // rises faster than linearly with RPM - reciprocating and pumping losses
+  // both accelerate at high engine speed, which is part of why power
+  // eventually falls off near the limiter even though torque alone
+  // wouldn't explain it. `torqueAt` is the net (crankshaft/output) torque;
+  // combustion has to produce that plus whatever friction is eating.
+  const frictionTorqueAt = (rpm: number): number => {
+    const base = displacementL * 8 + cylinders * 1.5;
+    const fraction = Math.min(1, Math.max(0, rpm / maxRevRpm));
+    return base * (0.4 + 0.6 * Math.pow(fraction, 1.3));
+  };
+
+  const combustionTorqueAt = (rpm: number): number => torqueAt(rpm) + frictionTorqueAt(rpm);
+
   // Scan the usable RPM range to find actual peak torque/power, since the
   // shape function doesn't guarantee the analytic peak lands exactly at
   // peakFraction once combined with rpm-dependent power scaling.
@@ -119,6 +134,8 @@ export function buildEngineCurves(engine: EngineConfig): EngineCurves {
   return {
     torqueAt,
     powerAt,
+    frictionTorqueAt,
+    combustionTorqueAt,
     idleRpm: IDLE_RPM,
     redlineRpm,
     maxRevRpm,

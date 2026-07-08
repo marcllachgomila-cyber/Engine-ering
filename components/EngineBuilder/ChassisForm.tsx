@@ -99,8 +99,8 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
                 </div>
                 <input
                   type="range"
-                  min={20}
-                  max={32}
+                  min={15}
+                  max={34}
                   step={1}
                   value={value.frontWheelDiameterIn}
                   onChange={(e) =>
@@ -119,8 +119,8 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
                 </div>
                 <input
                   type="range"
-                  min={185}
-                  max={335}
+                  min={155}
+                  max={355}
                   step={5}
                   value={value.frontWheelWidthMm}
                   onChange={(e) =>
@@ -147,8 +147,8 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
                 </div>
                 <input
                   type="range"
-                  min={20}
-                  max={32}
+                  min={15}
+                  max={34}
                   step={1}
                   value={value.rearWheelDiameterIn}
                   onChange={(e) =>
@@ -167,8 +167,8 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
                 </div>
                 <input
                   type="range"
-                  min={185}
-                  max={335}
+                  min={155}
+                  max={355}
                   step={5}
                   value={value.rearWheelWidthMm}
                   onChange={(e) =>
