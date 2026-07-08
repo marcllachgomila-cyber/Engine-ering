@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useState, useSyncExternalStore } from "react";
-import { EngineConfig, MatchResult, SimulationResult, TestConfig } from "@/lib/physics/types";
-import { DEFAULT_ENGINE, DEFAULT_TEST_CONFIG } from "@/lib/physics/defaults";
+import {
+  ChassisConfig,
+  EngineConfig,
+  MatchResult,
+  SimulationResult,
+  TestConfig,
+} from "@/lib/physics/types";
+import { DEFAULT_CHASSIS, DEFAULT_ENGINE, DEFAULT_TEST_CONFIG } from "@/lib/physics/defaults";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import { findClosestCars } from "@/lib/matching/matchCars";
 import {
@@ -12,7 +18,9 @@ import {
   removeFavorite,
   subscribeFavorites,
 } from "@/lib/favorites";
+import ChassisForm from "./EngineBuilder/ChassisForm";
 import EngineForm from "./EngineBuilder/EngineForm";
+import TestForm from "./EngineBuilder/TestForm";
 import EnginePreview from "./EngineBuilder/EnginePreview";
 import TipsBox from "./EngineBuilder/TipsBox";
 import SimulationRunner from "./Simulation/SimulationRunner";
@@ -20,17 +28,30 @@ import ResultsSummary from "./Simulation/ResultsSummary";
 import MatchList from "./Matches/MatchList";
 import FavoritesList from "./Favorites/FavoritesList";
 
-type Step = "build" | "simulate" | "results" | "favorites";
+type Step = "chassis" | "engine" | "test" | "simulate" | "results" | "favorites";
+
+function BackLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-sm text-slate-500 hover:text-slate-300 transition-colors mb-2"
+    >
+      &larr; {children}
+    </button>
+  );
+}
 
 export default function EngineBuilderApp() {
-  const [step, setStep] = useState<Step>("build");
+  const [step, setStep] = useState<Step>("chassis");
+  const [chassis, setChassis] = useState<ChassisConfig>(DEFAULT_CHASSIS);
   const [engine, setEngine] = useState<EngineConfig>(DEFAULT_ENGINE);
   const [test, setTest] = useState<TestConfig>(DEFAULT_TEST_CONFIG);
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [audioEngine, setAudioEngine] = useState<EngineAudioEngine | null>(null);
   const [saved, setSaved] = useState(false);
-  const [previousStep, setPreviousStep] = useState<Step>("build");
+  const [previousStep, setPreviousStep] = useState<Step>("chassis");
 
   const favorites = useSyncExternalStore(
     subscribeFavorites,
@@ -38,7 +59,7 @@ export default function EngineBuilderApp() {
     getFavoritesServerSnapshot,
   );
 
-  const handleStart = useCallback(() => {
+  const handleRunTest = useCallback(() => {
     const audio = new EngineAudioEngine(engine);
     audio.start();
     setAudioEngine(audio);
@@ -60,14 +81,14 @@ export default function EngineBuilderApp() {
     setAudioEngine(null);
     setResult(null);
     setMatches([]);
-    setStep("build");
+    setStep("chassis");
   }, [audioEngine]);
 
   const handleSaveFavorite = useCallback(() => {
     if (!result) return;
-    addFavorite(engine, test, result, matches[0]?.car ?? null);
+    addFavorite(engine, chassis, test, result, matches[0]?.car ?? null);
     setSaved(true);
-  }, [engine, test, result, matches]);
+  }, [engine, chassis, test, result, matches]);
 
   const handleRemoveFavorite = useCallback((id: string) => {
     removeFavorite(id);
@@ -98,15 +119,26 @@ export default function EngineBuilderApp() {
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-16">
-        {step === "build" && (
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
-            <EngineForm
-              value={engine}
-              onChange={setEngine}
-              test={test}
-              onTestChange={setTest}
-              onSubmit={handleStart}
+        {step === "chassis" && (
+          <div className="w-full max-w-3xl">
+            <ChassisForm
+              value={chassis}
+              onChange={setChassis}
+              onContinue={() => setStep("engine")}
             />
+          </div>
+        )}
+
+        {step === "engine" && (
+          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
+            <div>
+              <BackLink onClick={() => setStep("chassis")}>Back to Chassis</BackLink>
+              <EngineForm
+                value={engine}
+                onChange={setEngine}
+                onContinue={() => setStep("test")}
+              />
+            </div>
             <div className="lg:sticky lg:top-8 space-y-6">
               <div className="flex flex-col items-center">
                 <div className="text-xs uppercase tracking-wider text-slate-400 mb-2">
@@ -121,9 +153,18 @@ export default function EngineBuilderApp() {
             </div>
           </div>
         )}
+
+        {step === "test" && (
+          <div className="w-full max-w-3xl">
+            <BackLink onClick={() => setStep("engine")}>Back to Engine</BackLink>
+            <TestForm value={test} onChange={setTest} onSubmit={handleRunTest} />
+          </div>
+        )}
+
         {step === "simulate" && audioEngine && (
           <SimulationRunner
             engine={engine}
+            chassis={chassis}
             test={test}
             audioEngine={audioEngine}
             onComplete={handleComplete}

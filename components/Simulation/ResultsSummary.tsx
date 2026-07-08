@@ -25,10 +25,14 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
 
   let subtext = headline.sub;
   if (result.testType === "tenSecond") {
-    subtext =
-      result.reachedHundredAtS !== null
-        ? `0–100 kph in ${result.reachedHundredAtS.toFixed(2)}s`
-        : "Didn't reach 100 kph in the run";
+    if (result.initialSpeedKph > 0) {
+      subtext = `Started from ${Math.round(result.initialSpeedKph)} kph`;
+    } else {
+      subtext =
+        result.reachedHundredAtS !== null
+          ? `0–100 kph in ${result.reachedHundredAtS.toFixed(2)}s`
+          : "Didn't reach 100 kph in the run";
+    }
   }
 
   return (

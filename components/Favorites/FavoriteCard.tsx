@@ -23,6 +23,7 @@ export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) 
   const { engine, test } = favorite;
   const headline = resultHeadline({
     testType: test.testType,
+    initialSpeedKph: test.initialSpeedKph,
     elapsedS: favorite.elapsedS,
     finalSpeedKph: favorite.finalSpeedKph,
     timedOut: false,

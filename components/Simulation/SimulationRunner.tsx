@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { simulate } from "@/lib/physics/simulate";
-import { EngineConfig, SimulationResult, Telemetry, TestConfig } from "@/lib/physics/types";
+import { ChassisConfig, EngineConfig, SimulationResult, Telemetry, TestConfig } from "@/lib/physics/types";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import Gauges from "./Gauges";
 import LiveStatsPanel from "./LiveStatsPanel";
@@ -10,6 +10,7 @@ import PowerGraph from "./PowerGraph";
 
 interface SimulationRunnerProps {
   engine: EngineConfig;
+  chassis: ChassisConfig;
   test: TestConfig;
   audioEngine: EngineAudioEngine;
   onComplete: (result: SimulationResult) => void;
@@ -23,11 +24,12 @@ const RUNNING_LABELS: Record<TestConfig["testType"], string> = {
 
 export default function SimulationRunner({
   engine,
+  chassis,
   test,
   audioEngine,
   onComplete,
 }: SimulationRunnerProps) {
-  const result = useMemo(() => simulate(engine, test), [engine, test]);
+  const result = useMemo(() => simulate(engine, chassis, test), [engine, chassis, test]);
   const [current, setCurrent] = useState<Telemetry | null>(
     result.telemetry[0] ?? null,
   );

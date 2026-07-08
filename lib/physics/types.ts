@@ -7,8 +7,24 @@ export interface EngineConfig {
   layout: EngineLayout;
   displacementL: number;
   redlineRpm: number;
+  maxRevRpm: number;
   aspiration: Aspiration;
   fuelType: FuelType;
+  gearCount: number;
+}
+
+export type BodyType = "minivan" | "suv" | "supercar";
+
+export interface ChassisConfig {
+  bodyType: BodyType;
+  weightKg: number;
+  tyrePressurePsi: number;
+  wheelSpinPercent: number;
+  tractionControl: boolean;
+  frontWheelDiameterIn: number;
+  rearWheelDiameterIn: number;
+  frontWheelWidthMm: number;
+  rearWheelWidthMm: number;
 }
 
 export type TestType = "zeroToHundred" | "tenSecond" | "drag500m";
@@ -16,14 +32,8 @@ export type RoadCondition = "dry" | "wet" | "rain" | "wind";
 
 export interface TestConfig {
   testType: TestType;
-  gearCount: number;
-  wheelSpinPercent: number;
-  tractionControl: boolean;
   condition: RoadCondition;
-  frontWheelDiameterIn: number;
-  rearWheelDiameterIn: number;
-  frontWheelWidthMm: number;
-  rearWheelWidthMm: number;
+  initialSpeedKph: number;
 }
 
 export interface EngineCurves {
@@ -31,6 +41,7 @@ export interface EngineCurves {
   powerAt: (rpm: number) => number;
   idleRpm: number;
   redlineRpm: number;
+  maxRevRpm: number;
   peakTorqueNm: number;
   peakTorqueRpm: number;
   peakPowerHp: number;
@@ -65,6 +76,7 @@ export interface Telemetry {
 export interface SimulationResult {
   telemetry: Telemetry[];
   testType: TestType;
+  initialSpeedKph: number;
   elapsedS: number;
   finalSpeedKph: number;
   finalDistanceM: number;

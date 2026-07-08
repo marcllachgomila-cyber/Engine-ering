@@ -72,14 +72,18 @@ function shapeMultiplier(
 }
 
 export function buildEngineCurves(engine: EngineConfig): EngineCurves {
-  const { displacementL, cylinders, redlineRpm, aspiration, fuelType } = engine;
+  const { displacementL, cylinders, redlineRpm, maxRevRpm, aspiration, fuelType } = engine;
 
   const peakTorqueNm =
     displacementL * torquePerLiter(aspiration, fuelType) * cylinderFactor(cylinders);
   const peakFraction = peakTorqueFraction(aspiration, fuelType);
 
+  // The shape is always anchored to `redlineRpm` (where the manufacturer
+  // tuned the curve to peak), but a car can be pushed past it up to
+  // `maxRevRpm` before the hard limiter - torque just keeps tapering along
+  // the same falling curve into that over-rev zone.
   const torqueAt = (rpm: number): number => {
-    const clampedRpm = Math.min(Math.max(rpm, IDLE_RPM), redlineRpm);
+    const clampedRpm = Math.min(Math.max(rpm, IDLE_RPM), maxRevRpm);
     const fraction = clampedRpm / redlineRpm;
     return peakTorqueNm * shapeMultiplier(fraction, peakFraction, aspiration);
   };
@@ -99,7 +103,7 @@ export function buildEngineCurves(engine: EngineConfig): EngineCurves {
 
   const steps = 200;
   for (let i = 0; i <= steps; i++) {
-    const rpm = IDLE_RPM + ((redlineRpm - IDLE_RPM) * i) / steps;
+    const rpm = IDLE_RPM + ((maxRevRpm - IDLE_RPM) * i) / steps;
     const torqueNm = torqueAt(rpm);
     if (torqueNm > scannedPeakTorqueNm) {
       scannedPeakTorqueNm = torqueNm;
@@ -117,6 +121,7 @@ export function buildEngineCurves(engine: EngineConfig): EngineCurves {
     powerAt,
     idleRpm: IDLE_RPM,
     redlineRpm,
+    maxRevRpm,
     peakTorqueNm: scannedPeakTorqueNm,
     peakTorqueRpm,
     peakPowerHp,

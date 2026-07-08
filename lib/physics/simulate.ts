@@ -1,6 +1,7 @@
 import { buildEngineCurves } from "./engineModel";
 import { deriveVehicle } from "./vehicleModel";
 import {
+  ChassisConfig,
   EngineConfig,
   EngineCurves,
   RoadCondition,
@@ -85,7 +86,7 @@ function estimateTopSpeedKph(
   const stepMs = 0.2;
   for (let speedMs = stepMs; speedMs < 130; speedMs += stepMs) {
     const rpm = rpmFromSpeed(speedMs, topGearRatio, vehicle);
-    if (rpm > curves.redlineRpm) break;
+    if (rpm > curves.maxRevRpm) break;
 
     const torqueNm = curves.torqueAt(rpm);
     const driveForce =
@@ -108,22 +109,26 @@ function estimateTopSpeedKph(
   return lastValidSpeedMs * 3.6;
 }
 
-export function simulate(engine: EngineConfig, test: TestConfig): SimulationResult {
+export function simulate(
+  engine: EngineConfig,
+  chassis: ChassisConfig,
+  test: TestConfig,
+): SimulationResult {
   const curves = buildEngineCurves(engine);
-  const vehicle = deriveVehicle(engine, curves, test);
+  const vehicle = deriveVehicle(engine, curves, chassis);
 
   const headwindMs = conditionHeadwindMs(test.condition);
   const effectiveMu =
     vehicle.tireGripMu *
     conditionGripMultiplier(test.condition) *
-    wheelSpinEfficiency(test.wheelSpinPercent);
+    wheelSpinEfficiency(chassis.wheelSpinPercent);
   const tractionLimit = effectiveMu * vehicle.weightKg * G;
 
-  let speedMs = 0;
+  let speedMs = Math.max(0, test.initialSpeedKph / 3.6);
   let distanceM = 0;
   let gear = 1;
   let t = 0;
-  let reachedHundredAtS: number | null = null;
+  let reachedHundredAtS: number | null = speedMs >= HUNDRED_KPH_MS ? 0 : null;
 
   const telemetry: Telemetry[] = [];
   const rollingForce = vehicle.rollingResistanceCoefficient * vehicle.weightKg * G;
@@ -148,7 +153,7 @@ export function simulate(engine: EngineConfig, test: TestConfig): SimulationResu
       gear += 1;
       continue;
     }
-    rpm = Math.min(rpm, curves.redlineRpm);
+    rpm = Math.min(rpm, curves.maxRevRpm);
 
     const torqueNm = curves.torqueAt(rpm);
     const engineForce =
@@ -158,7 +163,7 @@ export function simulate(engine: EngineConfig, test: TestConfig): SimulationResu
     let driveForce: number;
     if (engineForce <= tractionLimit) {
       driveForce = engineForce;
-    } else if (test.tractionControl) {
+    } else if (chassis.tractionControl) {
       driveForce = tractionLimit;
     } else {
       driveForce = tractionLimit * UNCONTROLLED_SLIP_PENALTY;
@@ -207,8 +212,9 @@ export function simulate(engine: EngineConfig, test: TestConfig): SimulationResu
   return {
     telemetry,
     testType: test.testType,
+    initialSpeedKph: test.initialSpeedKph,
     elapsedS: t,
-    finalSpeedKph: last?.speedKph ?? 0,
+    finalSpeedKph: last?.speedKph ?? test.initialSpeedKph,
     finalDistanceM: last?.distanceM ?? 0,
     reachedHundredAtS,
     timedOut,

@@ -8,6 +8,7 @@ export const TEST_TYPE_LABELS: Record<TestType, string> = {
 
 interface ResultHeadlineInput {
   testType: TestType;
+  initialSpeedKph: number;
   elapsedS: number;
   finalSpeedKph: number;
   timedOut: boolean;
@@ -15,17 +16,20 @@ interface ResultHeadlineInput {
 
 export function resultHeadline({
   testType,
+  initialSpeedKph,
   elapsedS,
   finalSpeedKph,
   timedOut,
 }: ResultHeadlineInput): { label: string; value: string; sub: string | null } {
   switch (testType) {
-    case "zeroToHundred":
+    case "zeroToHundred": {
+      const startLabel = initialSpeedKph > 0 ? Math.round(initialSpeedKph) : 0;
       return {
-        label: "0–100 kph",
+        label: `${startLabel}–100 kph`,
         value: timedOut ? "Did not reach" : `${elapsedS.toFixed(2)}s`,
         sub: null,
       };
+    }
     case "tenSecond":
       return {
         label: "Top Speed after 10s",
