@@ -6,8 +6,9 @@ Engine Builder is an interactive car-engine and vehicle simulation built with Ne
 
 - Choose a minivan, SUV, or supercar chassis and tune its weight, wheels, tyres, pressure, wheel spin, and traction control.
 - Configure cylinder count and layout, displacement, redline, rev limit, fuel, aspiration, gears, and drivetrain.
-- Run a 0-100 kph, 10-second, or 500 m drag test in dry, wet, rain, or headwind conditions.
-- View peak power, torque, power-to-weight ratio, estimated weight, theoretical top speed, and test telemetry.
+- Run a 0-100 kph, 10-second, 500 m drag, or braking test in dry, wet, rain, or headwind conditions.
+- In the braking test, hold a cruising speed for 5s, then brake to a full stop after a 3-2-1-0 countdown, with the transmission downshifting through the gears as the car slows.
+- View peak power, torque, power-to-weight ratio, estimated weight, theoretical top speed, live gear, and test telemetry.
 - Explore RPM, power, torque, combustion/friction, and tractive-force graphs.
 - Compare the result with reference cars from `data/cars.json`.
 - Save and remove favorite configurations in the browser using `localStorage`.
@@ -45,7 +46,7 @@ npm run start  # Serve the production build
 
 1. Set up the chassis and tyres.
 2. Configure the engine and drivetrain. The form adjusts valid layouts and diesel redline limits as needed.
-3. Select a test and road conditions, then start the run.
+3. Select a test (including a braking test that measures stopping time and distance) and road conditions, then start the run.
 4. Review the simulation summary, graphs, and closest reference-car matches.
 5. Save completed runs from the results screen. Favorites are stored locally in the current browser and are not synced to an account.
 
