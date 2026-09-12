@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Engine Builder
+
+Engine Builder is an interactive car-engine and vehicle simulation built with Next.js. Configure a chassis, build an engine, choose a test, and inspect the simulated results.
+
+## Features
+
+- Choose a minivan, SUV, or supercar chassis and tune its weight, wheels, tyres, pressure, wheel spin, and traction control.
+- Configure cylinder count and layout, displacement, redline, rev limit, fuel, aspiration, gears, and drivetrain.
+- Run a 0-100 kph, 10-second, or 500 m drag test in dry, wet, rain, or headwind conditions.
+- View peak power, torque, power-to-weight ratio, estimated weight, theoretical top speed, and test telemetry.
+- Explore RPM, power, torque, combustion/friction, and tractive-force graphs.
+- Compare the result with reference cars from `data/cars.json`.
+- Save and remove favorite configurations in the browser using `localStorage`.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js with npm
+
+Install the dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Available Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev    # Start the development server
+npm run lint   # Run ESLint
+npm run build  # Create a production build
+npm run start  # Serve the production build
+```
 
-## Learn More
+## How It Works
 
-To learn more about Next.js, take a look at the following resources:
+1. Set up the chassis and tyres.
+2. Configure the engine and drivetrain. The form adjusts valid layouts and diesel redline limits as needed.
+3. Select a test and road conditions, then start the run.
+4. Review the simulation summary, graphs, and closest reference-car matches.
+5. Save completed runs from the results screen. Favorites are stored locally in the current browser and are not synced to an account.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `app/` - Next.js app entry point and global styles.
+- `components/EngineBuilder/` - Chassis, engine, test, preview, and navigation UI.
+- `components/Simulation/` - Simulation runner, live gauges, results, and graphs.
+- `components/Matches/` - Reference-car matching UI.
+- `components/Favorites/` - Saved configuration UI.
+- `lib/physics/` - Engine curves, vehicle calculations, simulation, and tractive-force models.
+- `lib/audio/` - Browser engine-audio simulation.
+- `lib/matching/` - Reference-car matching logic.
+- `data/cars.json` - Reference-car dataset used for result comparisons.
 
-## Deploy on Vercel
+## Technology
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The project uses [Next.js](https://nextjs.org), [React](https://react.dev), [TypeScript](https://www.typescriptlang.org), [Tailwind CSS](https://tailwindcss.com), and [Three.js](https://threejs.org) through React Three Fiber for the engine preview.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+No environment variables are required for local development.
