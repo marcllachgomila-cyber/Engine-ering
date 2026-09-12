@@ -3,25 +3,48 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Warm charcoal/garage palette in place of Tailwind's default cool
+     blue-grey zinc scale, so text/panels/borders read as workshop
+     neutrals rather than a navy dev-dashboard. */
+  --color-zinc-50: #f2f0ea;
+  --color-zinc-100: #e4e1db;
+  --color-zinc-200: #d5d3cc;
+  --color-zinc-300: #c7c4bd;
+  --color-zinc-400: #b8b5ae;
+  --color-zinc-500: #9e9b94;
+  --color-zinc-600: #85827a;
+  --color-zinc-700: #6b6860;
+  --color-zinc-800: #5a5750;
+  --color-zinc-900: #252421;
+  --color-zinc-950: #171614;
+
+  /* Warm amber/orange accent, unchanged in hue but pinned to an exact
+     brand value instead of Tailwind's default amber. */
+  --color-amber-400: #fdb524;
+  --color-amber-500: #f5a000;
 }
 
 body {
-  color: #f8fafc;
-  background-color: #101114;
+  color: #f2f0ea;
+  background-color: #131210;
   background-image:
-    /* dark scrim so UI text stays legible over the illustration */
+    /* darker scrim over the left/centre where the form panels sit, lighter
+       toward the right so the workbench engine in the photo stays visible */
     linear-gradient(
-      rgba(10, 10, 12, 0.72),
-      rgba(10, 10, 12, 0.55) 35%,
-      rgba(10, 10, 12, 0.82) 100%
+      100deg,
+      rgba(15, 14, 12, 0.86) 0%,
+      rgba(15, 14, 12, 0.72) 38%,
+      rgba(15, 14, 12, 0.4) 68%,
+      rgba(15, 14, 12, 0.6) 100%
     ),
-    url("/garage-bg.svg");
+    url("/workshop-bg.png");
   background-size:
     cover,
     cover;
   background-position:
     center,
-    center top;
+    center right;
   background-repeat: no-repeat, no-repeat;
   background-attachment: fixed, fixed;
 }
