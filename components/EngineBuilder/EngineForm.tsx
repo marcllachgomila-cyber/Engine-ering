@@ -84,7 +84,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
       <SectionCard title="Engine">
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm font-medium text-slate-300">Cylinders</label>
+            <label className="text-sm font-medium text-zinc-300">Cylinders</label>
             <span className="text-lg font-mono text-amber-400">{value.cylinders}</span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -97,7 +97,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-2">Layout</label>
+          <label className="text-sm font-medium text-zinc-300 block mb-2">Layout</label>
           <div className="flex flex-wrap gap-2">
             {(["inline", "v", "flat", "w"] as EngineLayout[]).map((layout) => (
               <OptionButton
@@ -114,7 +114,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
 
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm font-medium text-slate-300">Displacement</label>
+            <label className="text-sm font-medium text-zinc-300">Displacement</label>
             <span className="text-lg font-mono text-amber-400">
               {value.displacementL.toFixed(1)} L
             </span>
@@ -132,7 +132,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
 
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm font-medium text-slate-300">Redline</label>
+            <label className="text-sm font-medium text-zinc-300">Redline</label>
             <span className="text-lg font-mono text-amber-400">
               {value.redlineRpm.toLocaleString()} RPM
             </span>
@@ -147,7 +147,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
             className="w-full accent-amber-500"
           />
           {value.fuelType === "diesel" && (
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-zinc-500 mt-1">
               Capped at {DIESEL_MAX_REDLINE_RPM.toLocaleString()} RPM - diesels
               don&apos;t rev like petrol engines.
             </p>
@@ -156,7 +156,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
 
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm font-medium text-slate-300">Max Rev</label>
+            <label className="text-sm font-medium text-zinc-300">Max Rev</label>
             <span className="text-lg font-mono text-amber-400">
               {value.maxRevRpm.toLocaleString()} RPM
             </span>
@@ -170,14 +170,14 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
             onChange={(e) => onChange({ ...value, maxRevRpm: parseInt(e.target.value, 10) })}
             className="w-full accent-amber-500"
           />
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-zinc-500 mt-1">
             The hard limiter - how far past redline you can push before each
             shift. Torque keeps tapering the further past redline you go.
           </p>
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-2">Fuel</label>
+          <label className="text-sm font-medium text-zinc-300 block mb-2">Fuel</label>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(FUEL_TYPE_LABELS) as FuelType[]).map((f) => (
               <OptionButton key={f} active={value.fuelType === f} onClick={() => setFuelType(f)}>
@@ -186,14 +186,14 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
             ))}
           </div>
           {value.fuelType === "diesel" && (
-            <p className="text-xs text-slate-500 mt-2">
+            <p className="text-xs text-zinc-500 mt-2">
               More torque per liter than petrol, but redline is capped low.
             </p>
           )}
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-2">Aspiration</label>
+          <label className="text-sm font-medium text-zinc-300 block mb-2">Aspiration</label>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(ASPIRATION_LABELS) as EngineConfig["aspiration"][]).map((a) => (
               <OptionButton
@@ -209,7 +209,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
 
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm font-medium text-slate-300">Gears</label>
+            <label className="text-sm font-medium text-zinc-300">Gears</label>
             <span className="text-lg font-mono text-amber-400">{value.gearCount}-speed</span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -226,7 +226,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-2">
+          <label className="text-sm font-medium text-zinc-300 block mb-2">
             Drivetrain
           </label>
           <div className="flex flex-wrap gap-2">
@@ -240,7 +240,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
               </OptionButton>
             ))}
           </div>
-          <p className="text-xs text-slate-500 mt-2">
+          <p className="text-xs text-zinc-500 mt-2">
             RWD gets a traction boost from weight shifting onto the drive
             wheels under acceleration; FWD loses a little grip the same way.
           </p>

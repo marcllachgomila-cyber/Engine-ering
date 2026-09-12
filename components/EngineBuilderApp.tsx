@@ -90,8 +90,8 @@ export default function EngineBuilderApp() {
 
   return (
     <div className="flex-1 flex flex-col">
-      <header className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-white/5">
-        <div className="font-mono font-bold text-slate-200 tracking-tight">
+      <header className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-white/10 bg-zinc-950/45 backdrop-blur-md">
+        <div className="font-mono font-bold text-zinc-200 tracking-tight">
           Engine Builder
         </div>
         <button
@@ -99,55 +99,49 @@ export default function EngineBuilderApp() {
           onClick={openFavorites}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
             step === "favorites"
-              ? "bg-amber-500 border-amber-500 text-slate-950"
-              : "border-slate-700 text-slate-300 hover:border-slate-500"
+              ? "bg-amber-500 border-amber-500 text-zinc-950"
+              : "border-zinc-700 text-zinc-300 hover:border-zinc-500 bg-zinc-900/40"
           }`}
         >
           &#9733; Favorites ({favorites.length})
         </button>
       </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-16">
-        {step === "chassis" && (
-          <div className="w-full max-w-3xl">
-            <StepNav current="chassis" onNavigate={(s) => setStep(s)} />
-            <ChassisForm
-              value={chassis}
-              onChange={setChassis}
-              onContinue={() => setStep("engine")}
-            />
-          </div>
-        )}
-
-        {step === "engine" && (
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
-            <div>
-              <StepNav current="engine" onNavigate={(s) => setStep(s)} />
-              <EngineForm
-                value={engine}
-                onChange={setEngine}
-                onContinue={() => setStep("test")}
-              />
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+        {(step === "chassis" || step === "engine" || step === "test") && (
+          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start">
+            <div className="w-full max-w-3xl mx-auto lg:mx-0">
+              <StepNav current={step} onNavigate={(s) => setStep(s)} />
+              {step === "chassis" && (
+                <ChassisForm
+                  value={chassis}
+                  onChange={setChassis}
+                  onContinue={() => setStep("engine")}
+                />
+              )}
+              {step === "engine" && (
+                <EngineForm
+                  value={engine}
+                  onChange={setEngine}
+                  onContinue={() => setStep("test")}
+                />
+              )}
+              {step === "test" && (
+                <TestForm value={test} onChange={setTest} onSubmit={handleRunTest} />
+              )}
             </div>
             <div className="lg:sticky lg:top-8 space-y-6">
               <div className="flex flex-col items-center">
-                <div className="text-xs uppercase tracking-wider text-slate-400 mb-2">
+                <div className="text-xs uppercase tracking-wider text-zinc-400 mb-2">
                   Live Preview
                 </div>
-                <div className="w-full h-96 relative">
+                <div className="w-full h-72 relative">
                   <div className="absolute inset-x-8 bottom-4 h-8 rounded-full bg-black/50 blur-xl" />
                   <EnginePreview engine={engine} />
                 </div>
               </div>
-              <TipsBox />
+              {step !== "test" && <TipsBox />}
             </div>
-          </div>
-        )}
-
-        {step === "test" && (
-          <div className="w-full max-w-3xl">
-            <StepNav current="test" onNavigate={(s) => setStep(s)} />
-            <TestForm value={test} onChange={setTest} onSubmit={handleRunTest} />
           </div>
         )}
 
@@ -171,8 +165,8 @@ export default function EngineBuilderApp() {
                 disabled={saved}
                 className={`rounded-xl px-6 py-3 font-medium transition-colors ${
                   saved
-                    ? "border border-slate-700 text-slate-500 cursor-default"
-                    : "bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+                    ? "border border-zinc-700 text-zinc-500 cursor-default"
+                    : "bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold"
                 }`}
               >
                 {saved ? "★ Saved to Favorites" : "☆ Save to Favorites"}
@@ -180,7 +174,7 @@ export default function EngineBuilderApp() {
               <button
                 type="button"
                 onClick={handleReset}
-                className="rounded-xl border border-slate-700 hover:border-slate-500 text-slate-200 px-6 py-3 font-medium transition-colors"
+                className="rounded-xl border border-zinc-700 hover:border-zinc-500 text-zinc-200 px-6 py-3 font-medium transition-colors"
               >
                 Build Another Engine
               </button>
@@ -193,7 +187,7 @@ export default function EngineBuilderApp() {
             <button
               type="button"
               onClick={() => setStep(previousStep)}
-              className="rounded-xl border border-slate-700 hover:border-slate-500 text-slate-200 px-6 py-3 font-medium transition-colors"
+              className="rounded-xl border border-zinc-700 hover:border-zinc-500 text-zinc-200 px-6 py-3 font-medium transition-colors"
             >
               Back
             </button>

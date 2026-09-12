@@ -39,7 +39,7 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md p-6">
+    <div className="space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md p-6">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
         {title}
       </h2>

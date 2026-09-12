@@ -12,7 +12,7 @@ function photoSearchUrl(car: CarSpec): string {
 
 export default function MatchCard({ car, rank }: MatchCardProps) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md p-4 flex items-center gap-4">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md p-4 flex items-center gap-4">
       <div className="text-2xl font-mono font-black text-amber-400 w-8 text-center shrink-0">
         #{rank}
       </div>

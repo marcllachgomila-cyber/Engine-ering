@@ -14,7 +14,7 @@ function StatTile({
   unit?: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md px-4 py-3">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md px-4 py-3">
       <div className="text-xs uppercase tracking-wider text-zinc-500">
         {label}
       </div>

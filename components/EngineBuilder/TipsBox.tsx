@@ -53,7 +53,7 @@ export default function TipsBox() {
   const [topic, setTopic] = useState<Topic | null>(null);
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md">
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md">
       <div className="px-5 py-3 border-b border-zinc-800/80">
         <span className="flex items-center gap-2 text-sm font-medium text-amber-400">
           <span aria-hidden>&#128161;</span> Tuning Tips

@@ -18,7 +18,7 @@ interface ResultsSummaryProps {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md px-5 py-4">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md px-5 py-4">
       <div className="text-xs uppercase tracking-wider text-zinc-500">
         {label}
       </div>
@@ -31,7 +31,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function GraphCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md px-5 py-4">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md px-5 py-4">
       {children}
     </div>
   );

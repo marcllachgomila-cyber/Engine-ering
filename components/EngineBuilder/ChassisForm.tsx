@@ -38,7 +38,7 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
 
       <SectionCard title="Body">
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-3">
+          <label className="text-sm font-medium text-zinc-300 block mb-3">
             Body Type
           </label>
           <div className="grid grid-cols-3 gap-3">
@@ -50,7 +50,7 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
                 className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors ${
                   value.bodyType === bodyType
                     ? "bg-amber-500/10 border-amber-500 text-amber-400"
-                    : "border-slate-700 text-slate-400 hover:border-slate-500"
+                    : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
                 }`}
               >
                 <BodyTypeIcon bodyType={bodyType} className="w-full h-10" />
@@ -62,7 +62,7 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
 
         <div>
           <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium text-slate-300">Weight</label>
+            <label className="text-sm font-medium text-zinc-300">Weight</label>
             <span className="text-lg font-mono text-amber-400">
               {value.weightKg.toLocaleString()} kg
             </span>
@@ -76,7 +76,7 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
             onChange={(e) => onChange({ ...value, weightKg: parseInt(e.target.value, 10) })}
             className="w-full accent-amber-500"
           />
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-zinc-500 mt-1">
             Recommended: {preset.weightKg.toLocaleString()} kg for a {BODY_TYPE_LABELS[value.bodyType].toLowerCase()}.
             The engine and wheels you pick add mass on top of this.
           </p>
@@ -86,13 +86,13 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
       <SectionCard title="Wheels & Tyres">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
-            <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
+            <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-3">
               Front Wheel
             </h3>
             <div className="space-y-4">
               <div>
                 <div className="flex items-baseline justify-between mb-1">
-                  <label className="text-sm font-medium text-slate-300">Diameter</label>
+                  <label className="text-sm font-medium text-zinc-300">Diameter</label>
                   <span className="text-lg font-mono text-amber-400">
                     {value.frontWheelDiameterIn}&Prime;
                   </span>
@@ -108,11 +108,11 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
                   }
                   className="w-full accent-amber-500"
                 />
-                <p className="text-xs text-slate-500 mt-1">Recommended: 25&Prime;</p>
+                <p className="text-xs text-zinc-500 mt-1">Recommended: 25&Prime;</p>
               </div>
               <div>
                 <div className="flex items-baseline justify-between mb-1">
-                  <label className="text-sm font-medium text-slate-300">Width</label>
+                  <label className="text-sm font-medium text-zinc-300">Width</label>
                   <span className="text-lg font-mono text-amber-400">
                     {value.frontWheelWidthMm}mm
                   </span>
@@ -128,19 +128,19 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
                   }
                   className="w-full accent-amber-500"
                 />
-                <p className="text-xs text-slate-500 mt-1">Recommended: 235mm</p>
+                <p className="text-xs text-zinc-500 mt-1">Recommended: 235mm</p>
               </div>
             </div>
           </div>
 
           <div>
-            <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
+            <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-3">
               Rear Wheel
             </h3>
             <div className="space-y-4">
               <div>
                 <div className="flex items-baseline justify-between mb-1">
-                  <label className="text-sm font-medium text-slate-300">Diameter</label>
+                  <label className="text-sm font-medium text-zinc-300">Diameter</label>
                   <span className="text-lg font-mono text-amber-400">
                     {value.rearWheelDiameterIn}&Prime;
                   </span>
@@ -156,11 +156,11 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
                   }
                   className="w-full accent-amber-500"
                 />
-                <p className="text-xs text-slate-500 mt-1">Recommended: 26&Prime;</p>
+                <p className="text-xs text-zinc-500 mt-1">Recommended: 26&Prime;</p>
               </div>
               <div>
                 <div className="flex items-baseline justify-between mb-1">
-                  <label className="text-sm font-medium text-slate-300">Width</label>
+                  <label className="text-sm font-medium text-zinc-300">Width</label>
                   <span className="text-lg font-mono text-amber-400">
                     {value.rearWheelWidthMm}mm
                   </span>
@@ -176,20 +176,20 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
                   }
                   className="w-full accent-amber-500"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-zinc-500 mt-1">
                   Recommended: 275mm - wider rear (drive) tires add grip.
                 </p>
               </div>
             </div>
           </div>
         </div>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-zinc-500">
           Bigger wheels overall add rotating mass, which costs a little acceleration.
         </p>
 
         <div>
           <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium text-slate-300">Tyre Pressure</label>
+            <label className="text-sm font-medium text-zinc-300">Tyre Pressure</label>
             <span className="text-lg font-mono text-amber-400">
               {value.tyrePressurePsi} psi
             </span>
@@ -205,14 +205,14 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
             }
             className="w-full accent-amber-500"
           />
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-zinc-500 mt-1">
             Recommended: 32 psi - too low or too high both cost grip.
           </p>
         </div>
 
         <div>
           <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium text-slate-300">Wheel Spin</label>
+            <label className="text-sm font-medium text-zinc-300">Wheel Spin</label>
             <span className="text-lg font-mono text-amber-400">
               {value.wheelSpinPercent}%
             </span>
@@ -228,14 +228,14 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
             }
             className="w-full accent-amber-500"
           />
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-zinc-500 mt-1">
             Recommended: 10% - a little intentional slip uses the tire&apos;s peak
             grip; too little or too much both waste it.
           </p>
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-2">
+          <label className="text-sm font-medium text-zinc-300 block mb-2">
             Traction Control
           </label>
           <div className="flex flex-wrap gap-2">
@@ -252,7 +252,7 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
               Off
             </OptionButton>
           </div>
-          <p className="text-xs text-slate-500 mt-2">
+          <p className="text-xs text-zinc-500 mt-2">
             Off risks wheelspin costing you grip once torque exceeds the tires&apos;
             limit.
           </p>

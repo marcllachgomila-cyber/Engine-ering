@@ -67,7 +67,7 @@ export default function FavoritesList({ favorites, onRemove }: FavoritesListProp
       )}
 
       {favorites.length === 0 ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md p-8 text-center text-zinc-400">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md p-8 text-center text-zinc-400">
           No favorites saved yet. Build an engine, run it, and save it from the
           results screen.
         </div>

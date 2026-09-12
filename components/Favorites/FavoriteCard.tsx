@@ -31,7 +31,7 @@ export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) 
   });
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md p-4">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="font-semibold text-zinc-50">
