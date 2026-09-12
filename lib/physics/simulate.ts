@@ -5,10 +5,13 @@ import {
   ChassisConfig,
   EngineConfig,
   EngineCurves,
+  GearboxConfig,
   RoadCondition,
   SimulationResult,
   Telemetry,
   TestConfig,
+  TyreCompound,
+  TyreType,
   VehicleSpec,
 } from "./types";
 
@@ -30,6 +33,9 @@ function wheelSpinEfficiency(wheelSpinPercent: number): number {
   return Math.max(0.55, 1 - distance / 100);
 }
 
+// Reference road-condition grip, as if riding on a "standard" tyre in the
+// "medium" compound - every other tyre type/compound combination scales
+// this baseline up or down below.
 function conditionGripMultiplier(condition: RoadCondition): number {
   switch (condition) {
     case "dry":
@@ -41,6 +47,43 @@ function conditionGripMultiplier(condition: RoadCondition): number {
     case "rain":
       return 0.55;
   }
+}
+
+// Slicks (no tread, like an F1 dry tyre) put more rubber on tarmac and grip
+// harder in the dry, but with nowhere for water to escape they're treacherous
+// as soon as the road is wet. Standard (treaded/road) tyres are the more
+// even, all-weather choice this baseline is built around.
+const TYRE_TYPE_GRIP_FACTOR: Record<TyreType, Record<RoadCondition, number>> = {
+  slick: { dry: 1.1, wind: 1.1, wet: 0.55, rain: 0.45 },
+  standard: { dry: 1.0, wind: 1.0, wet: 1.0, rain: 1.0 },
+};
+
+// Compound mirrors F1's lineup: soft/medium/hard are the dry-weather slick
+// range (soft grips hardest but is the most compromised once it's wet;
+// hard is the most conservative), while intermediate and wet are the
+// grooved rain compounds, which sacrifice outright dry grip for the ability
+// to clear water and stay planted once the track is damp or soaked.
+const TYRE_COMPOUND_GRIP_FACTOR: Record<TyreCompound, Record<RoadCondition, number>> = {
+  soft: { dry: 1.08, wind: 1.08, wet: 0.85, rain: 0.8 },
+  medium: { dry: 1.0, wind: 1.0, wet: 1.0, rain: 1.0 },
+  hard: { dry: 0.94, wind: 0.94, wet: 0.9, rain: 0.92 },
+  intermediate: { dry: 0.8, wind: 0.8, wet: 1.25, rain: 1.35 },
+  wet: { dry: 0.68, wind: 0.68, wet: 1.15, rain: 1.55 },
+};
+
+// Combines the road condition with how well the chosen tyre type and
+// compound suit that condition. Defaults to "standard" + "medium", which
+// reproduces the plain conditionGripMultiplier baseline exactly.
+function tyreGripMultiplier(
+  tyreType: TyreType,
+  tyreCompound: TyreCompound,
+  condition: RoadCondition,
+): number {
+  return (
+    conditionGripMultiplier(condition) *
+    TYRE_TYPE_GRIP_FACTOR[tyreType][condition] *
+    TYRE_COMPOUND_GRIP_FACTOR[tyreCompound][condition]
+  );
 }
 
 // The "wind" condition is a steady headwind straight off the nose, which
@@ -134,10 +177,11 @@ export interface CruiseState {
 export function computeCruiseState(
   engine: EngineConfig,
   chassis: ChassisConfig,
+  gearbox: GearboxConfig,
   speedKph: number,
 ): CruiseState {
   const curves = buildEngineCurves(engine);
-  const vehicle = deriveVehicle(engine, curves, chassis);
+  const vehicle = deriveVehicle(engine, curves, chassis, gearbox);
   const speedMs = Math.max(0, speedKph / 3.6);
   const gear = gearForSpeed(speedMs, vehicle, curves);
   const rpm = Math.min(
@@ -150,23 +194,26 @@ export function computeCruiseState(
 export function simulate(
   engine: EngineConfig,
   chassis: ChassisConfig,
+  gearbox: GearboxConfig,
   test: TestConfig,
 ): SimulationResult {
   const curves = buildEngineCurves(engine);
-  const vehicle = deriveVehicle(engine, curves, chassis);
+  const vehicle = deriveVehicle(engine, curves, chassis, gearbox);
 
   const headwindMs = conditionHeadwindMs(test.condition);
+  const gripMultiplier = tyreGripMultiplier(
+    chassis.tyreType,
+    chassis.tyreCompound,
+    test.condition,
+  );
   const effectiveMu =
-    vehicle.tireGripMu *
-    conditionGripMultiplier(test.condition) *
-    wheelSpinEfficiency(chassis.wheelSpinPercent);
+    vehicle.tireGripMu * gripMultiplier * wheelSpinEfficiency(chassis.wheelSpinPercent);
   const tractionLimit = effectiveMu * vehicle.weightKg * G;
 
   // Braking isn't limited by launch wheel-spin tuning - it's modeled as an
   // idealized max-effort stop (perfect ABS, no lock-up), so it only inherits
   // the tire's grip and the road condition, not the wheelspin term above.
-  const brakingTractionLimit =
-    vehicle.tireGripMu * conditionGripMultiplier(test.condition) * vehicle.weightKg * G;
+  const brakingTractionLimit = vehicle.tireGripMu * gripMultiplier * vehicle.weightKg * G;
 
   let speedMs = Math.max(0, test.initialSpeedKph / 3.6);
   let distanceM = 0;

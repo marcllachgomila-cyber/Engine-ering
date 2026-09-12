@@ -1,4 +1,4 @@
-import { BodyType, ChassisConfig, EngineConfig, TestConfig } from "./types";
+import { BodyType, ChassisConfig, EngineConfig, GearboxConfig, TestConfig } from "./types";
 
 export const DEFAULT_ENGINE: EngineConfig = {
   cylinders: 4,
@@ -8,6 +8,9 @@ export const DEFAULT_ENGINE: EngineConfig = {
   maxRevRpm: 7300,
   aspiration: "na",
   fuelType: "petrol",
+};
+
+export const DEFAULT_GEARBOX: GearboxConfig = {
   gearCount: 6,
   drivetrain: "rwd",
 };
@@ -54,6 +57,8 @@ export const DEFAULT_CHASSIS: ChassisConfig = {
   rearWheelDiameterIn: 26,
   frontWheelWidthMm: 235,
   rearWheelWidthMm: 275,
+  tyreType: "standard",
+  tyreCompound: "medium",
 };
 
 export const DEFAULT_TEST_CONFIG: TestConfig = {

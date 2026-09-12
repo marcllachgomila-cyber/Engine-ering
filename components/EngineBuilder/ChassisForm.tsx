@@ -1,7 +1,7 @@
 "use client";
 
 import { BODY_TYPE_PRESETS } from "@/lib/physics/defaults";
-import { BodyType, ChassisConfig } from "@/lib/physics/types";
+import { BodyType, ChassisConfig, TyreCompound, TyreType } from "@/lib/physics/types";
 import BodyTypeIcon from "./BodyTypeIcon";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
 
@@ -9,6 +9,19 @@ const BODY_TYPE_LABELS: Record<BodyType, string> = {
   minivan: "Minivan",
   suv: "SUV",
   supercar: "Supercar",
+};
+
+const TYRE_TYPE_LABELS: Record<TyreType, string> = {
+  slick: "Slick",
+  standard: "Standard",
+};
+
+const TYRE_COMPOUND_LABELS: Record<TyreCompound, string> = {
+  soft: "Soft",
+  medium: "Medium",
+  hard: "Hard",
+  intermediate: "Intermediate",
+  wet: "Wet",
 };
 
 interface ChassisFormProps {
@@ -186,6 +199,48 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
         <p className="text-xs text-zinc-500">
           Bigger wheels overall add rotating mass, which costs a little acceleration.
         </p>
+
+        <div>
+          <label className="text-sm font-medium text-zinc-300 block mb-2">Tyre Type</label>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(TYRE_TYPE_LABELS) as TyreType[]).map((tyreType) => (
+              <OptionButton
+                key={tyreType}
+                active={value.tyreType === tyreType}
+                onClick={() => onChange({ ...value, tyreType })}
+              >
+                {TYRE_TYPE_LABELS[tyreType]}
+              </OptionButton>
+            ))}
+          </div>
+          <p className="text-xs text-zinc-500 mt-2">
+            Slicks (no tread, like an F1 dry tyre) grip harder in the dry but lose most of
+            that grip the moment the road is wet. Standard tyres are the steadier
+            all-weather choice.
+          </p>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-zinc-300 block mb-2">
+            Tyre Compound
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(TYRE_COMPOUND_LABELS) as TyreCompound[]).map((tyreCompound) => (
+              <OptionButton
+                key={tyreCompound}
+                active={value.tyreCompound === tyreCompound}
+                onClick={() => onChange({ ...value, tyreCompound })}
+              >
+                {TYRE_COMPOUND_LABELS[tyreCompound]}
+              </OptionButton>
+            ))}
+          </div>
+          <p className="text-xs text-zinc-500 mt-2">
+            Soft grips hardest but fades soonest in the wet; hard is the most
+            conservative dry compound. Intermediate and wet trade dry-weather grip for
+            the ability to clear water once conditions turn damp or soaked.
+          </p>
+        </div>
 
         <div>
           <div className="flex items-baseline justify-between mb-1">

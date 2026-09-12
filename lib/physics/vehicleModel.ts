@@ -1,5 +1,5 @@
 import { BODY_TYPE_PRESETS } from "./defaults";
-import { ChassisConfig, EngineConfig, EngineCurves, VehicleSpec } from "./types";
+import { ChassisConfig, EngineConfig, EngineCurves, GearboxConfig, VehicleSpec } from "./types";
 
 const CYLINDER_MASS_KG = 12;
 const DISPLACEMENT_MASS_PER_L_KG = 40;
@@ -46,6 +46,7 @@ export function deriveVehicle(
   engine: EngineConfig,
   curves: EngineCurves,
   chassis: ChassisConfig,
+  gearbox: GearboxConfig,
 ): VehicleSpec {
   const preset = BODY_TYPE_PRESETS[chassis.bodyType];
 
@@ -67,7 +68,7 @@ export function deriveVehicle(
     (chassis.frontWheelWidthMm - REFERENCE_FRONT_WIDTH_MM) * WIDTH_MASS_PER_MM_KG +
     (chassis.rearWheelWidthMm - REFERENCE_REAR_WIDTH_MM) * WIDTH_MASS_PER_MM_KG;
 
-  const gearCount = engine.gearCount;
+  const gearCount = gearbox.gearCount;
   const topRatio = TOP_RATIO_AT_SIX_SPEED * Math.pow(TOP_RATIO_STEP, gearCount - 6);
   const gearRatios = Array.from({ length: gearCount }, (_, i) =>
     LAUNCH_RATIO * Math.pow(topRatio / LAUNCH_RATIO, i / (gearCount - 1)),
@@ -76,7 +77,7 @@ export function deriveVehicle(
   // Whichever axle is driven is the one that puts power down, so its tire
   // width (contact patch) and diameter (gearing) are what matter for
   // traction and the rpm-to-speed relationship - not always the rear.
-  const isRwd = engine.drivetrain === "rwd";
+  const isRwd = gearbox.drivetrain === "rwd";
   const driveWidthMm = isRwd ? chassis.rearWheelWidthMm : chassis.frontWheelWidthMm;
   const driveReferenceWidthMm = isRwd ? REFERENCE_REAR_WIDTH_MM : REFERENCE_FRONT_WIDTH_MM;
   const driveDiameterIn = isRwd ? chassis.rearWheelDiameterIn : chassis.frontWheelDiameterIn;

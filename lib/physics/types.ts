@@ -11,11 +11,16 @@ export interface EngineConfig {
   maxRevRpm: number;
   aspiration: Aspiration;
   fuelType: FuelType;
+}
+
+export interface GearboxConfig {
   gearCount: number;
   drivetrain: Drivetrain;
 }
 
 export type BodyType = "minivan" | "suv" | "supercar";
+export type TyreType = "slick" | "standard";
+export type TyreCompound = "soft" | "medium" | "hard" | "intermediate" | "wet";
 
 export interface ChassisConfig {
   bodyType: BodyType;
@@ -27,6 +32,8 @@ export interface ChassisConfig {
   rearWheelDiameterIn: number;
   frontWheelWidthMm: number;
   rearWheelWidthMm: number;
+  tyreType: TyreType;
+  tyreCompound: TyreCompound;
 }
 
 export type TestType = "zeroToHundred" | "tenSecond" | "drag500m" | "braking";
