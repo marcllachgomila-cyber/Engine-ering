@@ -73,7 +73,7 @@ export default function TimeSeriesGraph({
 
   return (
     <div className="w-full">
-      <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
+      <div className="text-xs uppercase tracking-wider text-zinc-500 mb-1">
         {label}
       </div>
       <svg

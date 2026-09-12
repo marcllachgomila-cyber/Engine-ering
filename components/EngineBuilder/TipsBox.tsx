@@ -53,8 +53,8 @@ export default function TipsBox() {
   const [topic, setTopic] = useState<Topic | null>(null);
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60">
-      <div className="px-5 py-3 border-b border-slate-800/80">
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md">
+      <div className="px-5 py-3 border-b border-zinc-800/80">
         <span className="flex items-center gap-2 text-sm font-medium text-amber-400">
           <span aria-hidden>&#128161;</span> Tuning Tips
         </span>
@@ -62,7 +62,7 @@ export default function TipsBox() {
       <div className="px-5 py-5">
         {!topic ? (
           <>
-            <p className="text-sm text-slate-400 mb-3">
+            <p className="text-sm text-zinc-400 mb-3">
               What do you want to improve?
             </p>
             <div className="flex flex-wrap gap-2">
@@ -71,7 +71,7 @@ export default function TipsBox() {
                   key={t}
                   type="button"
                   onClick={() => setTopic(t)}
-                  className="px-3 py-1.5 rounded-lg text-sm border border-slate-700 text-slate-300 hover:border-amber-500 hover:text-amber-400 transition-colors"
+                  className="px-3 py-1.5 rounded-lg text-sm border border-zinc-700 text-zinc-300 hover:border-amber-500 hover:text-amber-400 transition-colors"
                 >
                   {TOPIC_LABELS[t]}
                 </button>
@@ -81,20 +81,20 @@ export default function TipsBox() {
         ) : (
           <>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-slate-200">
+              <p className="text-sm font-medium text-zinc-200">
                 Improving {TOPIC_LABELS[topic]}
               </p>
               <button
                 type="button"
                 onClick={() => setTopic(null)}
-                className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
               >
                 Choose another
               </button>
             </div>
             <ul className="space-y-2">
               {TIPS[topic].map((tip) => (
-                <li key={tip} className="text-sm text-slate-300 flex gap-2">
+                <li key={tip} className="text-sm text-zinc-300 flex gap-2">
                   <span className="text-amber-400 shrink-0" aria-hidden>
                     &bull;
                   </span>
@@ -102,11 +102,11 @@ export default function TipsBox() {
                 </li>
               ))}
             </ul>
-            <div className="mt-4 pt-4 border-t border-slate-800">
-              <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
+            <div className="mt-4 pt-4 border-t border-zinc-800">
+              <div className="text-xs uppercase tracking-wider text-zinc-500 mb-1">
                 Recommended Settings
               </div>
-              <p className="text-sm text-slate-300">{RECOMMENDED[topic]}</p>
+              <p className="text-sm text-zinc-300">{RECOMMENDED[topic]}</p>
             </div>
           </>
         )}

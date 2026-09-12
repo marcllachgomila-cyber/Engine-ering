@@ -93,10 +93,10 @@ export function Gauge({
         <circle cx={CX} cy={CY} r={6} fill="#e2e8f0" />
       </svg>
       <div className="-mt-6 text-center">
-        <div className="text-2xl font-mono font-bold text-slate-50 tabular-nums">
+        <div className="text-2xl font-mono font-bold text-zinc-50 tabular-nums">
           {Math.round(value).toLocaleString()}
         </div>
-        <div className="text-xs uppercase tracking-wider text-slate-400">
+        <div className="text-xs uppercase tracking-wider text-zinc-400">
           {label} {unit}
         </div>
       </div>
@@ -107,10 +107,10 @@ export function Gauge({
 function GearDisplay({ gear }: { gear: number }) {
   return (
     <div className="flex flex-col items-center justify-center w-[100px] h-[160px]">
-      <div className="text-6xl font-mono font-black text-slate-50 tabular-nums leading-none">
+      <div className="text-6xl font-mono font-black text-zinc-50 tabular-nums leading-none">
         {gear}
       </div>
-      <div className="mt-3 text-xs uppercase tracking-wider text-slate-400">
+      <div className="mt-3 text-xs uppercase tracking-wider text-zinc-400">
         Gear
       </div>
     </div>

@@ -60,6 +60,9 @@ export const DEFAULT_TEST_CONFIG: TestConfig = {
   testType: "tenSecond",
   condition: "dry",
   initialSpeedKph: 0,
+  absEnabled: true,
+  initialBrakeTempC: 80,
+  brakeMaterial: "steel",
 };
 
 export const DIESEL_MAX_REDLINE_RPM = 5200;

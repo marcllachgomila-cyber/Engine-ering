@@ -54,6 +54,7 @@ export default function SimulationRunner({
     torqueNm: 0,
     gForce: 0,
     distanceM: 0,
+    brakeTempC: test.initialBrakeTempC,
   };
 
   const [phase, setPhase] = useState<Phase>(isBraking ? "cruise" : "running");
@@ -145,7 +146,7 @@ export default function SimulationRunner({
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center gap-8">
-      <h2 className="text-2xl font-bold text-slate-50">{headline}</h2>
+      <h2 className="text-2xl font-bold text-zinc-50">{headline}</h2>
       {phase === "countdown" && countdown !== null && (
         <div className="text-8xl font-mono font-black text-amber-400 tabular-nums -mt-4">
           {countdown === 0 ? "BRAKE!" : countdown}

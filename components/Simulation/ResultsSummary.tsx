@@ -18,11 +18,11 @@ interface ResultsSummaryProps {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-4">
-      <div className="text-xs uppercase tracking-wider text-slate-500">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md px-5 py-4">
+      <div className="text-xs uppercase tracking-wider text-zinc-500">
         {label}
       </div>
-      <div className="mt-1 text-xl font-mono font-bold text-slate-50 tabular-nums">
+      <div className="mt-1 text-xl font-mono font-bold text-zinc-50 tabular-nums">
         {value}
       </div>
     </div>
@@ -31,7 +31,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function GraphCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-4">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md px-5 py-4">
       {children}
     </div>
   );
@@ -69,11 +69,11 @@ export default function ResultsSummary({ engine, chassis, result }: ResultsSumma
         <div className="text-sm uppercase tracking-widest text-amber-400">
           {headline.label}
         </div>
-        <div className="text-6xl font-mono font-black text-slate-50 mt-1">
+        <div className="text-6xl font-mono font-black text-zinc-50 mt-1">
           {headline.value}
         </div>
         {subtext && (
-          <div className="mt-2 text-sm font-mono text-slate-400">{subtext}</div>
+          <div className="mt-2 text-sm font-mono text-zinc-400">{subtext}</div>
         )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

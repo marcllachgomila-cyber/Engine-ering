@@ -31,11 +31,15 @@ export interface ChassisConfig {
 
 export type TestType = "zeroToHundred" | "tenSecond" | "drag500m" | "braking";
 export type RoadCondition = "dry" | "wet" | "rain" | "wind";
+export type BrakeMaterial = "steel" | "ceramic" | "carbon";
 
 export interface TestConfig {
   testType: TestType;
   condition: RoadCondition;
   initialSpeedKph: number;
+  absEnabled: boolean;
+  initialBrakeTempC: number;
+  brakeMaterial: BrakeMaterial;
 }
 
 export interface EngineCurves {
@@ -75,6 +79,7 @@ export interface Telemetry {
   torqueNm: number;
   gForce: number;
   distanceM: number;
+  brakeTempC?: number;
 }
 
 export interface SimulationResult {

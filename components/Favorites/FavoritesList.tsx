@@ -43,8 +43,8 @@ export default function FavoritesList({ favorites, onRemove }: FavoritesListProp
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-50">Favorite Engines</h2>
-        <p className="text-slate-400 mt-1 text-sm">{favorites.length} saved</p>
+        <h2 className="text-2xl font-bold text-zinc-50">Favorite Engines</h2>
+        <p className="text-zinc-400 mt-1 text-sm">{favorites.length} saved</p>
       </div>
 
       {favorites.length > 0 && (
@@ -56,8 +56,8 @@ export default function FavoritesList({ favorites, onRemove }: FavoritesListProp
               onClick={() => setSortKey(opt.key)}
               className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
                 sortKey === opt.key
-                  ? "bg-amber-500 border-amber-500 text-slate-950 font-semibold"
-                  : "border-slate-700 text-slate-300 hover:border-slate-500"
+                  ? "bg-amber-500 border-amber-500 text-zinc-950 font-semibold"
+                  : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
               }`}
             >
               {opt.label}
@@ -67,7 +67,7 @@ export default function FavoritesList({ favorites, onRemove }: FavoritesListProp
       )}
 
       {favorites.length === 0 ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-8 text-center text-slate-400">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md p-8 text-center text-zinc-400">
           No favorites saved yet. Build an engine, run it, and save it from the
           results screen.
         </div>

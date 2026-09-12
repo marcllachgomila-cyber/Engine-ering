@@ -60,12 +60,12 @@ export default function TractiveForceGraph({ data }: TractiveForceGraphProps) {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-1 flex-wrap gap-x-3 gap-y-1">
-        <div className="text-xs uppercase tracking-wider text-slate-500">
+        <div className="text-xs uppercase tracking-wider text-zinc-500">
           Tractive Force vs Speed (by Gear)
         </div>
         <div className="flex items-center gap-2.5 text-xs font-mono flex-wrap">
           {data.gearCurves.map((g, i) => (
-            <span key={g.gear} className="flex items-center gap-1 text-slate-300">
+            <span key={g.gear} className="flex items-center gap-1 text-zinc-300">
               <span
                 className="inline-block w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: GEAR_COLORS[i % GEAR_COLORS.length] }}
@@ -73,7 +73,7 @@ export default function TractiveForceGraph({ data }: TractiveForceGraphProps) {
               G{g.gear}
             </span>
           ))}
-          <span className="flex items-center gap-1 text-slate-400">
+          <span className="flex items-center gap-1 text-zinc-400">
             <span
               className="inline-block w-2.5 h-0.5"
               style={{ backgroundColor: RESISTANCE_COLOR }}

@@ -8,7 +8,7 @@ interface MatchListProps {
 export default function MatchList({ matches }: MatchListProps) {
   return (
     <div className="w-full max-w-3xl mx-auto space-y-3">
-      <h3 className="text-lg font-semibold text-slate-200">
+      <h3 className="text-lg font-semibold text-zinc-200">
         Closest Real-World Matches
       </h3>
       <div className="space-y-2">

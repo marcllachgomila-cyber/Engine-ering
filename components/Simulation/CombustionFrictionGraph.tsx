@@ -53,18 +53,18 @@ export default function CombustionFrictionGraph({ curves }: CombustionFrictionGr
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-1">
-        <div className="text-xs uppercase tracking-wider text-slate-500">
+        <div className="text-xs uppercase tracking-wider text-zinc-500">
           Combustion vs Friction Torque
         </div>
         <div className="flex items-center gap-3 text-xs font-mono">
-          <span className="flex items-center gap-1.5 text-slate-300">
+          <span className="flex items-center gap-1.5 text-zinc-300">
             <span
               className="inline-block w-2.5 h-2.5 rounded-full"
               style={{ backgroundColor: COMBUSTION_COLOR }}
             />
             Combustion
           </span>
-          <span className="flex items-center gap-1.5 text-slate-300">
+          <span className="flex items-center gap-1.5 text-zinc-300">
             <span
               className="inline-block w-2.5 h-2.5 rounded-full"
               style={{ backgroundColor: FRICTION_COLOR }}

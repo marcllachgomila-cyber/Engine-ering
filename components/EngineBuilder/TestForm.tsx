@@ -1,6 +1,7 @@
 "use client";
 
-import { RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
+import { BRAKE_MATERIALS, BRAKE_TEMP_MAX_C, BRAKE_TEMP_MIN_C } from "@/lib/physics/brakeModel";
+import { BrakeMaterial, RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
 
 const TEST_TYPE_LABELS: Record<TestType, string> = {
@@ -16,6 +17,9 @@ const CONDITION_LABELS: Record<RoadCondition, string> = {
   rain: "Rain",
   wind: "Headwind",
 };
+
+const MAX_SPEED_KPH = 150;
+const MAX_BRAKING_SPEED_KPH = 400;
 
 interface TestFormProps {
   value: TestConfig;
@@ -34,7 +38,7 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
 
       <SectionCard title="Test">
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-2">
+          <label className="text-sm font-medium text-zinc-300 block mb-2">
             Test Type
           </label>
           <div className="flex flex-wrap gap-2">
@@ -42,7 +46,16 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
               <OptionButton
                 key={t}
                 active={value.testType === t}
-                onClick={() => onChange({ ...value, testType: t })}
+                onClick={() =>
+                  onChange({
+                    ...value,
+                    testType: t,
+                    initialSpeedKph:
+                      t === "braking"
+                        ? value.initialSpeedKph
+                        : Math.min(value.initialSpeedKph, MAX_SPEED_KPH),
+                  })
+                }
               >
                 {TEST_TYPE_LABELS[t]}
               </OptionButton>
@@ -50,8 +63,84 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
           </div>
         </div>
 
+        {value.testType === "braking" && (
+          <div className="space-y-6 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+            <div>
+              <label className="text-sm font-medium text-zinc-300 block mb-2">
+                ABS
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <OptionButton
+                  active={value.absEnabled}
+                  onClick={() => onChange({ ...value, absEnabled: true })}
+                >
+                  On
+                </OptionButton>
+                <OptionButton
+                  active={!value.absEnabled}
+                  onClick={() => onChange({ ...value, absEnabled: false })}
+                >
+                  Off
+                </OptionButton>
+              </div>
+              <p className="text-xs text-zinc-500 mt-2">
+                Off risks lock-up - a sliding tyre grips worse than one held right
+                at the edge of traction.
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-baseline justify-between mb-1">
+                <label className="text-sm font-medium text-zinc-300">
+                  Initial Brake Temperature
+                </label>
+                <span className="text-lg font-mono text-amber-400">
+                  {value.initialBrakeTempC}°C
+                </span>
+              </div>
+              <input
+                type="range"
+                min={BRAKE_TEMP_MIN_C}
+                max={BRAKE_TEMP_MAX_C}
+                step={10}
+                value={value.initialBrakeTempC}
+                onChange={(e) =>
+                  onChange({ ...value, initialBrakeTempC: parseInt(e.target.value, 10) })
+                }
+                className="w-full accent-amber-500"
+              />
+              <p className="text-xs text-zinc-500 mt-1">
+                How hot the brakes already are going into the stop - cold or
+                overheated, both can cost effectiveness depending on material.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-zinc-300 block mb-2">
+                Brake Material
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(BRAKE_MATERIALS) as BrakeMaterial[]).map((m) => (
+                  <OptionButton
+                    key={m}
+                    active={value.brakeMaterial === m}
+                    onClick={() => onChange({ ...value, brakeMaterial: m })}
+                  >
+                    {BRAKE_MATERIALS[m].label}
+                  </OptionButton>
+                ))}
+              </div>
+              <p className="text-xs text-zinc-500 mt-2">
+                Steel bites hard from cold but fades under sustained heat; ceramic
+                trades a little cold bite for a much wider comfort zone; carbon is
+                weak until it&apos;s properly hot, then out-brakes both.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-2">
+          <label className="text-sm font-medium text-zinc-300 block mb-2">
             Conditions
           </label>
           <div className="flex flex-wrap gap-2">
@@ -66,7 +155,7 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
             ))}
           </div>
           {value.condition === "wind" && (
-            <p className="text-xs text-slate-500 mt-2">
+            <p className="text-xs text-zinc-500 mt-2">
               A steady headwind straight off the nose - it only ever adds drag.
             </p>
           )}
@@ -74,7 +163,7 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
 
         <div>
           <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium text-slate-300">
+            <label className="text-sm font-medium text-zinc-300">
               {value.testType === "braking" ? "Braking Speed" : "Initial Velocity"}
             </label>
             <span className="text-lg font-mono text-amber-400">
@@ -84,7 +173,7 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
           <input
             type="range"
             min={0}
-            max={150}
+            max={value.testType === "braking" ? MAX_BRAKING_SPEED_KPH : MAX_SPEED_KPH}
             step={5}
             value={value.initialSpeedKph}
             onChange={(e) =>
@@ -92,7 +181,7 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
             }
             className="w-full accent-amber-500"
           />
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-zinc-500 mt-1">
             {value.testType === "braking"
               ? "Speed to brake from in a straight line - the test measures time and distance to a full stop."
               : "Start the run already rolling instead of from a standstill - 0 for a normal standing-start test."}

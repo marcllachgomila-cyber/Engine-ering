@@ -20,10 +20,10 @@ export function OptionButton({
       onClick={onClick}
       className={`px-3 py-1.5 rounded-lg text-sm font-mono border transition-colors ${
         active
-          ? "bg-amber-500 border-amber-500 text-slate-950 font-semibold"
+          ? "bg-amber-500 border-amber-500 text-zinc-950 font-semibold"
           : disabled
-            ? "border-slate-800 text-slate-600 cursor-not-allowed"
-            : "border-slate-700 text-slate-300 hover:border-slate-500"
+            ? "border-zinc-800 text-zinc-600 cursor-not-allowed"
+            : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
       } ${className ?? ""}`}
     >
       {children}
@@ -39,8 +39,8 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+    <div className="space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-md p-6">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
         {title}
       </h2>
       {children}
@@ -59,7 +59,7 @@ export function ContinueButton({
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-lg py-4 transition-colors"
+      className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-lg py-4 transition-colors"
     >
       {children}
     </button>
@@ -80,8 +80,8 @@ export function StepHeader({
       <div className="text-xs font-mono uppercase tracking-widest text-amber-400 mb-1">
         {step}
       </div>
-      <h1 className="text-3xl font-bold text-slate-50 tracking-tight">{title}</h1>
-      <p className="text-slate-400 mt-2">{description}</p>
+      <h1 className="text-3xl font-bold text-zinc-50 tracking-tight">{title}</h1>
+      <p className="text-zinc-400 mt-2">{description}</p>
     </div>
   );
 }
