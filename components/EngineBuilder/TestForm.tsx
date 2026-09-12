@@ -7,6 +7,7 @@ const TEST_TYPE_LABELS: Record<TestType, string> = {
   zeroToHundred: "0–100 kph",
   tenSecond: "10-Second",
   drag500m: "500m Drag",
+  braking: "Braking Test",
 };
 
 const CONDITION_LABELS: Record<RoadCondition, string> = {
@@ -74,7 +75,7 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
         <div>
           <div className="flex items-baseline justify-between mb-1">
             <label className="text-sm font-medium text-slate-300">
-              Initial Velocity
+              {value.testType === "braking" ? "Braking Speed" : "Initial Velocity"}
             </label>
             <span className="text-lg font-mono text-amber-400">
               {value.initialSpeedKph} kph
@@ -92,8 +93,9 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
             className="w-full accent-amber-500"
           />
           <p className="text-xs text-slate-500 mt-1">
-            Start the run already rolling instead of from a standstill - 0 for
-            a normal standing-start test.
+            {value.testType === "braking"
+              ? "Speed to brake from in a straight line - the test measures time and distance to a full stop."
+              : "Start the run already rolling instead of from a standstill - 0 for a normal standing-start test."}
           </p>
         </div>
       </SectionCard>

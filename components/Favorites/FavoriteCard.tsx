@@ -26,6 +26,7 @@ export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) 
     initialSpeedKph: test.initialSpeedKph,
     elapsedS: favorite.elapsedS,
     finalSpeedKph: favorite.finalSpeedKph,
+    finalDistanceM: favorite.finalDistanceM,
     timedOut: false,
   });
 

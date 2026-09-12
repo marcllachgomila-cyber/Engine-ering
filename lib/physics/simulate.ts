@@ -67,6 +67,19 @@ function rpmFromSpeed(
   );
 }
 
+// Picks the gear a driver would actually be in at a given road speed: the
+// highest (tallest) gear that still keeps the engine above idle. Used to
+// downshift the transmission as the car slows during braking, the same way
+// it upshifts as it speeds up under power.
+function gearForSpeed(speedMs: number, vehicle: VehicleSpec, curves: EngineCurves): number {
+  for (let g = vehicle.gearRatios.length; g >= 1; g--) {
+    if (rpmFromSpeed(speedMs, vehicle.gearRatios[g - 1], vehicle) >= curves.idleRpm) {
+      return g;
+    }
+  }
+  return 1;
+}
+
 function estimateTopSpeedKph(
   curves: EngineCurves,
   vehicle: VehicleSpec,
@@ -109,6 +122,30 @@ function estimateTopSpeedKph(
   return lastValidSpeedMs * 3.6;
 }
 
+export interface CruiseState {
+  gear: number;
+  rpm: number;
+}
+
+// What the engine is doing while cruising at a steady speed before a test
+// actually starts - used by the braking test's lead-in, where the car holds
+// the chosen speed (and the audio/gauges reflect it) before the countdown.
+export function computeCruiseState(
+  engine: EngineConfig,
+  chassis: ChassisConfig,
+  speedKph: number,
+): CruiseState {
+  const curves = buildEngineCurves(engine);
+  const vehicle = deriveVehicle(engine, curves, chassis);
+  const speedMs = Math.max(0, speedKph / 3.6);
+  const gear = gearForSpeed(speedMs, vehicle, curves);
+  const rpm = Math.min(
+    Math.max(rpmFromSpeed(speedMs, vehicle.gearRatios[gear - 1], vehicle), curves.idleRpm),
+    curves.maxRevRpm,
+  );
+  return { gear, rpm };
+}
+
 export function simulate(
   engine: EngineConfig,
   chassis: ChassisConfig,
@@ -124,9 +161,15 @@ export function simulate(
     wheelSpinEfficiency(chassis.wheelSpinPercent);
   const tractionLimit = effectiveMu * vehicle.weightKg * G;
 
+  // Braking isn't limited by launch wheel-spin tuning - it's modeled as an
+  // idealized max-effort stop (perfect ABS, no lock-up), so it only inherits
+  // the tire's grip and the road condition, not the wheelspin term above.
+  const brakingTractionLimit =
+    vehicle.tireGripMu * conditionGripMultiplier(test.condition) * vehicle.weightKg * G;
+
   let speedMs = Math.max(0, test.initialSpeedKph / 3.6);
   let distanceM = 0;
-  let gear = 1;
+  let gear = test.testType === "braking" ? gearForSpeed(speedMs, vehicle, curves) : 1;
   let t = 0;
   let reachedHundredAtS: number | null = speedMs >= HUNDRED_KPH_MS ? 0 : null;
 
@@ -142,10 +185,47 @@ export function simulate(
         return distanceM < DRAG_DISTANCE_M;
       case "zeroToHundred":
         return speedMs < HUNDRED_KPH_MS;
+      case "braking":
+        return speedMs > 0;
     }
   };
 
   while (shouldContinue()) {
+    if (test.testType === "braking") {
+      const relativeSpeedMs = speedMs + headwindMs;
+      const dragForce =
+        0.5 *
+        AIR_DENSITY_KG_M3 *
+        vehicle.dragCoefficient *
+        vehicle.frontalAreaM2 *
+        relativeSpeedMs *
+        relativeSpeedMs;
+      const decelForce = brakingTractionLimit + dragForce + rollingForce;
+      const accelMs2 = -decelForce / vehicle.weightKg;
+
+      speedMs = Math.max(0, speedMs + accelMs2 * DT);
+      distanceM += speedMs * DT;
+      t += DT;
+
+      gear = gearForSpeed(speedMs, vehicle, curves);
+      const rpm = Math.min(
+        Math.max(rpmFromSpeed(speedMs, vehicle.gearRatios[gear - 1], vehicle), curves.idleRpm),
+        curves.maxRevRpm,
+      );
+
+      telemetry.push({
+        t,
+        speedKph: speedMs * 3.6,
+        rpm,
+        gear,
+        hp: 0,
+        torqueNm: 0,
+        gForce: accelMs2 / G,
+        distanceM,
+      });
+      continue;
+    }
+
     const gearRatio = vehicle.gearRatios[gear - 1];
     let rpm = Math.max(rpmFromSpeed(speedMs, gearRatio, vehicle), curves.idleRpm);
 
@@ -207,7 +287,9 @@ export function simulate(
       ? reachedHundredAtS === null
       : test.testType === "drag500m"
         ? (last?.distanceM ?? 0) < DRAG_DISTANCE_M
-        : false;
+        : test.testType === "braking"
+          ? (last?.speedKph ?? 0) > 0.5
+          : false;
 
   return {
     telemetry,

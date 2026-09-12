@@ -29,7 +29,7 @@ export interface ChassisConfig {
   rearWheelWidthMm: number;
 }
 
-export type TestType = "zeroToHundred" | "tenSecond" | "drag500m";
+export type TestType = "zeroToHundred" | "tenSecond" | "drag500m" | "braking";
 export type RoadCondition = "dry" | "wet" | "rain" | "wind";
 
 export interface TestConfig {

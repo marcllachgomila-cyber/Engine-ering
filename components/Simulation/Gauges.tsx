@@ -104,14 +104,34 @@ export function Gauge({
   );
 }
 
+function GearDisplay({ gear }: { gear: number }) {
+  return (
+    <div className="flex flex-col items-center justify-center w-[100px] h-[160px]">
+      <div className="text-6xl font-mono font-black text-slate-50 tabular-nums leading-none">
+        {gear}
+      </div>
+      <div className="mt-3 text-xs uppercase tracking-wider text-slate-400">
+        Gear
+      </div>
+    </div>
+  );
+}
+
 interface GaugesProps {
   rpm: number;
   redlineRpm: number;
   speedKph: number;
   maxSpeedKph?: number;
+  gear?: number;
 }
 
-export default function Gauges({ rpm, redlineRpm, speedKph, maxSpeedKph = 180 }: GaugesProps) {
+export default function Gauges({
+  rpm,
+  redlineRpm,
+  speedKph,
+  maxSpeedKph = 180,
+  gear,
+}: GaugesProps) {
   return (
     <div className="flex gap-6 sm:gap-10">
       <Gauge
@@ -122,6 +142,7 @@ export default function Gauges({ rpm, redlineRpm, speedKph, maxSpeedKph = 180 }:
         unit=""
         accentColor="#f59e0b"
       />
+      {gear !== undefined && <GearDisplay gear={gear} />}
       <Gauge value={speedKph} max={maxSpeedKph} label="Speed" unit="kph" accentColor="#38bdf8" />
     </div>
   );

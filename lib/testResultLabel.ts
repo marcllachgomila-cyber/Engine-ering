@@ -4,6 +4,7 @@ export const TEST_TYPE_LABELS: Record<TestType, string> = {
   zeroToHundred: "0–100 kph",
   tenSecond: "10s Run",
   drag500m: "500m Drag",
+  braking: "Braking Test",
 };
 
 interface ResultHeadlineInput {
@@ -12,6 +13,7 @@ interface ResultHeadlineInput {
   elapsedS: number;
   finalSpeedKph: number;
   timedOut: boolean;
+  finalDistanceM?: number;
 }
 
 export function resultHeadline({
@@ -20,6 +22,7 @@ export function resultHeadline({
   elapsedS,
   finalSpeedKph,
   timedOut,
+  finalDistanceM,
 }: ResultHeadlineInput): { label: string; value: string; sub: string | null } {
   switch (testType) {
     case "zeroToHundred": {
@@ -41,6 +44,15 @@ export function resultHeadline({
         label: "500m Drag",
         value: timedOut ? "Did not finish" : `${elapsedS.toFixed(2)}s`,
         sub: `Trap speed: ${Math.round(finalSpeedKph)} kph`,
+      };
+    case "braking":
+      return {
+        label: `Braking from ${Math.round(initialSpeedKph)} kph`,
+        value: timedOut ? "Did not stop" : `${elapsedS.toFixed(2)}s`,
+        sub:
+          finalDistanceM !== undefined
+            ? `Stopping distance: ${Math.round(finalDistanceM)}m`
+            : null,
       };
   }
 }
