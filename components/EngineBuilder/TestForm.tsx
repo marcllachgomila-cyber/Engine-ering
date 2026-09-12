@@ -31,7 +31,7 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
   return (
     <div className="w-full space-y-8">
       <StepHeader
-        step="Step 3 of 3"
+        step="Step 4 of 4"
         title="Test Specifications"
         description="Choose the test and the conditions to run it under."
       />

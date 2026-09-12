@@ -1,3 +1,4 @@
+import { recommendedGearRatios } from "./gearRatios";
 import { BodyType, ChassisConfig, EngineConfig, GearboxConfig, TestConfig } from "./types";
 
 export const DEFAULT_ENGINE: EngineConfig = {
@@ -11,8 +12,12 @@ export const DEFAULT_ENGINE: EngineConfig = {
 };
 
 export const DEFAULT_GEARBOX: GearboxConfig = {
+  transmissionType: "manual",
   gearCount: 6,
+  gearRatios: recommendedGearRatios(6),
   drivetrain: "rwd",
+  dualClutch: false,
+  autoShiftStrategy: "maxRpm",
 };
 
 export interface BodyTypePreset {

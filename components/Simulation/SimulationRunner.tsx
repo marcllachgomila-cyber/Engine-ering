@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { computeCruiseState, simulate } from "@/lib/physics/simulate";
-import { ChassisConfig, EngineConfig, SimulationResult, Telemetry, TestConfig } from "@/lib/physics/types";
+import {
+  ChassisConfig,
+  EngineConfig,
+  GearboxConfig,
+  SimulationResult,
+  Telemetry,
+  TestConfig,
+} from "@/lib/physics/types";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import Gauges from "./Gauges";
 import LiveStatsPanel from "./LiveStatsPanel";
@@ -11,6 +18,7 @@ import TimeSeriesGraph from "./TimeSeriesGraph";
 interface SimulationRunnerProps {
   engine: EngineConfig;
   chassis: ChassisConfig;
+  gearbox: GearboxConfig;
   test: TestConfig;
   audioEngine: EngineAudioEngine;
   onComplete: (result: SimulationResult) => void;
@@ -35,15 +43,20 @@ type Phase = "cruise" | "countdown" | "running";
 export default function SimulationRunner({
   engine,
   chassis,
+  gearbox,
   test,
   audioEngine,
   onComplete,
 }: SimulationRunnerProps) {
-  const result = useMemo(() => simulate(engine, chassis, test), [engine, chassis, test]);
+  const result = useMemo(
+    () => simulate(engine, chassis, gearbox, test),
+    [engine, chassis, gearbox, test],
+  );
   const isBraking = test.testType === "braking";
   const cruiseState = useMemo(
-    () => (isBraking ? computeCruiseState(engine, chassis, test.initialSpeedKph) : null),
-    [isBraking, engine, chassis, test.initialSpeedKph],
+    () =>
+      isBraking ? computeCruiseState(engine, chassis, gearbox, test.initialSpeedKph) : null,
+    [isBraking, engine, chassis, gearbox, test.initialSpeedKph],
   );
   const cruiseSample: Telemetry | null = cruiseState && {
     t: 0,

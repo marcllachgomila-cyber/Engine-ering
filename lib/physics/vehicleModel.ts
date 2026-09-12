@@ -1,4 +1,5 @@
 import { BODY_TYPE_PRESETS } from "./defaults";
+import { recommendedGearRatios } from "./gearRatios";
 import { ChassisConfig, EngineConfig, EngineCurves, GearboxConfig, VehicleSpec } from "./types";
 
 const CYLINDER_MASS_KG = 12;
@@ -6,14 +7,6 @@ const DISPLACEMENT_MASS_PER_L_KG = 40;
 const TURBO_HARDWARE_KG = 25;
 const SUPERCHARGER_HARDWARE_KG = 35;
 
-const LAUNCH_RATIO = 3.6;
-// Reference top-gear ratio for a 6-speed box. More gears spread the same
-// launch-to-top range further, so each extra gear makes top gear ~7%
-// taller (numerically lower); fewer gears make it shorter. This is what
-// lets picking more gears meaningfully raise theoretical top speed, the
-// same way a taller final-drive/overdrive gear does in a real car.
-const TOP_RATIO_AT_SIX_SPEED = 0.85;
-const TOP_RATIO_STEP = 0.93;
 const FINAL_DRIVE = 3.9;
 
 // Reference wheel sizes the base chassis weight/traction figures assume.
@@ -37,6 +30,25 @@ const GRIP_LOSS_PER_PSI = 0.012;
 // when you need it), while FWD cars have weight lifted off their drive
 // wheels at the exact same moment, making them more prone to wheelspin.
 const FWD_TRACTION_PENALTY = 0.88;
+
+// Shift right before the hard limiter rather than the tuned redline, so a
+// higher max-rev setting genuinely extends each gear's pull. Manual boxes
+// (and the default "max RPM" auto strategy) always shift here, on the
+// assumption of a driver who takes every gear to the limiter; the other
+// auto strategies instead short-shift at the torque or power peak.
+function computeShiftRpm(curves: EngineCurves, gearbox: GearboxConfig): number {
+  if (gearbox.transmissionType === "auto") {
+    switch (gearbox.autoShiftStrategy) {
+      case "maxTorque":
+        return curves.peakTorqueRpm;
+      case "maxPower":
+        return curves.peakPowerRpm;
+      case "maxRpm":
+        break;
+    }
+  }
+  return curves.maxRevRpm * 0.97;
+}
 
 export function wheelDiameterToRadiusM(diameterIn: number): number {
   return (diameterIn * 0.0254) / 2;
@@ -68,11 +80,13 @@ export function deriveVehicle(
     (chassis.frontWheelWidthMm - REFERENCE_FRONT_WIDTH_MM) * WIDTH_MASS_PER_MM_KG +
     (chassis.rearWheelWidthMm - REFERENCE_REAR_WIDTH_MM) * WIDTH_MASS_PER_MM_KG;
 
-  const gearCount = gearbox.gearCount;
-  const topRatio = TOP_RATIO_AT_SIX_SPEED * Math.pow(TOP_RATIO_STEP, gearCount - 6);
-  const gearRatios = Array.from({ length: gearCount }, (_, i) =>
-    LAUNCH_RATIO * Math.pow(topRatio / LAUNCH_RATIO, i / (gearCount - 1)),
-  );
+  // Custom ratios are trusted as long as they match the chosen gear count;
+  // otherwise (e.g. gear count just changed) fall back to the recommended
+  // spread rather than indexing into a mismatched array.
+  const gearRatios =
+    gearbox.gearRatios.length === gearbox.gearCount
+      ? gearbox.gearRatios
+      : recommendedGearRatios(gearbox.gearCount);
 
   // Whichever axle is driven is the one that puts power down, so its tire
   // width (contact patch) and diameter (gearing) are what matter for
@@ -107,8 +121,6 @@ export function deriveVehicle(
     frontWheelRadiusM: wheelDiameterToRadiusM(chassis.frontWheelDiameterIn),
     gearRatios,
     finalDrive: FINAL_DRIVE,
-    // Shift right before the hard limiter rather than the tuned redline, so
-    // a higher max-rev setting genuinely extends each gear's pull.
-    shiftRpm: curves.maxRevRpm * 0.97,
+    shiftRpm: computeShiftRpm(curves, gearbox),
   };
 }

@@ -1,10 +1,18 @@
-import { CarSpec, ChassisConfig, EngineConfig, SimulationResult, TestConfig } from "./physics/types";
+import {
+  CarSpec,
+  ChassisConfig,
+  EngineConfig,
+  GearboxConfig,
+  SimulationResult,
+  TestConfig,
+} from "./physics/types";
 
 export interface SavedEngine {
   id: string;
   savedAt: number;
   engine: EngineConfig;
   chassis: ChassisConfig;
+  gearbox: GearboxConfig;
   test: TestConfig;
   elapsedS: number;
   finalSpeedKph: number;
@@ -72,6 +80,7 @@ export function getFavoritesServerSnapshot(): SavedEngine[] {
 export function addFavorite(
   engine: EngineConfig,
   chassis: ChassisConfig,
+  gearbox: GearboxConfig,
   test: TestConfig,
   result: SimulationResult,
   topMatchCar: CarSpec | null,
@@ -81,6 +90,7 @@ export function addFavorite(
     savedAt: Date.now(),
     engine,
     chassis,
+    gearbox,
     test,
     elapsedS: result.elapsedS,
     finalSpeedKph: result.finalSpeedKph,

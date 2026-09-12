@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ChassisConfig, EngineConfig, SimulationResult } from "@/lib/physics/types";
+import { ChassisConfig, EngineConfig, GearboxConfig, SimulationResult } from "@/lib/physics/types";
 import { buildEngineCurves } from "@/lib/physics/engineModel";
 import { deriveVehicle } from "@/lib/physics/vehicleModel";
 import { computeTractiveForceData } from "@/lib/physics/tractiveForce";
@@ -13,6 +13,7 @@ import TractiveForceGraph from "./TractiveForceGraph";
 interface ResultsSummaryProps {
   engine: EngineConfig;
   chassis: ChassisConfig;
+  gearbox: GearboxConfig;
   result: SimulationResult;
 }
 
@@ -37,7 +38,7 @@ function GraphCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function ResultsSummary({ engine, chassis, result }: ResultsSummaryProps) {
+export default function ResultsSummary({ engine, chassis, gearbox, result }: ResultsSummaryProps) {
   const headline = resultHeadline(result);
 
   let subtext = headline.sub;
@@ -54,12 +55,12 @@ export default function ResultsSummary({ engine, chassis, result }: ResultsSumma
 
   const { curves, tractiveData } = useMemo(() => {
     const builtCurves = buildEngineCurves(engine);
-    const vehicle = deriveVehicle(engine, builtCurves, chassis);
+    const vehicle = deriveVehicle(engine, builtCurves, chassis, gearbox);
     return {
       curves: builtCurves,
       tractiveData: computeTractiveForceData(builtCurves, vehicle),
     };
-  }, [engine, chassis]);
+  }, [engine, chassis, gearbox]);
 
   const finalT = result.telemetry[result.telemetry.length - 1]?.t ?? 0;
 

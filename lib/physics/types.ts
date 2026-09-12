@@ -13,9 +13,16 @@ export interface EngineConfig {
   fuelType: FuelType;
 }
 
+export type TransmissionType = "manual" | "auto";
+export type AutoShiftStrategy = "maxRpm" | "maxTorque" | "maxPower";
+
 export interface GearboxConfig {
+  transmissionType: TransmissionType;
   gearCount: number;
+  gearRatios: number[];
   drivetrain: Drivetrain;
+  dualClutch: boolean;
+  autoShiftStrategy: AutoShiftStrategy;
 }
 
 export type BodyType = "minivan" | "suv" | "supercar";

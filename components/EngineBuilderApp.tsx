@@ -4,11 +4,17 @@ import { useCallback, useState, useSyncExternalStore } from "react";
 import {
   ChassisConfig,
   EngineConfig,
+  GearboxConfig,
   MatchResult,
   SimulationResult,
   TestConfig,
 } from "@/lib/physics/types";
-import { DEFAULT_CHASSIS, DEFAULT_ENGINE, DEFAULT_TEST_CONFIG } from "@/lib/physics/defaults";
+import {
+  DEFAULT_CHASSIS,
+  DEFAULT_ENGINE,
+  DEFAULT_GEARBOX,
+  DEFAULT_TEST_CONFIG,
+} from "@/lib/physics/defaults";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import { findClosestCars } from "@/lib/matching/matchCars";
 import {
@@ -20,6 +26,7 @@ import {
 } from "@/lib/favorites";
 import ChassisForm from "./EngineBuilder/ChassisForm";
 import EngineForm from "./EngineBuilder/EngineForm";
+import GearboxForm from "./EngineBuilder/GearboxForm";
 import TestForm from "./EngineBuilder/TestForm";
 import EnginePreview from "./EngineBuilder/EnginePreview";
 import TipsBox from "./EngineBuilder/TipsBox";
@@ -29,12 +36,13 @@ import ResultsSummary from "./Simulation/ResultsSummary";
 import MatchList from "./Matches/MatchList";
 import FavoritesList from "./Favorites/FavoritesList";
 
-type Step = "chassis" | "engine" | "test" | "simulate" | "results" | "favorites";
+type Step = "chassis" | "engine" | "gearbox" | "test" | "simulate" | "results" | "favorites";
 
 export default function EngineBuilderApp() {
   const [step, setStep] = useState<Step>("chassis");
   const [chassis, setChassis] = useState<ChassisConfig>(DEFAULT_CHASSIS);
   const [engine, setEngine] = useState<EngineConfig>(DEFAULT_ENGINE);
+  const [gearbox, setGearbox] = useState<GearboxConfig>(DEFAULT_GEARBOX);
   const [test, setTest] = useState<TestConfig>(DEFAULT_TEST_CONFIG);
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
@@ -75,9 +83,9 @@ export default function EngineBuilderApp() {
 
   const handleSaveFavorite = useCallback(() => {
     if (!result) return;
-    addFavorite(engine, chassis, test, result, matches[0]?.car ?? null);
+    addFavorite(engine, chassis, gearbox, test, result, matches[0]?.car ?? null);
     setSaved(true);
-  }, [engine, chassis, test, result, matches]);
+  }, [engine, chassis, gearbox, test, result, matches]);
 
   const handleRemoveFavorite = useCallback((id: string) => {
     removeFavorite(id);
@@ -108,7 +116,7 @@ export default function EngineBuilderApp() {
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
-        {(step === "chassis" || step === "engine" || step === "test") && (
+        {(step === "chassis" || step === "engine" || step === "gearbox" || step === "test") && (
           <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start">
             <div className="w-full max-w-3xl mx-auto lg:mx-0">
               <StepNav current={step} onNavigate={(s) => setStep(s)} />
@@ -123,6 +131,13 @@ export default function EngineBuilderApp() {
                 <EngineForm
                   value={engine}
                   onChange={setEngine}
+                  onContinue={() => setStep("gearbox")}
+                />
+              )}
+              {step === "gearbox" && (
+                <GearboxForm
+                  value={gearbox}
+                  onChange={setGearbox}
                   onContinue={() => setStep("test")}
                 />
               )}
@@ -140,7 +155,7 @@ export default function EngineBuilderApp() {
                   <EnginePreview engine={engine} />
                 </div>
               </div>
-              {step !== "test" && <TipsBox />}
+              {(step === "chassis" || step === "engine") && <TipsBox />}
             </div>
           </div>
         )}
@@ -149,6 +164,7 @@ export default function EngineBuilderApp() {
           <SimulationRunner
             engine={engine}
             chassis={chassis}
+            gearbox={gearbox}
             test={test}
             audioEngine={audioEngine}
             onComplete={handleComplete}
@@ -156,7 +172,7 @@ export default function EngineBuilderApp() {
         )}
         {step === "results" && result && (
           <div className="w-full flex flex-col items-center gap-10">
-            <ResultsSummary engine={engine} chassis={chassis} result={result} />
+            <ResultsSummary engine={engine} chassis={chassis} gearbox={gearbox} result={result} />
             <MatchList matches={matches} />
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button

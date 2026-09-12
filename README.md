@@ -1,11 +1,12 @@
 # Engine Builder
 
-Engine Builder is an interactive car-engine and vehicle simulation built with Next.js. Configure a chassis, build an engine, choose a test, and inspect the simulated results.
+Engine Builder is an interactive car-engine and vehicle simulation built with Next.js. Configure a chassis, build an engine, choose a gearbox, pick a test, and inspect the simulated results.
 
 ## Features
 
 - Choose a minivan, SUV, or supercar chassis and tune its weight, wheels, tyres, pressure, wheel spin, and traction control.
-- Configure cylinder count and layout, displacement, redline, rev limit, fuel, aspiration, gears, and drivetrain.
+- Configure cylinder count and layout, displacement, redline, rev limit, fuel, and aspiration.
+- Choose the gear count and drivetrain (front- or rear-wheel drive).
 - Run a 0-100 kph, 10-second, 500 m drag, or braking test in dry, wet, rain, or headwind conditions.
 - In the braking test, hold a cruising speed for 5s, then brake to a full stop after a 3-2-1-0 countdown, with the transmission downshifting through the gears as the car slows.
 - View peak power, torque, power-to-weight ratio, estimated weight, theoretical top speed, live gear, and test telemetry.
@@ -45,15 +46,16 @@ npm run start  # Serve the production build
 ## How It Works
 
 1. Set up the chassis and tyres.
-2. Configure the engine and drivetrain. The form adjusts valid layouts and diesel redline limits as needed.
-3. Select a test (including a braking test that measures stopping time and distance) and road conditions, then start the run.
-4. Review the simulation summary, graphs, and closest reference-car matches.
-5. Save completed runs from the results screen. Favorites are stored locally in the current browser and are not synced to an account.
+2. Configure the engine. The form adjusts valid layouts and diesel redline limits as needed.
+3. Choose the gearbox: gear count and drivetrain.
+4. Select a test (including a braking test that measures stopping time and distance) and road conditions, then start the run.
+5. Review the simulation summary, graphs, and closest reference-car matches.
+6. Save completed runs from the results screen. Favorites are stored locally in the current browser and are not synced to an account.
 
 ## Project Structure
 
 - `app/` - Next.js app entry point and global styles.
-- `components/EngineBuilder/` - Chassis, engine, test, preview, and navigation UI.
+- `components/EngineBuilder/` - Chassis, engine, gearbox, test, preview, and navigation UI.
 - `components/Simulation/` - Simulation runner, live gauges, results, and graphs.
 - `components/Matches/` - Reference-car matching UI.
 - `components/Favorites/` - Saved configuration UI.

@@ -1,6 +1,6 @@
 "use client";
 
-import { Drivetrain, EngineConfig, EngineLayout, FuelType } from "@/lib/physics/types";
+import { EngineConfig, EngineLayout, FuelType } from "@/lib/physics/types";
 import { DIESEL_MAX_REDLINE_RPM } from "@/lib/physics/defaults";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
 
@@ -35,13 +35,7 @@ const FUEL_TYPE_LABELS: Record<FuelType, string> = {
   diesel: "Diesel",
 };
 
-const GEAR_COUNT_OPTIONS = [5, 6, 7, 8];
 const MAX_REV_OVER_REDLINE_CAP = 1500;
-
-const DRIVETRAIN_LABELS: Record<Drivetrain, string> = {
-  fwd: "Front-Wheel Drive",
-  rwd: "Rear-Wheel Drive",
-};
 
 interface EngineFormProps {
   value: EngineConfig;
@@ -76,7 +70,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
   return (
     <div className="w-full space-y-8">
       <StepHeader
-        step="Step 2 of 3"
+        step="Step 2 of 4"
         title="Build Your Engine"
         description="Configure the powerplant that goes under the hood."
       />
@@ -207,48 +201,10 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
           </div>
         </div>
 
-        <div>
-          <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm font-medium text-zinc-300">Gears</label>
-            <span className="text-lg font-mono text-amber-400">{value.gearCount}-speed</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {GEAR_COUNT_OPTIONS.map((g) => (
-              <OptionButton
-                key={g}
-                active={value.gearCount === g}
-                onClick={() => onChange({ ...value, gearCount: g })}
-              >
-                {g}
-              </OptionButton>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-zinc-300 block mb-2">
-            Drivetrain
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(DRIVETRAIN_LABELS) as Drivetrain[]).map((d) => (
-              <OptionButton
-                key={d}
-                active={value.drivetrain === d}
-                onClick={() => onChange({ ...value, drivetrain: d })}
-              >
-                {DRIVETRAIN_LABELS[d]}
-              </OptionButton>
-            ))}
-          </div>
-          <p className="text-xs text-zinc-500 mt-2">
-            RWD gets a traction boost from weight shifting onto the drive
-            wheels under acceleration; FWD loses a little grip the same way.
-          </p>
-        </div>
       </SectionCard>
 
       <ContinueButton onClick={onContinue}>
-        Continue to Test Specifications &rarr;
+        Continue to Gearbox &rarr;
       </ContinueButton>
     </div>
   );

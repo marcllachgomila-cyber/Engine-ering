@@ -1,11 +1,12 @@
 "use client";
 
-type BuildStep = "chassis" | "engine" | "test";
+type BuildStep = "chassis" | "engine" | "gearbox" | "test";
 
 const STEPS: { key: BuildStep; label: string }[] = [
   { key: "chassis", label: "1. Chassis" },
   { key: "engine", label: "2. Engine" },
-  { key: "test", label: "3. Test" },
+  { key: "gearbox", label: "3. Gearbox" },
+  { key: "test", label: "4. Test" },
 ];
 
 interface StepNavProps {

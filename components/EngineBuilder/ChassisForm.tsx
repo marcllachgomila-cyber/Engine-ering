@@ -44,7 +44,7 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
   return (
     <div className="w-full space-y-8">
       <StepHeader
-        step="Step 1 of 3"
+        step="Step 1 of 4"
         title="Design Your Chassis"
         description="Pick a body, set the weight, and dial in the wheels and tyres."
       />
