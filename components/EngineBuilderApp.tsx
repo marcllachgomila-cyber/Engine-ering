@@ -35,6 +35,7 @@ import SimulationRunner from "./Simulation/SimulationRunner";
 import ResultsSummary from "./Simulation/ResultsSummary";
 import MatchList from "./Matches/MatchList";
 import FavoritesList from "./Favorites/FavoritesList";
+import HowItWorks from "./HowItWorks/HowItWorks";
 
 type Step = "chassis" | "engine" | "gearbox" | "test" | "simulate" | "results" | "favorites";
 
@@ -210,6 +211,7 @@ export default function EngineBuilderApp() {
           </div>
         )}
       </div>
+      <HowItWorks />
     </div>
   );
 }
