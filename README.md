@@ -44,6 +44,12 @@ npm run build  # Create a production build
 npm run start  # Serve the production build
 ```
 
+## Deployment
+
+The app is a fully client-side static export (no API routes or server actions), so it's hosted on GitHub Pages. Pushing to `main` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml), which builds the site with `npm run build` (`output: "export"` in [next.config.ts](next.config.ts)) and publishes the `out/` folder via GitHub's Pages Actions deployment.
+
+Live at: https://marcllachgomila-cyber.github.io/Engine-ering/
+
 ## How It Works
 
 1. Set up the chassis and tyres.
