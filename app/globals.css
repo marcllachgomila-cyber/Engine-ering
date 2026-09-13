@@ -28,17 +28,10 @@
 body {
   color: #f2f0ea;
   background-color: #131210;
-  background-image:
-    /* darker scrim over the left/centre where the form panels sit, lighter
-       toward the right so the workbench engine in the photo stays visible */
-    linear-gradient(
-      100deg,
-      rgba(15, 14, 12, 0.86) 0%,
-      rgba(15, 14, 12, 0.72) 38%,
-      rgba(15, 14, 12, 0.4) 68%,
-      rgba(15, 14, 12, 0.6) 100%
-    ),
-    url("/workshop-bg.png");
+  /* background-image (scrim gradient + workshop photo) is set inline in
+     app/layout.tsx instead of here, since the photo's url() needs the
+     GitHub Pages basePath prefixed in front of it and plain CSS url()s
+     don't get that treatment automatically. */
   background-size:
     cover,
     cover;

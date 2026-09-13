@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
   output: "export",
   basePath: isGithubPagesBuild ? repoBasePath : "",
   assetPrefix: isGithubPagesBuild ? repoBasePath : "",
+  env: {
+    // basePath isn't applied to plain CSS/HTML url()s the way it is for
+    // next/link and next/image, so hand-written references to /public
+    // assets (e.g. the body background image) need this to build their own URL.
+    NEXT_PUBLIC_BASE_PATH: isGithubPagesBuild ? repoBasePath : "",
+  },
 };
 
 export default nextConfig;
