@@ -70,3 +70,7 @@ npm run start  # Serve the production build
 The project uses [Next.js](https://nextjs.org), [React](https://react.dev), [TypeScript](https://www.typescriptlang.org), [Tailwind CSS](https://tailwindcss.com), and [Three.js](https://threejs.org) through React Three Fiber for the engine preview.
 
 No environment variables are required for local development.
+
+## Author
+
+Created by Marc Llach Gomila.

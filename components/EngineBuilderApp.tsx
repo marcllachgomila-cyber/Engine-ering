@@ -101,7 +101,7 @@ export default function EngineBuilderApp() {
     <div className="flex-1 flex flex-col">
       <header className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-white/10 bg-zinc-950/45 backdrop-blur-md">
         <div className="font-mono font-bold text-zinc-200 tracking-tight">
-          Engine Builder
+          Engine Builder - Marc Llach Gomila
         </div>
         <button
           type="button"
@@ -211,6 +211,9 @@ export default function EngineBuilderApp() {
           </div>
         )}
       </div>
+      <footer className="px-4 sm:px-8 py-4 text-center text-xs text-zinc-500 border-t border-white/10">
+        Built by Marc Llach Gomila
+      </footer>
       <HowItWorks />
     </div>
   );

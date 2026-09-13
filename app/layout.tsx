@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Engine Builder",
+  title: "Engine Builder - Marc Llach Gomila",
   description: "Design your own engine, run a 10-second acceleration test, and find its closest real-world match.",
 };
 
