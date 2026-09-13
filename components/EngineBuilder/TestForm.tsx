@@ -1,7 +1,9 @@
 "use client";
 
 import { BRAKE_MATERIALS, BRAKE_TEMP_MAX_C, BRAKE_TEMP_MIN_C } from "@/lib/physics/brakeModel";
+import { CIRCUITS } from "@/lib/physics/circuits";
 import { BrakeMaterial, RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
+import { CircuitOutlineIcon } from "../Simulation/CircuitMap";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
 
 const TEST_TYPE_LABELS: Record<TestType, string> = {
@@ -9,6 +11,7 @@ const TEST_TYPE_LABELS: Record<TestType, string> = {
   tenSecond: "10-Second",
   drag500m: "500m Drag",
   braking: "Braking Test",
+  hotLap: "Hot Lap",
 };
 
 const CONDITION_LABELS: Record<RoadCondition, string> = {
@@ -62,6 +65,38 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
             ))}
           </div>
         </div>
+
+        {value.testType === "hotLap" && (
+          <div>
+            <label className="text-sm font-medium text-zinc-300 block mb-2">
+              Circuit
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {CIRCUITS.map((circuit) => (
+                <button
+                  key={circuit.id}
+                  type="button"
+                  onClick={() => onChange({ ...value, circuitId: circuit.id })}
+                  className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition-colors ${
+                    value.circuitId === circuit.id
+                      ? "bg-amber-500 border-amber-500 text-zinc-950"
+                      : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                  }`}
+                >
+                  <CircuitOutlineIcon circuit={circuit} className="w-full h-12" />
+                  <span className="text-xs font-semibold leading-tight">{circuit.name}</span>
+                  <span
+                    className={`text-[10px] font-mono ${
+                      value.circuitId === circuit.id ? "text-zinc-800" : "text-zinc-500"
+                    }`}
+                  >
+                    {circuit.country} · {(circuit.lengthM / 1000).toFixed(3)} km · {circuit.corners} corners
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {value.testType === "braking" && (
           <div className="space-y-6 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
@@ -161,32 +196,34 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
           )}
         </div>
 
-        <div>
-          <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium text-zinc-300">
-              {value.testType === "braking" ? "Braking Speed" : "Initial Velocity"}
-            </label>
-            <span className="text-lg font-mono text-amber-400">
-              {value.initialSpeedKph} kph
-            </span>
+        {value.testType !== "hotLap" && (
+          <div>
+            <div className="flex items-baseline justify-between mb-1">
+              <label className="text-sm font-medium text-zinc-300">
+                {value.testType === "braking" ? "Braking Speed" : "Initial Velocity"}
+              </label>
+              <span className="text-lg font-mono text-amber-400">
+                {value.initialSpeedKph} kph
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={value.testType === "braking" ? MAX_BRAKING_SPEED_KPH : MAX_SPEED_KPH}
+              step={5}
+              value={value.initialSpeedKph}
+              onChange={(e) =>
+                onChange({ ...value, initialSpeedKph: parseInt(e.target.value, 10) })
+              }
+              className="w-full accent-amber-500"
+            />
+            <p className="text-xs text-zinc-500 mt-1">
+              {value.testType === "braking"
+                ? "Speed to brake from in a straight line - the test measures time and distance to a full stop."
+                : "Start the run already rolling instead of from a standstill - 0 for a normal standing-start test."}
+            </p>
           </div>
-          <input
-            type="range"
-            min={0}
-            max={value.testType === "braking" ? MAX_BRAKING_SPEED_KPH : MAX_SPEED_KPH}
-            step={5}
-            value={value.initialSpeedKph}
-            onChange={(e) =>
-              onChange({ ...value, initialSpeedKph: parseInt(e.target.value, 10) })
-            }
-            className="w-full accent-amber-500"
-          />
-          <p className="text-xs text-zinc-500 mt-1">
-            {value.testType === "braking"
-              ? "Speed to brake from in a straight line - the test measures time and distance to a full stop."
-              : "Start the run already rolling instead of from a standstill - 0 for a normal standing-start test."}
-          </p>
-        </div>
+        )}
       </SectionCard>
 
       <ContinueButton onClick={onSubmit}>

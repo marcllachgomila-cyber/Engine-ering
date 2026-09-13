@@ -7,8 +7,9 @@ Engine Builder is an interactive car-engine and vehicle simulation built with Ne
 - Choose a minivan, SUV, or supercar chassis and tune its weight, wheels, tyres, pressure, wheel spin, and traction control.
 - Configure cylinder count and layout, displacement, redline, rev limit, fuel, and aspiration.
 - Choose the gear count and drivetrain (front- or rear-wheel drive).
-- Run a 0-100 kph, 10-second, 500 m drag, or braking test in dry, wet, rain, or headwind conditions.
+- Run a 0-100 kph, 10-second, 500 m drag, braking, or hot lap test in dry, wet, rain, or headwind conditions.
 - In the braking test, hold a cruising speed for 5s, then brake to a full stop after a 3-2-1-0 countdown, with the transmission downshifting through the gears as the car slows.
+- In the hot lap test, pick one of the 24 circuits on the 2025 F1 calendar (each shown with a stylized outline) and watch a theoretical flying lap play out live, with a dot tracking the car's position around the track.
 - View peak power, torque, power-to-weight ratio, estimated weight, theoretical top speed, live gear, and test telemetry.
 - Explore RPM, power, torque, combustion/friction, and tractive-force graphs.
 - Compare the result with reference cars from `data/cars.json`.

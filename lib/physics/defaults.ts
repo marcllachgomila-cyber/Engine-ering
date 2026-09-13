@@ -1,3 +1,4 @@
+import { DEFAULT_CIRCUIT_ID } from "./circuits";
 import { recommendedGearRatios } from "./gearRatios";
 import { BodyType, ChassisConfig, EngineConfig, GearboxConfig, TestConfig } from "./types";
 
@@ -73,6 +74,7 @@ export const DEFAULT_TEST_CONFIG: TestConfig = {
   absEnabled: true,
   initialBrakeTempC: 80,
   brakeMaterial: "steel",
+  circuitId: DEFAULT_CIRCUIT_ID,
 };
 
 export const DIESEL_MAX_REDLINE_RPM = 5200;

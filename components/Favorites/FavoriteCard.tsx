@@ -28,6 +28,7 @@ export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) 
     finalSpeedKph: favorite.finalSpeedKph,
     finalDistanceM: favorite.finalDistanceM,
     timedOut: false,
+    circuitId: test.circuitId,
   });
 
   return (

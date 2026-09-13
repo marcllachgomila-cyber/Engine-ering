@@ -43,7 +43,7 @@ export interface ChassisConfig {
   tyreCompound: TyreCompound;
 }
 
-export type TestType = "zeroToHundred" | "tenSecond" | "drag500m" | "braking";
+export type TestType = "zeroToHundred" | "tenSecond" | "drag500m" | "braking" | "hotLap";
 export type RoadCondition = "dry" | "wet" | "rain" | "wind";
 export type BrakeMaterial = "steel" | "ceramic" | "carbon";
 
@@ -54,6 +54,7 @@ export interface TestConfig {
   absEnabled: boolean;
   initialBrakeTempC: number;
   brakeMaterial: BrakeMaterial;
+  circuitId: string;
 }
 
 export interface EngineCurves {
@@ -112,6 +113,7 @@ export interface SimulationResult {
   weightKg: number;
   powerToWeightHpPerTonne: number;
   theoreticalTopSpeedKph: number;
+  circuitId?: string;
 }
 
 export interface CarSpec {
@@ -146,4 +148,21 @@ export interface GearForceCurve {
 export interface TractiveForceData {
   gearCurves: GearForceCurve[];
   resistanceCurve: ForcePoint[];
+}
+
+export type CircuitCornerClass = "hairpin" | "tight" | "medium" | "fast" | "veryFast";
+
+export type CircuitSegment =
+  | { type: "straight"; lengthM: number }
+  | { type: "corner"; lengthM: number; radiusM: number };
+
+export interface Circuit {
+  id: string;
+  name: string;
+  country: string;
+  lengthM: number;
+  corners: number;
+  viewBox: string;
+  outlinePath: string;
+  segments: CircuitSegment[];
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getCircuit } from "@/lib/physics/circuits";
 import { computeCruiseState, simulate } from "@/lib/physics/simulate";
 import {
   ChassisConfig,
@@ -11,6 +12,7 @@ import {
   TestConfig,
 } from "@/lib/physics/types";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
+import CircuitMap from "./CircuitMap";
 import Gauges from "./Gauges";
 import LiveStatsPanel from "./LiveStatsPanel";
 import TimeSeriesGraph from "./TimeSeriesGraph";
@@ -29,6 +31,7 @@ const RUNNING_LABELS: Record<TestConfig["testType"], string> = {
   tenSecond: "Accelerating for 10s…",
   drag500m: "Running the 500m…",
   braking: "Braking to a stop…",
+  hotLap: "Setting a hot lap…",
 };
 
 // Before a braking run actually starts, the car holds its speed so the
@@ -53,6 +56,8 @@ export default function SimulationRunner({
     [engine, chassis, gearbox, test],
   );
   const isBraking = test.testType === "braking";
+  const isHotLap = test.testType === "hotLap";
+  const circuit = useMemo(() => (isHotLap ? getCircuit(test.circuitId) : null), [isHotLap, test.circuitId]);
   const cruiseState = useMemo(
     () =>
       isBraking ? computeCruiseState(engine, chassis, gearbox, test.initialSpeedKph) : null,
@@ -147,7 +152,13 @@ export default function SimulationRunner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, isBraking, phase]);
 
-  const maxSpeedKph = Math.max(180, Math.ceil((result.finalSpeedKph * 1.15) / 20) * 20);
+  // A hot lap's final speed is just wherever the last corner leaves off, not
+  // the fastest point on track - size the gauge off the lap's actual top
+  // speed instead so it doesn't clip the straights.
+  const referenceSpeedKph = isHotLap
+    ? Math.max(...result.telemetry.map((s) => s.speedKph), result.finalSpeedKph)
+    : result.finalSpeedKph;
+  const maxSpeedKph = Math.max(180, Math.ceil((referenceSpeedKph * 1.15) / 20) * 20);
   const displaySample = phase === "running" ? current : cruiseSample;
 
   const headline =
@@ -172,6 +183,12 @@ export default function SimulationRunner({
         maxSpeedKph={maxSpeedKph}
         gear={displaySample?.gear}
       />
+      {isHotLap && circuit && (
+        <CircuitMap
+          circuit={circuit}
+          progress={(displaySample?.distanceM ?? 0) / circuit.lengthM}
+        />
+      )}
       <LiveStatsPanel telemetry={displaySample} />
       <TimeSeriesGraph
         telemetry={result.telemetry}

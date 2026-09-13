@@ -1,3 +1,4 @@
+import { getCircuit } from "./physics/circuits";
 import { TestType } from "./physics/types";
 
 export const TEST_TYPE_LABELS: Record<TestType, string> = {
@@ -5,6 +6,7 @@ export const TEST_TYPE_LABELS: Record<TestType, string> = {
   tenSecond: "10s Run",
   drag500m: "500m Drag",
   braking: "Braking Test",
+  hotLap: "Hot Lap",
 };
 
 interface ResultHeadlineInput {
@@ -14,6 +16,7 @@ interface ResultHeadlineInput {
   finalSpeedKph: number;
   timedOut: boolean;
   finalDistanceM?: number;
+  circuitId?: string;
 }
 
 export function resultHeadline({
@@ -23,8 +26,19 @@ export function resultHeadline({
   finalSpeedKph,
   timedOut,
   finalDistanceM,
+  circuitId,
 }: ResultHeadlineInput): { label: string; value: string; sub: string | null } {
   switch (testType) {
+    case "hotLap": {
+      const circuit = circuitId ? getCircuit(circuitId) : null;
+      return {
+        label: circuit?.name ?? "Hot Lap",
+        value: `${elapsedS.toFixed(3)}s`,
+        sub: circuit
+          ? `${(circuit.lengthM / 1000).toFixed(3)} km · ${circuit.corners} corners`
+          : null,
+      };
+    }
     case "zeroToHundred": {
       const startLabel = initialSpeedKph > 0 ? Math.round(initialSpeedKph) : 0;
       return {

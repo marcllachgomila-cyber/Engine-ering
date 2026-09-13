@@ -5,7 +5,9 @@ import { ChassisConfig, EngineConfig, GearboxConfig, SimulationResult } from "@/
 import { buildEngineCurves } from "@/lib/physics/engineModel";
 import { deriveVehicle } from "@/lib/physics/vehicleModel";
 import { computeTractiveForceData } from "@/lib/physics/tractiveForce";
+import { getCircuit } from "@/lib/physics/circuits";
 import { resultHeadline } from "@/lib/testResultLabel";
+import CircuitMap from "./CircuitMap";
 import TimeSeriesGraph from "./TimeSeriesGraph";
 import CombustionFrictionGraph from "./CombustionFrictionGraph";
 import TractiveForceGraph from "./TractiveForceGraph";
@@ -107,6 +109,12 @@ export default function ResultsSummary({ engine, chassis, gearbox, result }: Res
           value={`${engine.cylinders}-cyl ${engine.layout}, ${engine.displacementL.toFixed(1)}L`}
         />
       </div>
+
+      {result.testType === "hotLap" && result.circuitId && (
+        <GraphCard>
+          <CircuitMap circuit={getCircuit(result.circuitId)} progress={1} label="Completed Lap" />
+        </GraphCard>
+      )}
 
       <GraphCard>
         <TimeSeriesGraph
