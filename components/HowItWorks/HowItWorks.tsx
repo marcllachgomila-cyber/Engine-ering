@@ -1,11 +1,36 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 
-function Formula({ children }: { children: ReactNode }) {
+// Renders real LaTeX (KaTeX) so formulas are typeset the way a textbook or
+// Wikipedia's math renderer would show them, instead of as plain ASCII text.
+function Formula({ tex }: { tex: string }) {
+  const html = useMemo(
+    () => katex.renderToString(tex, { displayMode: true, throwOnError: false, strict: "ignore" }),
+    [tex],
+  );
   return (
-    <div className="my-3 rounded-lg border border-zinc-800 bg-zinc-950/80 px-4 py-3 font-mono text-[13px] leading-relaxed text-amber-200 overflow-x-auto whitespace-pre">
-      {children}
+    <div
+      className="my-4 w-full overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950/80 px-5 py-4 text-[1.05rem] text-amber-100 [&_.katex-display]:my-0"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+// For the handful of places the model is genuinely a step-by-step procedure
+// (a loop with a branch) rather than a single equation - kept as labeled
+// pseudocode instead of forcing control flow into math notation.
+function Pseudocode({ children }: { children: ReactNode }) {
+  return (
+    <div className="my-4 w-full overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950/80 px-4 py-3">
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+        Algorithm
+      </div>
+      <pre className="font-mono text-[13px] leading-relaxed text-amber-200 whitespace-pre">
+        {children}
+      </pre>
     </div>
   );
 }
@@ -73,8 +98,12 @@ const CHAPTERS: Chapter[] = [
           model computes a single net acceleration <code>a</code>, then advances velocity and
           position with explicit (forward) Euler integration:
         </P>
-        <Formula>{`v(t + Δt) = v(t) + a(t) · Δt
-x(t + Δt) = x(t) + v(t + Δt) · Δt`}</Formula>
+        <Formula
+          tex={String.raw`\begin{aligned}
+v(t+\Delta t) &= v(t) + a(t)\,\Delta t \\
+x(t+\Delta t) &= x(t) + v(t+\Delta t)\,\Delta t
+\end{aligned}`}
+        />
         <P>
           Small enough steps make this a close approximation of the true (continuous)
           motion. Every chapter below describes how <code>a(t)</code> — the net acceleration at a
@@ -107,7 +136,7 @@ x(t + Δt) = x(t) + v(t + Δt) · Δt`}</Formula>
           rewards smoother multi-cylinder combustion but tapers off at very high cylinder counts
           where per-cylinder friction starts eating the gain:
         </P>
-        <Formula>{`T_peak = displacement × torquePerLitre(aspiration, fuel) × cylinderFactor(cylinders)`}</Formula>
+        <Formula tex={String.raw`T_{\text{peak}} = D \cdot k_{\text{tpl}}(\text{aspiration}, \text{fuel}) \cdot f(n_{\text{cyl}})`} />
         <H3>Curve shape</H3>
         <P>
           The torque curve across the rev range is modeled as an asymmetric bell curve (a
@@ -116,8 +145,12 @@ x(t + Δt) = x(t) + v(t + Δt) · Δt`}</Formula>
           build peak cylinder pressure earlier in the rev range than naturally aspirated ones, and
           diesels peak earlier still and don&rsquo;t rev out:
         </P>
-        <Formula>{`x        = rpm / redlineRpm                     (normalized engine speed)
-T(rpm)   = T_peak · exp( −(x − x_peak)² / (2σ²) )`}</Formula>
+        <Formula
+          tex={String.raw`\begin{aligned}
+x &= \frac{\text{rpm}}{\text{rpm}_{\text{redline}}} \\
+T(\text{rpm}) &= T_{\text{peak}}\, \exp\!\left(-\frac{(x - x_{\text{peak}})^2}{2\sigma^2}\right)
+\end{aligned}`}
+        />
         <P>
           The spread <code>σ</code> is not symmetric: one value governs how sharply torque rises
           below the peak, a different (wider) value governs how gently it falls away above the
@@ -134,9 +167,13 @@ T(rpm)   = T_peak · exp( −(x − x_peak)² / (2σ²) )`}</Formula>
           Power is not an independent curve — it falls directly out of torque and angular speed,
           exactly as in a real engine:
         </P>
-        <Formula>{`ω(rpm) = rpm · (2π / 60)              (angular speed, rad/s)
-P(rpm) = T(rpm) · ω(rpm)              (Watts)
-P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
+        <Formula
+          tex={String.raw`\begin{aligned}
+\omega(\text{rpm}) &= \text{rpm} \cdot \frac{2\pi}{60} \\
+P(\text{rpm}) &= T(\text{rpm}) \cdot \omega(\text{rpm}) \\
+P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
+\end{aligned}`}
+        />
         <P>
           Because power keeps climbing as long as RPM grows faster than torque falls, peak power
           always lands at a higher RPM than peak torque — typically well above it — which matches
@@ -151,13 +188,15 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           linearly with RPM, since both reciprocating and pumping losses accelerate at high engine
           speed:
         </P>
-        <Formula>{`frictionTorque(rpm) = baseFriction(displacement, cylinders) × ramp(rpm / maxRevRpm)`}</Formula>
+        <Formula
+          tex={String.raw`T_{\text{fric}}(\text{rpm}) = k_{\text{fric}}(D, n_{\text{cyl}}) \cdot \text{ramp}\!\left(\frac{\text{rpm}}{\text{rpm}_{\max}}\right)`}
+        />
         <P>
           where <code>ramp</code> is an increasing function of normalized RPM that grows faster
           than linear. The torque the combustion process must actually produce is then the net
           output torque plus whatever this friction term is consuming:
         </P>
-        <Formula>{`combustionTorque(rpm) = T(rpm) + frictionTorque(rpm)`}</Formula>
+        <Formula tex={String.raw`T_{\text{comb}}(\text{rpm}) = T(\text{rpm}) + T_{\text{fric}}(\text{rpm})`} />
         <H3>Locating the true peaks</H3>
         <P>
           Because the analytic curve shape is combined with RPM-dependent scaling to get power,
@@ -190,7 +229,7 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           normal load times a friction coefficient. Applied to a car sitting on its tyres, the
           normal load is (approximately) its own weight, so:
         </P>
-        <Formula>{`F_traction,max = μ_eff · m · g`}</Formula>
+        <Formula tex={String.raw`F_{\text{traction}} = \mu_{\text{eff}}\, m\, g`} />
         <P>
           where <code>m</code> is vehicle mass, <code>g</code> is gravitational acceleration, and{" "}
           <code>μ_eff</code> is an effective grip coefficient built up from every factor that
@@ -200,10 +239,14 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
         </P>
         <H3>Building the effective grip coefficient</H3>
         <P>μ_eff is assembled by multiplying together every factor that scales grip up or down:</P>
-        <Formula>{`μ_eff = μ_base(tyre width, pressure, drivetrain layout)
-        × roadCondition(dry / wet / rain / wind)
-        × tyreType(condition)
-        × tyreCompound(condition)`}</Formula>
+        <Formula
+          tex={String.raw`\begin{aligned}
+\mu_{\text{eff}} = \ & \mu_{\text{base}}(\text{width}, \text{pressure}, \text{layout}) \\
+& \times\, k_{\text{cond}}(\text{condition}) \\
+& \times\, k_{\text{type}}(\text{condition}) \\
+& \times\, k_{\text{compound}}(\text{condition})
+\end{aligned}`}
+        />
         <Ul>
           <Li>
             <b>Tyre width</b> on the driven axle — wider tyres put a larger contact patch on the
@@ -244,7 +287,9 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           falling off — floored at a minimum — the further the chosen slip is from that optimum in
           either direction:
         </P>
-        <Formula>{`slipEfficiency(spin%) = max( floor, 1 − |spin% − optimalSpin%| / 100 )`}</Formula>
+        <Formula
+          tex={String.raw`\eta_{\text{slip}}(s) = \max\!\left(\eta_{\min},\ 1 - \frac{|s - s_{\text{opt}}|}{100}\right)`}
+        />
         <P>This factor multiplies directly into the traction limit used for launches and hard acceleration.</P>
         <H3>Uncontrolled wheelspin</H3>
         <P>
@@ -254,8 +299,15 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           because kinetic friction while a tyre is actively sliding is lower than the static peak
           traction control keeps you right at the edge of:
         </P>
-        <Formula>{`drivetrainForce > F_traction,max  and  no traction control:
-    appliedForce = F_traction,max × uncontrolledSlipPenalty   (penalty < 1)`}</Formula>
+        <Formula
+          tex={String.raw`F_{\text{drive}} =
+\begin{cases}
+F_{\text{wheel}}, & F_{\text{wheel}} \le F_{\text{traction}} \\[2pt]
+F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} \text{ and traction control on} \\[2pt]
+k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} \text{ and traction control off}
+\end{cases}
+\quad (k_{\text{slip}} < 1)`}
+        />
         <H3>Rolling resistance</H3>
         <P>
           Separately from peak traction, every rolling tyre also constantly sheds a small amount
@@ -263,7 +315,7 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           it rotates under load. Unlike aerodynamic drag this does not grow with speed; it is
           modeled as a constant fraction of the normal load:
         </P>
-        <Formula>{`F_roll = C_rr · m · g`}</Formula>
+        <Formula tex={String.raw`F_{\text{roll}} = C_{rr}\, m\, g`} />
         <P>
           where <code>C_rr</code> is a rolling-resistance coefficient. This force opposes motion in
           every test — acceleration, braking, and lap simulation alike — the same way it does on a
@@ -282,7 +334,7 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           Aerodynamic drag is the other major force resisting motion, and it is modeled with the
           standard quadratic drag equation from fluid dynamics:
         </P>
-        <Formula>{`F_drag = ½ · ρ_air · C_d · A · v_rel²`}</Formula>
+        <Formula tex={String.raw`F_{\text{drag}} = \tfrac{1}{2}\, \rho_{\text{air}}\, C_d\, A\, v_{\text{rel}}^{2}`} />
         <Ul>
           <Li>
             <code>ρ_air</code> — air density, the standard sea-level reference value used
@@ -312,7 +364,7 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           add directly onto the car&rsquo;s own speed when computing relative airspeed, which only ever
           increases drag:
         </P>
-        <Formula>{`v_rel = v_car + v_headwind`}</Formula>
+        <Formula tex={String.raw`v_{\text{rel}} = v_{\text{car}} + v_{\text{headwind}}`} />
         <P>
           This is why a headwind condition can only ever cost top speed and straight-line
           performance, never help it — there is no equivalent tailwind condition that subtracts
@@ -334,11 +386,12 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
         </P>
         <H3>RPM from road speed</H3>
         <P>
-          At any instant, engine RPM is determined by road speed, the current gear ratio, the
-          final-drive ratio, and the driven wheel&rsquo;s rolling radius — the same relationship a real
-          drivetrain enforces mechanically:
+          At any instant, engine RPM is determined by road speed, the current gear ratio{" "}
+          <code>i_g</code>, the final-drive ratio <code>i_0</code>, and the driven wheel&rsquo;s
+          rolling radius <code>r_w</code> — the same relationship a real drivetrain enforces
+          mechanically:
         </P>
-        <Formula>{`rpm(v) = (v / r_wheel) · gearRatio · finalDrive · (60 / 2π)`}</Formula>
+        <Formula tex={String.raw`\text{rpm}(v) = \frac{v}{r_w} \, i_g \, i_0 \, \frac{60}{2\pi}`} />
         <P>
           Inverting this relationship is how the model always knows what RPM the engine is turning
           at for any given speed and gear, without needing to separately track engine speed as its
@@ -350,7 +403,12 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           gear one (maximizing torque multiplication off the line) down to a taller top-gear ratio,
           spaced evenly on a logarithmic scale across however many gears are chosen:
         </P>
-        <Formula>{`ratio_i = ratio_launch · (ratio_top / ratio_launch) ^ ( i / (gearCount − 1) ),   i = 0 … gearCount−1`}</Formula>
+        <Formula
+          tex={String.raw`\begin{aligned}
+i_k &= i_1 \left(\frac{i_N}{i_1}\right)^{\frac{k-1}{N-1}} \\
+k &= 1, 2, \dots, N
+\end{aligned}`}
+        />
         <P>
           The top-gear ratio itself is not fixed — it scales taller (numerically smaller) as more
           gears are chosen, so the same launch-to-top spread is stretched across more steps. This
@@ -370,10 +428,11 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
         <P>
           Torque at the engine is converted into a forward force at the contact patch by
           multiplying through the full driveline ratio and dividing by the driven wheel&rsquo;s rolling
-          radius, with a flat drivetrain efficiency factor applied to represent everything lost to
-          friction between the crank and the road (clutch, gears, differential):
+          radius, with a flat drivetrain efficiency factor <code>η_t</code> applied to represent
+          everything lost to friction between the crank and the road (clutch, gears,
+          differential):
         </P>
-        <Formula>{`F_wheel = ( T(rpm) · gearRatio · finalDrive · η_drivetrain ) / r_wheel`}</Formula>
+        <Formula tex={String.raw`F_{\text{wheel}} = \frac{T(\text{rpm}) \, i_g \, i_0 \, \eta_t}{r_w}`} />
         <P>
           This wheel force is what gets compared against the traction limit from the Friction
           chapter — whichever is smaller actually accelerates the car.
@@ -394,7 +453,7 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           that grip ceiling is actually reached.
         </P>
         <H3>Peak braking force</H3>
-        <Formula>{`F_brake,max = μ_eff · m · g`}</Formula>
+        <Formula tex={String.raw`F_{\text{brake,max}} = \mu_{\text{eff}}\, m\, g`} />
         <P>
           This is the idealized, perfect-ABS maximum: the same Coulomb-friction ceiling used for
           traction, independent of the wheelspin-window tuning used for launches (braking is
@@ -406,7 +465,9 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           current temperature. Each material (steel, ceramic, carbon-ceramic) is modeled with its
           own effectiveness-versus-temperature curve:
         </P>
-        <Formula>{`F_brake = F_brake,max · effectiveness(material, T)`}</Formula>
+        <Formula
+          tex={String.raw`F_{\text{brake}} = F_{\text{brake,max}} \cdot \text{effectiveness}(\text{material}, T)`}
+        />
         <Ul>
           <Li>
             Some materials are strongest cold and fade as they overheat (e.g. steel, which loses
@@ -426,8 +487,12 @@ P_hp   = P(rpm) / 745.7               (mechanical horsepower)`}</Formula>
           work the brakes just did (force times distance covered that step) is treated as heat
           added to a lumped thermal mass representing the rotor and pad&rsquo;s heat capacity:
         </P>
-        <Formula>{`ΔT = (F_brake · Δdistance) / C_thermal
-T  = T + ΔT`}</Formula>
+        <Formula
+          tex={String.raw`\begin{aligned}
+\Delta T &= \frac{F_{\text{brake}} \, \Delta d}{C_{\text{thermal}}} \\
+T &\leftarrow T + \Delta T
+\end{aligned}`}
+        />
         <P>
           The updated temperature feeds into the effectiveness curve for the next step, which is
           how a long, hard stop can visibly fade a car&rsquo;s brakes partway through — exactly the
@@ -455,12 +520,14 @@ T  = T + ΔT`}</Formula>
           are not free in a real car either.
         </P>
         <H3>Mass build-up</H3>
-        <Formula>{`m = m_chassis(bodyType)
-    + cylinders × m_per_cylinder
-    + displacement × m_per_litre
-    + (turbo or supercharger ? m_hardware : 0)
-    + Σ (wheel diameter − referenceDiameter) × m_per_inch
-    + Σ (wheel width − referenceWidth) × m_per_mm`}</Formula>
+        <Formula
+          tex={String.raw`\begin{aligned}
+m = \ & m_{\text{chassis}}(\text{bodyType}) \\
+& + \, n_{\text{cyl}}\, k_{\text{cyl}} \;+\; D\, k_D \\
+& + \bigl(\text{turbo or supercharger} \;?\; m_{\text{fi}} : 0\bigr) \\
+& + \sum_{\text{axles}} \Delta(\text{diameter})\, k_{\text{dia}} \;+\; \Delta(\text{width})\, k_{\text{width}}
+\end{aligned}`}
+        />
         <P>
           Base chassis mass comes from the chosen body type (minivan, SUV, or supercar, each with
           its own realistic mass range). Engine mass grows with both cylinder count and
@@ -471,8 +538,8 @@ T  = T + ΔT`}</Formula>
         </P>
         <H3>Rotating mass</H3>
         <P>
-          Wheel and tyre mass is treated as behaving like extra <em>effective</em> mass under
-          acceleration, beyond just adding to the car&rsquo;s static weight — spinning up a heavier wheel
+          Wheel and tyre mass is treated as behaving like extra <em>effective</em>{" "}
+          mass under acceleration, beyond just adding to the car&rsquo;s static weight — spinning up a heavier wheel
           and tyre assembly takes additional energy on top of simply moving its mass down the
           road, which the model approximates by folding a per-inch/per-mm mass penalty directly
           into the same total mass used everywhere else (acceleration, braking, cornering).
@@ -515,11 +582,11 @@ T  = T + ΔT`}</Formula>
           <Li>Determine the current gear, shifting up a gear if RPM has crossed the shift point derived in the Gearbox chapter.</Li>
           <Li>Look up torque at the current RPM from the Engine model.</Li>
           <Li>Convert torque to wheel force through the gear ratio, final drive, and drivetrain efficiency.</Li>
-          <Li>Compare that force against the traction limit from the Friction chapter — cap it (traction control on) or apply the uncontrolled-slip penalty (traction control off) if it&rsquo;s exceeded.</Li>
+          <Li>Compare that force against the traction limit from the Friction chapter, producing the drive force <code>F_drive</code> from the piecewise rule in that chapter.</Li>
           <Li>Subtract aerodynamic drag (Aerodynamics chapter) and rolling resistance (Friction chapter) to get net force.</Li>
           <Li>Divide by mass for net acceleration, then integrate into velocity and distance as in the Overview.</Li>
         </Ul>
-        <Formula>{`a = ( min(F_wheel, F_traction,max or penalized) − F_drag − F_roll ) / m`}</Formula>
+        <Formula tex={String.raw`a = \frac{F_{\text{drive}} - F_{\text{drag}} - F_{\text{roll}}}{m}`} />
         <H3>Stopping conditions</H3>
         <P>
           Each test type ends on its own condition, checked every step: a fixed duration, a target
@@ -537,10 +604,10 @@ T  = T + ΔT`}</Formula>
           drive force still exceeds resistance, stopping only once the rev limiter itself becomes
           the true limiter:
         </P>
-        <Formula>{`for v in 0 … v_max_search:
+        <Pseudocode>{`for v in 0 … v_max_search:
     if rpm(v, topGear) > maxRevRpm: stop
     if F_wheel(v) > F_drag(v) + F_roll: lastValidSpeed = v
-topSpeed = lastValidSpeed`}</Formula>
+topSpeed = lastValidSpeed`}</Pseudocode>
       </>
     ),
   },
@@ -563,17 +630,25 @@ topSpeed = lastValidSpeed`}</Formula>
           Setting the friction ceiling equal to the required centripetal force and solving for
           speed gives the fastest speed a given corner can be taken at:
         </P>
-        <Formula>{`required centripetal force:  F_c = m · v² / r
-friction ceiling:            F_c ≤ μ_eff · m · g
-⇒  v_apex = √( μ_eff · g · r )`}</Formula>
+        <Formula
+          tex={String.raw`\begin{aligned}
+F_c &= \frac{m v^2}{r} \quad \text{(centripetal force required)} \\
+F_c &\le \mu_{\text{eff}}\, m\, g \quad \text{(friction ceiling)} \\
+v_{\text{apex}} &= \sqrt{\mu_{\text{eff}}\, g\, r}
+\end{aligned}`}
+        />
         <H3>Look-ahead braking</H3>
         <P>
           Rather than braking reactively at the corner entry, the model continuously checks, on
           every straight, how much distance would be needed to shed speed from the current speed
           down to the next corner&rsquo;s apex speed while braking at the tyre&rsquo;s maximum deceleration:
         </P>
-        <Formula>{`a_brake            = μ_eff · g
-brakingDistance    = ( v² − v_apex² ) / ( 2 · a_brake )`}</Formula>
+        <Formula
+          tex={String.raw`\begin{aligned}
+a_{\text{brake}} &= \mu_{\text{eff}}\, g \\
+d_{\text{brake}} &= \frac{v^2 - v_{\text{apex}}^2}{2\, a_{\text{brake}}}
+\end{aligned}`}
+        />
         <P>
           Once the remaining distance to the corner is less than or equal to that braking distance,
           the car brakes at the limit; otherwise it keeps accelerating exactly as in the
@@ -616,7 +691,9 @@ brakingDistance    = ( v² − v_apex² ) / ( 2 · a_brake )`}</Formula>
           min-max normalized to a common 0–1 range across the combined set of your build plus every
           reference car, so no single stat dominates the distance purely because of its units:
         </P>
-        <Formula>{`normalized(x) = ( x − min(allValues) ) / ( max(allValues) − min(allValues) )`}</Formula>
+        <Formula
+          tex={String.raw`\hat{x} = \frac{x - \min(\text{allValues})}{\max(\text{allValues}) - \min(\text{allValues})}`}
+        />
         <H3>Weighted distance</H3>
         <P>
           The overall &ldquo;closeness&rdquo; between your build and a reference car is a weighted Euclidean
@@ -625,11 +702,12 @@ brakingDistance    = ( v² − v_apex² ) / ( 2 · a_brake )`}</Formula>
           car actually performs), plus a flat penalty added whenever a categorical property doesn&rsquo;t
           match at all:
         </P>
-        <Formula>{`distance² = Σ_k  weight_k · ( normalized(target_k) − normalized(car_k) )²
-            + (aspiration mismatch ? penalty_a : 0)
-            + (layout mismatch      ? penalty_l : 0)
-
-distance  = √( distance² )`}</Formula>
+        <Formula
+          tex={String.raw`\begin{aligned}
+d^2 &= \sum_k w_k \left(\hat{t}_k - \hat{c}_k\right)^2 \;+\; w_a\,\mathbf{1}[\text{aspiration mismatch}] \;+\; w_\ell\,\mathbf{1}[\text{layout mismatch}] \\
+d &= \sqrt{d^2}
+\end{aligned}`}
+        />
         <P>
           The reference cars are then sorted by ascending distance, and the closest handful are
           shown as the build&rsquo;s real-world matches — the smaller the distance, the more similar the
@@ -678,7 +756,7 @@ export default function HowItWorks() {
           onClick={() => setOpen(false)}
         >
           <div
-            className="flex h-full w-full flex-col overflow-hidden border-zinc-800 bg-zinc-950/98 sm:h-[85vh] sm:max-w-5xl sm:rounded-2xl sm:border"
+            className="flex h-full w-full flex-col overflow-hidden border-zinc-800 bg-zinc-950/98 sm:h-[85vh] sm:max-w-6xl sm:rounded-2xl sm:border"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-5 py-4 sm:items-center sm:px-6">
@@ -722,7 +800,7 @@ export default function HowItWorks() {
               </nav>
 
               <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-8">
-                <div className="mx-auto max-w-2xl">
+                <div className="mx-auto max-w-3xl">
                   <div className="mb-1 font-mono text-xs text-zinc-500">{active.num}</div>
                   <h2 className="mb-5 text-xl font-bold text-zinc-100">{active.title}</h2>
                   {active.render()}
