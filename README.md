@@ -74,3 +74,7 @@ No environment variables are required for local development.
 ## Author
 
 Created by Marc Llach Gomila.
+
+## License
+
+Licensed under the [Mozilla Public License 2.0](LICENSE) (MPL-2.0). You're free to use, modify, and distribute this code, including commercially, as long as changes to MPL-licensed files are shared back under the same license and the original copyright notice is preserved.
