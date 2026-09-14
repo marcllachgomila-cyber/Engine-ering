@@ -1,21 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
-import { ChassisConfig, EngineConfig, GearboxConfig, SimulationResult } from "@/lib/physics/types";
+import { EngineConfig, SimulationResult } from "@/lib/physics/types";
 import { buildEngineCurves } from "@/lib/physics/engineModel";
-import { deriveVehicle } from "@/lib/physics/vehicleModel";
-import { computeTractiveForceData } from "@/lib/physics/tractiveForce";
 import { getCircuit } from "@/lib/physics/circuits";
 import { resultHeadline } from "@/lib/testResultLabel";
 import CircuitMap from "./CircuitMap";
 import TimeSeriesGraph from "./TimeSeriesGraph";
 import CombustionFrictionGraph from "./CombustionFrictionGraph";
-import TractiveForceGraph from "./TractiveForceGraph";
 
 interface ResultsSummaryProps {
   engine: EngineConfig;
-  chassis: ChassisConfig;
-  gearbox: GearboxConfig;
   result: SimulationResult;
 }
 
@@ -40,7 +35,7 @@ function GraphCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function ResultsSummary({ engine, chassis, gearbox, result }: ResultsSummaryProps) {
+export default function ResultsSummary({ engine, result }: ResultsSummaryProps) {
   const headline = resultHeadline(result);
 
   let subtext = headline.sub;
@@ -55,16 +50,18 @@ export default function ResultsSummary({ engine, chassis, gearbox, result }: Res
     }
   }
 
-  const { curves, tractiveData } = useMemo(() => {
-    const builtCurves = buildEngineCurves(engine);
-    const vehicle = deriveVehicle(engine, builtCurves, chassis, gearbox);
-    return {
-      curves: builtCurves,
-      tractiveData: computeTractiveForceData(builtCurves, vehicle),
-    };
-  }, [engine, chassis, gearbox]);
+  const curves = useMemo(() => buildEngineCurves(engine), [engine]);
 
   const finalT = result.telemetry[result.telemetry.length - 1]?.t ?? 0;
+
+  const peakBrakeForceN = useMemo(
+    () => Math.max(0, ...result.telemetry.map((s) => s.brakeForceN ?? 0)),
+    [result.telemetry],
+  );
+  const peakBrakeTempC = useMemo(
+    () => Math.max(0, ...result.telemetry.map((s) => s.brakeTempC ?? 0)),
+    [result.telemetry],
+  );
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6">
@@ -149,9 +146,31 @@ export default function ResultsSummary({ engine, chassis, gearbox, result }: Res
       <GraphCard>
         <CombustionFrictionGraph curves={curves} />
       </GraphCard>
-      <GraphCard>
-        <TractiveForceGraph data={tractiveData} />
-      </GraphCard>
+
+      {result.testType === "hotLap" && (
+        <>
+          <GraphCard>
+            <TimeSeriesGraph
+              telemetry={result.telemetry}
+              currentT={finalT}
+              getValue={(s) => s.brakeForceN ?? 0}
+              peakValue={peakBrakeForceN}
+              color="#f87171"
+              label="Braking Force (N) vs Time"
+            />
+          </GraphCard>
+          <GraphCard>
+            <TimeSeriesGraph
+              telemetry={result.telemetry}
+              currentT={finalT}
+              getValue={(s) => s.brakeTempC ?? 0}
+              peakValue={peakBrakeTempC}
+              color="#fb923c"
+              label="Brake Temp (°C) vs Time"
+            />
+          </GraphCard>
+        </>
+      )}
     </div>
   );
 }

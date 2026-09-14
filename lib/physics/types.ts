@@ -95,6 +95,7 @@ export interface Telemetry {
   gForce: number;
   distanceM: number;
   brakeTempC?: number;
+  brakeForceN?: number;
 }
 
 export interface SimulationResult {

@@ -150,6 +150,8 @@ export default function EngineBuilderApp() {
                   value={gearbox}
                   onChange={setGearbox}
                   onContinue={() => setStep("test")}
+                  engine={engine}
+                  chassis={chassis}
                 />
               )}
               {step === "test" && (
@@ -189,7 +191,7 @@ export default function EngineBuilderApp() {
         )}
         {step === "results" && result && (
           <div className="w-full flex flex-col items-center gap-10">
-            <ResultsSummary engine={engine} chassis={chassis} gearbox={gearbox} result={result} />
+            <ResultsSummary engine={engine} result={result} />
             <MatchList matches={matches} />
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button

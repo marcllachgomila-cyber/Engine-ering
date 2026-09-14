@@ -1,8 +1,20 @@
 "use client";
 
+import { useMemo } from "react";
 import { recommendedGearRatios, MAX_GEAR_RATIO, MIN_GEAR_RATIO } from "@/lib/physics/gearRatios";
-import { AutoShiftStrategy, Drivetrain, GearboxConfig, TransmissionType } from "@/lib/physics/types";
+import { buildEngineCurves } from "@/lib/physics/engineModel";
+import { deriveVehicle } from "@/lib/physics/vehicleModel";
+import { computeTractiveForceData } from "@/lib/physics/tractiveForce";
+import {
+  AutoShiftStrategy,
+  ChassisConfig,
+  Drivetrain,
+  EngineConfig,
+  GearboxConfig,
+  TransmissionType,
+} from "@/lib/physics/types";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
+import TractiveForceGraph from "../Simulation/TractiveForceGraph";
 
 const GEAR_COUNT_OPTIONS = [5, 6, 7, 8];
 
@@ -32,10 +44,18 @@ interface GearboxFormProps {
   value: GearboxConfig;
   onChange: (config: GearboxConfig) => void;
   onContinue: () => void;
+  engine: EngineConfig;
+  chassis: ChassisConfig;
 }
 
-export default function GearboxForm({ value, onChange, onContinue }: GearboxFormProps) {
+export default function GearboxForm({ value, onChange, onContinue, engine, chassis }: GearboxFormProps) {
   const recommended = recommendedGearRatios(value.gearCount);
+
+  const tractiveData = useMemo(() => {
+    const curves = buildEngineCurves(engine);
+    const vehicle = deriveVehicle(engine, curves, chassis, value);
+    return computeTractiveForceData(curves, vehicle);
+  }, [engine, chassis, value]);
 
   const setGearCount = (gearCount: number) => {
     onChange({ ...value, gearCount, gearRatios: recommendedGearRatios(gearCount) });
@@ -207,6 +227,7 @@ export default function GearboxForm({ value, onChange, onContinue }: GearboxForm
             </div>
           ))}
         </div>
+        <TractiveForceGraph data={tractiveData} />
       </SectionCard>
 
       <ContinueButton onClick={onContinue}>

@@ -12,6 +12,25 @@ export const BRAKE_TEMP_MAX_C = 600;
 // wheel stops the car slower, not faster.
 export const ABS_OFF_PENALTY = 0.8;
 
+// Ambient temperature the brakes relax toward between braking events.
+export const BRAKE_AMBIENT_TEMP_C = 20;
+
+// Convective cooling rate (as a fraction of the gap above ambient, per
+// second) with the car stationary - some heat still bleeds off through the
+// hub, pads, and still air even without road speed.
+const BRAKE_COOLING_BASE_RATE_PER_S = 0.05;
+
+// Extra cooling rate per m/s of road speed - faster air moving past the
+// discs carries heat away quicker, so a flat-out straight cools the brakes
+// far faster than crawling out of a hairpin.
+const BRAKE_COOLING_SPEED_RATE_PER_S_PER_MS = 0.012;
+
+// How fast the brakes are currently shedding heat toward ambient, as a
+// fraction of (current temp - ambient) per second, at the given road speed.
+export function brakeCoolingRatePerS(speedMs: number): number {
+  return BRAKE_COOLING_BASE_RATE_PER_S + BRAKE_COOLING_SPEED_RATE_PER_S_PER_MS * speedMs;
+}
+
 interface BrakeMaterialSpec {
   label: string;
   // How much heat (in joules) it takes to raise this brake's temperature by
