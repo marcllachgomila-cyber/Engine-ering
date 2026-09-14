@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Circuit } from "@/lib/physics/types";
 
-const TRACK_COLOR = "#3f3f46";
+const TRACK_COLOR = "#a1a1aa";
 const SURFACE_COLOR = "#14171d";
 const DOT_COLOR = "#f59e0b";
 

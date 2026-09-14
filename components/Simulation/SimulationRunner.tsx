@@ -24,6 +24,7 @@ interface SimulationRunnerProps {
   test: TestConfig;
   audioEngine: EngineAudioEngine;
   onComplete: (result: SimulationResult) => void;
+  onRestart: () => void;
 }
 
 const RUNNING_LABELS: Record<TestConfig["testType"], string> = {
@@ -50,6 +51,7 @@ export default function SimulationRunner({
   test,
   audioEngine,
   onComplete,
+  onRestart,
 }: SimulationRunnerProps) {
   const result = useMemo(
     () => simulate(engine, chassis, gearbox, test),
@@ -58,6 +60,14 @@ export default function SimulationRunner({
   const isBraking = test.testType === "braking";
   const isHotLap = test.testType === "hotLap";
   const circuit = useMemo(() => (isHotLap ? getCircuit(test.circuitId) : null), [isHotLap, test.circuitId]);
+  const hasBrakeTemp = useMemo(
+    () => result.telemetry.some((s) => s.brakeTempC !== undefined),
+    [result.telemetry],
+  );
+  const peakBrakeTempC = useMemo(
+    () => Math.max(0, ...result.telemetry.map((s) => s.brakeTempC ?? 0)),
+    [result.telemetry],
+  );
   const cruiseState = useMemo(
     () =>
       isBraking ? computeCruiseState(engine, chassis, gearbox, test.initialSpeedKph) : null,
@@ -78,7 +88,11 @@ export default function SimulationRunner({
   const [phase, setPhase] = useState<Phase>(isBraking ? "cruise" : "running");
   const [countdown, setCountdown] = useState<number | null>(null);
   const [current, setCurrent] = useState<Telemetry | null>(result.telemetry[0] ?? null);
+  const [isPaused, setIsPaused] = useState(false);
   const rafRef = useRef<number | null>(null);
+  // How far into the "running" phase's telemetry playback we'd gotten when
+  // paused, so resuming picks up from there instead of jumping back to 0.
+  const elapsedRef = useRef(0);
 
   // Lead-in: hold the cruise speed and let the engine note settle for a few
   // seconds, then kick off the countdown.
@@ -111,6 +125,7 @@ export default function SimulationRunner({
 
   useEffect(() => {
     if (isBraking && phase !== "running") return;
+    if (isPaused) return;
 
     const telemetry = result.telemetry;
     if (telemetry.length === 0) {
@@ -124,8 +139,10 @@ export default function SimulationRunner({
     let completed = false;
 
     const tick = (now: number) => {
-      if (startTime === null) startTime = now;
+      // Resume from wherever we left off if this run was paused mid-way.
+      if (startTime === null) startTime = now - elapsedRef.current * 1000;
       const elapsedS = (now - startTime) / 1000;
+      elapsedRef.current = elapsedS;
 
       const index = Math.min(
         telemetry.length - 1,
@@ -150,7 +167,16 @@ export default function SimulationRunner({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, isBraking, phase]);
+  }, [result, isBraking, phase, isPaused]);
+
+  const handleTogglePause = () => {
+    setIsPaused((prev) => {
+      const next = !prev;
+      if (next) audioEngine.pause();
+      else audioEngine.resume();
+      return next;
+    });
+  };
 
   // A hot lap's final speed is just wherever the last corner leaves off, not
   // the fastest point on track - size the gauge off the lap's actual top
@@ -176,6 +202,23 @@ export default function SimulationRunner({
           {countdown === 0 ? "BRAKE!" : countdown}
         </div>
       )}
+      <div className="flex gap-2 -mt-2">
+        <button
+          type="button"
+          onClick={handleTogglePause}
+          disabled={phase !== "running"}
+          className="px-4 py-1.5 rounded-lg text-sm font-mono border border-zinc-700 text-zinc-300 bg-zinc-900/40 backdrop-blur-sm transition-colors hover:border-amber-500 hover:text-amber-400 disabled:opacity-40 disabled:pointer-events-none"
+        >
+          {isPaused ? "Resume" : "Pause"}
+        </button>
+        <button
+          type="button"
+          onClick={onRestart}
+          className="rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-6 py-3 font-medium transition-colors"
+        >
+          ↻ Restart
+        </button>
+      </div>
       <Gauges
         rpm={displaySample?.rpm ?? 0}
         redlineRpm={engine.redlineRpm}
@@ -198,6 +241,16 @@ export default function SimulationRunner({
         color="#9085e9"
         label="Power (hp)"
       />
+      {hasBrakeTemp && (
+        <TimeSeriesGraph
+          telemetry={result.telemetry}
+          currentT={displaySample?.t ?? 0}
+          getValue={(s) => s.brakeTempC ?? 0}
+          peakValue={peakBrakeTempC}
+          color="#fb923c"
+          label="Brake Temp (°C)"
+        />
+      )}
     </div>
   );
 }

@@ -184,6 +184,18 @@ export class EngineAudioEngine {
     setTimeout(() => this.dispose(), 350);
   }
 
+  // Suspends/resumes the AudioContext itself (unlike stop(), this doesn't
+  // tear anything down - the engine can pick back up right where it left off).
+  pause(): void {
+    if (this.disposed) return;
+    void this.ctx.suspend();
+  }
+
+  resume(): void {
+    if (this.disposed) return;
+    void this.ctx.resume();
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;

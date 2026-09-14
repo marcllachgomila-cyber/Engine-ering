@@ -91,6 +91,12 @@ export default function EngineBuilderApp() {
     setStep("simulate");
   }, [engine, chassis, gearbox, test, skipHotLapAnimation, handleComplete, audioEngine]);
 
+  const handleRestartTest = useCallback(() => {
+    audioEngine?.dispose();
+    setAudioEngine(null);
+    setStep("test");
+  }, [audioEngine]);
+
   const handleReset = useCallback(() => {
     audioEngine?.dispose();
     setAudioEngine(null);
@@ -194,6 +200,7 @@ export default function EngineBuilderApp() {
             test={test}
             audioEngine={audioEngine}
             onComplete={handleComplete}
+            onRestart={handleRestartTest}
           />
         )}
         {step === "results" && result && (
