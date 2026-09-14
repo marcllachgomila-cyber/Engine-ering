@@ -27,6 +27,14 @@ export interface BodyTypePreset {
   weightMaxKg: number;
   dragCoefficient: number;
   frontalAreaM2: number;
+  // Lift coefficient (sign convention: positive = downforce, negative =
+  // aerodynamic lift). Road-going boxy shapes with no underbody/wing
+  // aggressively worked tend to generate a small amount of *lift* at speed
+  // (less effective tyre load, not more); a supercar's splitter/diffuser/
+  // wing package instead generates real downforce. These are representative
+  // order-of-magnitude figures, not measured wind-tunnel data for any real
+  // car - see the hot-lap report for what data would replace them.
+  liftCoefficient: number;
 }
 
 export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
@@ -36,6 +44,7 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     weightMaxKg: 2400,
     dragCoefficient: 0.33,
     frontalAreaM2: 2.8,
+    liftCoefficient: -0.05,
   },
   suv: {
     weightKg: 2100,
@@ -43,6 +52,7 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     weightMaxKg: 2800,
     dragCoefficient: 0.38,
     frontalAreaM2: 3.1,
+    liftCoefficient: -0.1,
   },
   supercar: {
     weightKg: 1400,
@@ -50,6 +60,7 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     weightMaxKg: 1900,
     dragCoefficient: 0.3,
     frontalAreaM2: 1.9,
+    liftCoefficient: 0.9,
   },
 };
 

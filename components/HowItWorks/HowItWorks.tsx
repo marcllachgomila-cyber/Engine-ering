@@ -488,6 +488,42 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
           performance, never help it — there is no equivalent tailwind condition that subtracts
           from relative airspeed.
         </P>
+        <H3>Downforce</H3>
+        <P>
+          A body shape doesn&rsquo;t just resist the air moving past it — it also reacts against it
+          vertically, and the hot lap model uses the same quadratic form as drag to capture that,
+          using a lift coefficient instead of a drag coefficient:
+        </P>
+        <Formula
+          tex={String.raw`F_{\text{downforce}} = \tfrac{1}{2}\, \rho_{\text{air}}\, C_l\, A\, v^{2}`}
+          vars={[
+            {
+              symbol: String.raw`C_l`,
+              desc: "lift coefficient, set by body type - positive is genuine downforce (a supercar's splitter/diffuser/wing package), negative is aerodynamic lift (a boxy minivan or SUV, which have neither)",
+            },
+            { symbol: String.raw`A`, desc: "frontal area, same value used for drag" },
+            { symbol: String.raw`v`, desc: "road speed" },
+          ]}
+        />
+        <P>
+          This force adds directly onto the car&rsquo;s static weight to get its total tyre normal
+          load, which is what the Friction chapter&rsquo;s traction limit and the Hot Lap chapter&rsquo;s
+          cornering/braking limits actually scale with — not weight alone:
+        </P>
+        <Formula
+          tex={String.raw`N = m\,g + F_{\text{downforce}}(v)`}
+          vars={[
+            { symbol: String.raw`N`, desc: "total normal load the tyres press onto the road with, at this speed" },
+            { symbol: String.raw`m\,g`, desc: "the car's static weight" },
+          ]}
+        />
+        <P>
+          Because this term grows with the square of speed just like drag does, a high-downforce
+          car gets more grip exactly where it matters most — fast corners and hard braking from top
+          speed — while paying for it with extra drag the whole time. A boxy road car with negative
+          C_l instead slowly loses tyre load as it speeds up, the same lift a plane wing produces
+          just working against it here instead of for it.
+        </P>
       </>
     ),
   },
@@ -803,66 +839,135 @@ topSpeed = lastValidSpeed`}</Pseudocode>
     render: () => (
       <>
         <P>
-          The hot lap test simulates one theoretical flying lap of a chosen circuit, modeled as a
-          sequence of straight and corner segments (each corner carrying its own radius), using the
-          same look-ahead braking technique real lap-time simulators use, built on top of the
-          straight-line model above.
+          The hot lap test calculates one theoretical flying lap of a chosen circuit from the
+          track&rsquo;s own geometry and the car&rsquo;s physics — it does not look up or blend toward any
+          real-world lap time, and no corner is ever assigned a hand-picked speed. The chain is:
+          circuit geometry → tyre friction ellipse (with aerodynamics feeding into it) → a
+          physically-constrained speed profile → per-point driver pedal/gear inputs → time
+          integration. Each stage below feeds the next.
         </P>
-        <H3>Corner apex speed</H3>
+        <H3>Circuit geometry: curvature from the track shape, not a lookup table</H3>
         <P>
-          A tyre negotiating a corner needs to supply centripetal force to hold its radius, and
-          that force is capped by the exact same friction ceiling used for traction and braking.
-          Setting the friction ceiling equal to the required centripetal force and solving for
-          speed gives the fastest speed a given corner can be taken at:
+          Every circuit is stored as a closed loop of waypoints tracing that track&rsquo;s real corner
+          sequence. Each waypoint is rounded off with a circular-arc fillet whose radius falls
+          straight out of its own turn angle and the straight length available on either side — a
+          sharp direction change between short straights becomes a tight radius (a hairpin); a
+          gentle kink between long straights becomes a large radius (a fast sweeper) — the same
+          relationship real corners have, derived geometrically rather than picked by hand for each
+          corner. Sampling that filleted path at fixed intervals gives every point on the lap a
+          distance, heading and signed curvature (1 / radius) purely from the shape of the track:
         </P>
         <Formula
-          tex={String.raw`\begin{aligned}
-F_c &= \frac{m v^2}{r} \quad \text{(centripetal force required)} \\
-F_c &\le \mu_{\text{eff}}\, m\, g \quad \text{(friction ceiling)} \\
-v_{\text{apex}} &= \sqrt{\mu_{\text{eff}}\, g\, r}
-\end{aligned}`}
+          tex={String.raw`t = R\tan\!\left(\frac{\alpha}{2}\right) \quad\Longrightarrow\quad R = \frac{t}{\tan(\alpha/2)}`}
           vars={[
-            { symbol: String.raw`F_c`, desc: "centripetal force required to hold the corner radius" },
-            { symbol: String.raw`m`, desc: "vehicle mass" },
-            { symbol: String.raw`v`, desc: "cornering speed" },
-            { symbol: String.raw`r`, desc: "corner radius" },
-            { symbol: String.raw`\mu_{\text{eff}}`, desc: "effective grip coefficient (Friction chapter)" },
-            { symbol: String.raw`g`, desc: "gravitational acceleration" },
-            { symbol: String.raw`v_{\text{apex}}`, desc: "fastest speed the corner can be taken at" },
+            { symbol: String.raw`\alpha`, desc: "the waypoint's deflection angle (0 = straight through, \\pi = a full hairpin reversal)" },
+            { symbol: String.raw`t`, desc: "tangent length claimed on each adjacent straight, capped so neighboring fillets never overlap" },
+            { symbol: String.raw`R`, desc: "the resulting corner radius at that waypoint" },
           ]}
         />
-        <H3>Look-ahead braking</H3>
+        <H3>Cornering speed limit: the friction ellipse, not a fixed apex speed</H3>
         <P>
-          Rather than braking reactively at the corner entry, the model continuously checks, on
-          every straight, how much distance would be needed to shed speed from the current speed
-          down to the next corner&rsquo;s apex speed while braking at the tyre&rsquo;s maximum deceleration:
+          A tyre has one finite grip budget it must split between cornering (lateral) and
+          accelerating/braking (longitudinal) force — spending it all on one leaves nothing for the
+          other. That&rsquo;s the friction-circle/ellipse constraint used throughout the hot lap:
         </P>
         <Formula
-          tex={String.raw`\begin{aligned}
-a_{\text{brake}} &= \mu_{\text{eff}}\, g \\
-d_{\text{brake}} &= \frac{v^2 - v_{\text{apex}}^2}{2\, a_{\text{brake}}}
-\end{aligned}`}
+          tex={String.raw`\left(\frac{F_x}{F_{x,\max}}\right)^{2} + \left(\frac{F_y}{F_{y,\max}}\right)^{2} \le 1`}
           vars={[
-            { symbol: String.raw`a_{\text{brake}}`, desc: "tyre's maximum braking deceleration" },
-            { symbol: String.raw`d_{\text{brake}}`, desc: "distance needed to shed speed down to the apex speed" },
-            { symbol: String.raw`v`, desc: "current speed" },
-            { symbol: String.raw`v_{\text{apex}}`, desc: "target apex speed for the upcoming corner" },
+            { symbol: String.raw`F_x`, desc: "longitudinal (accelerating or braking) force currently being asked of the tyre" },
+            { symbol: String.raw`F_y`, desc: "lateral (cornering) force currently being asked of the tyre" },
+            { symbol: String.raw`F_{x,\max},\ F_{y,\max}`, desc: String.raw`\mu_{\text{long}}N \text{ and } \mu_{\text{lat}}N \text{ - the tyre's separate longitudinal/lateral limits at normal load } N` },
           ]}
         />
         <P>
-          Once the remaining distance to the corner is less than or equal to that braking distance,
-          the car brakes at the limit; otherwise it keeps accelerating exactly as in the
-          straight-line model (gear selection, engine force, traction limit, and drag all apply
-          identically). Inside a corner segment itself, the car holds the apex speed — braking down
-          to it if still too fast, or gently regathering speed toward it once under the limit,
-          rather than trying to accelerate freely mid-corner.
+          Solving the pure-cornering case (F_x = 0) for the fastest speed a given curvature can be
+          held at, using the total normal load from the Aerodynamics chapter (weight plus
+          speed-dependent downforce) instead of static weight alone:
         </P>
-        <H3>Gear selection on a hot lap</H3>
+        <Formula
+          tex={String.raw`\begin{aligned}
+m v^2 \lvert\kappa\rvert &\le \mu_{\text{lat}}\bigl(m g + \tfrac{1}{2}\rho_{\text{air}} C_l A v^2\bigr) \\
+v_{\text{corner}} &= \sqrt{\dfrac{\mu_{\text{lat}}\, m\, g}{m\lvert\kappa\rvert - \mu_{\text{lat}}\cdot\tfrac{1}{2}\rho_{\text{air}} C_l A}}
+\end{aligned}`}
+          vars={[
+            { symbol: String.raw`\kappa`, desc: "signed curvature at this point (from the geometry above); 1/\\kappa is the corner radius" },
+            { symbol: String.raw`\mu_{\text{lat}}`, desc: "lateral grip coefficient (tyre compound/pressure/condition, from the Friction chapter)" },
+          ]}
+        />
+        <P>
+          Because downforce grows the right-hand side with the square of speed, more downforce
+          raises high-speed cornering limits without this formula having to say so specially — it
+          simply falls out of solving for v. A car with aerodynamic lift instead of downforce sees
+          the opposite: its cornering limit erodes slightly as speed rises.
+        </P>
+        <H3>Speed profile: forward and backward passes, not average speed</H3>
+        <P>
+          Every point&rsquo;s pure cornering limit above ignores whether the car could actually have
+          reached that speed, or can still shed it in time for what&rsquo;s ahead. Starting from that
+          limit as an initial guess, repeated forward and backward sweeps around the closed lap
+          enforce both:
+        </P>
+        <Pseudocode>{`for each pass:
+  # forward: how fast could the car be going here, given how
+  # fast it was going one step behind and the most it could
+  # have accelerated since (engine force, capped by whatever
+  # the friction ellipse leaves after this point's cornering
+  # demand, minus drag and rolling resistance)?
+  v[i+1] = min(v[i+1], sqrt(v[i]^2 + 2 * maxAccel(v[i], curvature[i]) * ds))
+
+  # backward: how fast can the car afford to be going here,
+  # given it must still be able to brake down (tyre force,
+  # again ellipse-limited, plus drag, rolling resistance and
+  # engine braking) to next step's speed in time?
+  v[i] = min(v[i], sqrt(v[i+1]^2 + 2 * maxBrakeDecel(v[i+1], curvature[i+1]) * ds))`}</Pseudocode>
+        <P>
+          The backward sweep is what pushes a braking zone earlier than the corner entrance itself
+          whenever one step of track isn&rsquo;t distance enough — this is the model&rsquo;s look-ahead: it
+          anticipates a corner well before reaching it, the same way a real driver reads the track
+          ahead rather than reacting at the apex. A few full sweeps are enough to converge on a
+          closed lap, since the starting guess (each point&rsquo;s own cornering limit) is already close.
+        </P>
+        <H3>Driver inputs: pedal position from the converged trace</H3>
+        <P>
+          Once the profile has converged, comparing the actual speed change over each step to the
+          <em> maximum possible</em> accel or brake there (the same functions the sweeps used) gives
+          exactly how hard the driver must be pressing the pedal to produce that trace — full
+          throttle or full brake where the car is running at its physical limit, and a softer,
+          partial input wherever it isn&rsquo;t (corner entry, exit, or a kink that never demanded the
+          whole tyre budget). This is what stands in for turn-in and trail braking, without a
+          separate heuristic bolted on top of the physics.
+        </P>
+        <H3>Gear selection, shift time, and engine braking</H3>
         <P>
           Cruising and coasting elsewhere in the app pick the tallest gear that still keeps the
           engine above idle. A hot lap instead always uses the shortest gear that doesn&rsquo;t over-rev
-          past the shift point — mirroring a driver who short-shifts nothing and takes every gear
-          right up to its limit, which is what actually produces the fastest lap.
+          past the shift point — a driver who short-shifts nothing and takes every gear right up to
+          its limit, which is what actually produces the fastest lap. Each gear change adds a fixed
+          dead time straight onto the lap clock (a manual&rsquo;s clutch and lever throw take longer than
+          a dual-clutch box&rsquo;s near-instant swap), and while braking, the engine&rsquo;s own internal
+          friction (the Engine chapter&rsquo;s combustion-vs-friction split) contributes a small extra
+          decelerating force on top of the brakes and tyres, exactly as engine braking does in a
+          real car.
+        </P>
+        <H3>Lap time: integrated, not averaged</H3>
+        <P>
+          With the speed at every point on the track known, lap time is the sum of how long each
+          small step of distance takes at that point&rsquo;s speed — never the track length divided by
+          an assumed or average speed:
+        </P>
+        <Formula
+          tex={String.raw`dt = \frac{ds}{v} \qquad \text{lap time} = \sum_i dt_i`}
+          vars={[
+            { symbol: String.raw`ds`, desc: "the (small, fixed) distance between consecutive sampled points" },
+            { symbol: String.raw`v`, desc: "the converged speed at that point" },
+          ]}
+        />
+        <P>
+          Brake temperature is layered on afterward, evolving dynamically over this same
+          integration (heating under braking, cooling everywhere else, exactly as in the Braking
+          chapter) so its telemetry trace stays realistic — but the speed profile itself assumes
+          brakes already at their configured starting temperature throughout, rather than
+          re-solving the whole lap every time a temperature estimate changed.
         </P>
       </>
     ),

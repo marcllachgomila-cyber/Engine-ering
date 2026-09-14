@@ -75,6 +75,7 @@ export interface VehicleSpec {
   weightKg: number;
   dragCoefficient: number;
   frontalAreaM2: number;
+  liftCoefficient: number;
   rollingResistanceCoefficient: number;
   drivetrainEfficiency: number;
   tireGripMu: number;
@@ -96,6 +97,16 @@ export interface Telemetry {
   distanceM: number;
   brakeTempC?: number;
   brakeForceN?: number;
+  // Hot-lap-only channels: how much of the tyre's friction circle is being
+  // used, split into its longitudinal/lateral components, plus the pedal
+  // inputs and aero forces that produced this instant of the speed trace.
+  lateralGForce?: number;
+  throttle?: number;
+  brakeInput?: number;
+  tyreUtilization?: number;
+  downforceN?: number;
+  dragN?: number;
+  curvature?: number;
 }
 
 export interface SimulationResult {
@@ -151,11 +162,18 @@ export interface TractiveForceData {
   resistanceCurve: ForcePoint[];
 }
 
-export type CircuitCornerClass = "hairpin" | "tight" | "medium" | "fast" | "veryFast";
-
-export type CircuitSegment =
-  | { type: "straight"; lengthM: number }
-  | { type: "corner"; lengthM: number; radiusM: number };
+// One sample along the circuit centerline, in real-world units. Distance,
+// heading and curvature are all *derived* from the (x, y) geometry rather
+// than assigned by hand - see lib/physics/circuitGeometry.ts. Curvature is
+// signed (positive = turning left/CCW, negative = right/CW); 1/curvature is
+// the corner radius at that point, 0 is a straight.
+export interface CircuitPoint {
+  distanceM: number;
+  x: number;
+  y: number;
+  headingRad: number;
+  curvature: number;
+}
 
 export interface Circuit {
   id: string;
@@ -165,5 +183,10 @@ export interface Circuit {
   corners: number;
   viewBox: string;
   outlinePath: string;
-  segments: CircuitSegment[];
+  // Track width is not known per-corner for any circuit currently in the
+  // app (no survey data available) - this is a single representative
+  // constant used only where a width estimate is unavoidable, not a
+  // per-point measurement.
+  trackWidthM: number;
+  points: CircuitPoint[];
 }

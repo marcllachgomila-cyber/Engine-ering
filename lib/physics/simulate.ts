@@ -1,4 +1,5 @@
 import { ABS_OFF_PENALTY, BRAKE_MATERIALS } from "./brakeModel";
+import { normalLoadN } from "./aeroModel";
 import { getCircuit } from "./circuits";
 import { buildEngineCurves } from "./engineModel";
 import { simulateHotLap } from "./lapSimulate";
@@ -79,12 +80,18 @@ export function simulate(
   );
   const effectiveMu =
     vehicle.tireGripMu * gripMultiplier * wheelSpinEfficiency(chassis.wheelSpinPercent);
-  const tractionLimit = effectiveMu * vehicle.weightKg * G;
+
+  // Traction/braking limits scale with normal (tyre) load, not just static
+  // weight - aero downforce adds to it at speed, aero lift (boxy road
+  // bodies) subtracts from it, exactly as in the hot-lap model.
+  const tractionLimitAt = (speedMs: number): number =>
+    effectiveMu * normalLoadN(speedMs, vehicle, G);
 
   // Braking isn't limited by launch wheel-spin tuning - it's modeled as an
   // idealized max-effort stop (perfect ABS, no lock-up), so it only inherits
   // the tire's grip and the road condition, not the wheelspin term above.
-  const brakingTractionLimit = vehicle.tireGripMu * gripMultiplier * vehicle.weightKg * G;
+  const brakingTractionLimitAt = (speedMs: number): number =>
+    vehicle.tireGripMu * gripMultiplier * normalLoadN(speedMs, vehicle, G);
 
   let speedMs = Math.max(0, test.initialSpeedKph / 3.6);
   let distanceM = 0;
@@ -117,7 +124,7 @@ export function simulate(
     if (test.testType === "braking") {
       const brakeEffectiveness =
         brakeMaterial.effectivenessAt(brakeTempC) * (test.absEnabled ? 1 : ABS_OFF_PENALTY);
-      const brakeForce = brakingTractionLimit * brakeEffectiveness;
+      const brakeForce = brakingTractionLimitAt(speedMs) * brakeEffectiveness;
 
       const relativeSpeedMs = speedMs + headwindMs;
       const dragForce =
@@ -174,6 +181,7 @@ export function simulate(
       (torqueNm * gearRatio * vehicle.finalDrive * vehicle.drivetrainEfficiency) /
       vehicle.wheelRadiusM;
 
+    const tractionLimit = tractionLimitAt(speedMs);
     let driveForce: number;
     if (engineForce <= tractionLimit) {
       driveForce = engineForce;

@@ -62,6 +62,10 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
     () => Math.max(0, ...result.telemetry.map((s) => s.brakeTempC ?? 0)),
     [result.telemetry],
   );
+  const peakLateralGForce = useMemo(
+    () => Math.max(0.1, ...result.telemetry.map((s) => Math.abs(s.lateralGForce ?? 0))),
+    [result.telemetry],
+  );
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6">
@@ -149,6 +153,28 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
 
       {result.testType === "hotLap" && (
         <>
+          <GraphCard>
+            <TimeSeriesGraph
+              telemetry={result.telemetry}
+              currentT={finalT}
+              getValue={(s) => Math.abs(s.lateralGForce ?? 0)}
+              peakValue={peakLateralGForce}
+              color="#34d399"
+              label="Lateral G (cornering load) vs Time"
+              formatValue={(v) => v.toFixed(2)}
+            />
+          </GraphCard>
+          <GraphCard>
+            <TimeSeriesGraph
+              telemetry={result.telemetry}
+              currentT={finalT}
+              getValue={(s) => (s.tyreUtilization ?? 0) * 100}
+              peakValue={100}
+              color="#a78bfa"
+              label="Tyre Utilisation (% of friction circle) vs Time"
+              formatValue={(v) => `${Math.round(v)}%`}
+            />
+          </GraphCard>
           <GraphCard>
             <TimeSeriesGraph
               telemetry={result.telemetry}

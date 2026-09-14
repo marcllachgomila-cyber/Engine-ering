@@ -114,6 +114,7 @@ export function deriveVehicle(
     weightKg,
     dragCoefficient: preset.dragCoefficient,
     frontalAreaM2: preset.frontalAreaM2,
+    liftCoefficient: preset.liftCoefficient,
     rollingResistanceCoefficient: 0.013,
     drivetrainEfficiency: 0.85,
     tireGripMu: driveGripMultiplier * pressureGripMultiplier * drivetrainGripMultiplier,
