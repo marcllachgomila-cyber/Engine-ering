@@ -5,8 +5,19 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 
 interface FormulaVar {
+  // LaTeX source, exactly as it appears in the formula's own `tex` above -
+  // rendered through KaTeX (not typed out separately) so the symbol shown in
+  // the legend can never drift from the symbol actually used in the formula.
   symbol: string;
   desc: string;
+}
+
+function VarSymbol({ tex }: { tex: string }) {
+  const html = useMemo(
+    () => katex.renderToString(tex, { displayMode: false, throwOnError: false, strict: "ignore" }),
+    [tex],
+  );
+  return <span dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 // Renders real LaTeX (KaTeX) so formulas are typeset the way a textbook or
@@ -35,8 +46,10 @@ function Formula({ tex, vars }: { tex: string; vars?: FormulaVar[] }) {
           </summary>
           <dl className="mt-2 space-y-1.5">
             {vars.map((v) => (
-              <div key={v.symbol} className="flex gap-3 text-sm leading-relaxed">
-                <dt className="shrink-0 whitespace-nowrap font-mono text-amber-300">{v.symbol}</dt>
+              <div key={v.symbol} className="flex items-baseline gap-3 text-sm leading-relaxed">
+                <dt className="shrink-0 whitespace-nowrap text-amber-300">
+                  <VarSymbol tex={v.symbol} />
+                </dt>
                 <dd className="text-zinc-400">{v.desc}</dd>
               </div>
             ))}
@@ -132,10 +145,10 @@ v(t+\Delta t) &= v(t) + a(t)\,\Delta t \\
 x(t+\Delta t) &= x(t) + v(t+\Delta t)\,\Delta t
 \end{aligned}`}
           vars={[
-            { symbol: "v(t)", desc: "velocity at time t" },
-            { symbol: "x(t)", desc: "position at time t" },
-            { symbol: "a(t)", desc: "net acceleration at time t, as derived in the chapters below" },
-            { symbol: "Δt", desc: "the fixed simulation time step" },
+            { symbol: String.raw`v(t)`, desc: "velocity at time t" },
+            { symbol: String.raw`x(t)`, desc: "position at time t" },
+            { symbol: String.raw`a(t)`, desc: "net acceleration at time t, as derived in the chapters below" },
+            { symbol: String.raw`\Delta t`, desc: "the fixed simulation time step" },
           ]}
         />
         <P>
@@ -173,11 +186,11 @@ x(t+\Delta t) &= x(t) + v(t+\Delta t)\,\Delta t
         <Formula
           tex={String.raw`T_{\text{peak}} = D \cdot k_{\text{tpl}}(\text{aspiration}, \text{fuel}) \cdot f(n_{\text{cyl}})`}
           vars={[
-            { symbol: "T_peak", desc: "theoretical peak crankshaft torque" },
-            { symbol: "D", desc: "engine displacement" },
-            { symbol: "k_tpl", desc: "torque-per-litre figure, set by aspiration and fuel type" },
-            { symbol: "n_cyl", desc: "cylinder count" },
-            { symbol: "f(n_cyl)", desc: "cylinder-count factor rewarding smoother combustion, tapering off at very high counts" },
+            { symbol: String.raw`T_{\text{peak}}`, desc: "theoretical peak crankshaft torque" },
+            { symbol: String.raw`D`, desc: "engine displacement" },
+            { symbol: String.raw`k_{\text{tpl}}`, desc: "torque-per-litre figure, set by aspiration and fuel type" },
+            { symbol: String.raw`n_{\text{cyl}}`, desc: "cylinder count" },
+            { symbol: String.raw`f(n_{\text{cyl}})`, desc: "cylinder-count factor rewarding smoother combustion, tapering off at very high counts" },
           ]}
         />
         <H3>Curve shape</H3>
@@ -194,11 +207,11 @@ x &= \frac{\text{rpm}}{\text{rpm}_{\text{redline}}} \\
 T(\text{rpm}) &= T_{\text{peak}}\, \exp\!\left(-\frac{(x - x_{\text{peak}})^2}{2\sigma^2}\right)
 \end{aligned}`}
           vars={[
-            { symbol: "x", desc: "current RPM as a fraction of redline" },
-            { symbol: "T(rpm)", desc: "torque output at a given RPM" },
-            { symbol: "T_peak", desc: "theoretical peak torque" },
-            { symbol: "x_peak", desc: "fraction of redline where peak torque occurs, set by aspiration and fuel" },
-            { symbol: "σ", desc: "spread of the bell curve (asymmetric: one value below the peak, a wider one above it)" },
+            { symbol: String.raw`x`, desc: "current RPM as a fraction of redline" },
+            { symbol: String.raw`T(\text{rpm})`, desc: "torque output at a given RPM" },
+            { symbol: String.raw`T_{\text{peak}}`, desc: "theoretical peak torque" },
+            { symbol: String.raw`x_{\text{peak}}`, desc: "fraction of redline where peak torque occurs, set by aspiration and fuel" },
+            { symbol: String.raw`\sigma`, desc: "spread of the bell curve (asymmetric: one value below the peak, a wider one above it)" },
           ]}
         />
         <P>
@@ -224,10 +237,10 @@ P(\text{rpm}) &= T(\text{rpm}) \cdot \omega(\text{rpm}) \\
 P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
 \end{aligned}`}
           vars={[
-            { symbol: "ω(rpm)", desc: "angular speed at a given RPM, in radians per second" },
-            { symbol: "T(rpm)", desc: "torque at that RPM, from the curve above" },
-            { symbol: "P(rpm)", desc: "power at that RPM, in watts" },
-            { symbol: "P_hp", desc: "power converted to horsepower (1 hp = 745.7 W)" },
+            { symbol: String.raw`\omega(\text{rpm})`, desc: "angular speed at a given RPM, in radians per second" },
+            { symbol: String.raw`T(\text{rpm})`, desc: "torque at that RPM, from the curve above" },
+            { symbol: String.raw`P(\text{rpm})`, desc: "power at that RPM, in watts" },
+            { symbol: String.raw`P_{\text{hp}}`, desc: "power converted to horsepower (1 hp = 745.7 W)" },
           ]}
         />
         <P>
@@ -247,10 +260,10 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
         <Formula
           tex={String.raw`T_{\text{fric}}(\text{rpm}) = k_{\text{fric}}(D, n_{\text{cyl}}) \cdot \text{ramp}\!\left(\frac{\text{rpm}}{\text{rpm}_{\max}}\right)`}
           vars={[
-            { symbol: "T_fric(rpm)", desc: "internal friction torque (mechanical + pumping losses) at a given RPM" },
-            { symbol: "k_fric", desc: "friction scale factor, growing with displacement D and cylinder count n_cyl" },
-            { symbol: "rpm_max", desc: "the engine's maximum (rev-limit) RPM, used to normalize the ramp" },
-            { symbol: "ramp(·)", desc: "an increasing, faster-than-linear function of normalized RPM" },
+            { symbol: String.raw`T_{\text{fric}}(\text{rpm})`, desc: "internal friction torque (mechanical + pumping losses) at a given RPM" },
+            { symbol: String.raw`k_{\text{fric}}(D, n_{\text{cyl}})`, desc: "friction scale factor, growing with displacement D and cylinder count n_cyl" },
+            { symbol: String.raw`\text{rpm}_{\max}`, desc: "the engine's maximum (rev-limit) RPM, used to normalize the ramp" },
+            { symbol: String.raw`\text{ramp}(\cdot)`, desc: "an increasing, faster-than-linear function of normalized RPM" },
           ]}
         />
         <P>
@@ -261,9 +274,9 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
         <Formula
           tex={String.raw`T_{\text{comb}}(\text{rpm}) = T(\text{rpm}) + T_{\text{fric}}(\text{rpm})`}
           vars={[
-            { symbol: "T_comb(rpm)", desc: "torque the combustion process must actually produce" },
-            { symbol: "T(rpm)", desc: "net output torque delivered at the crankshaft" },
-            { symbol: "T_fric(rpm)", desc: "internal friction torque being consumed at that RPM" },
+            { symbol: String.raw`T_{\text{comb}}(\text{rpm})`, desc: "torque the combustion process must actually produce" },
+            { symbol: String.raw`T(\text{rpm})`, desc: "net output torque delivered at the crankshaft" },
+            { symbol: String.raw`T_{\text{fric}}(\text{rpm})`, desc: "internal friction torque being consumed at that RPM" },
           ]}
         />
         <H3>Locating the true peaks</H3>
@@ -301,10 +314,10 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
         <Formula
           tex={String.raw`F_{\text{traction}} = \mu_{\text{eff}}\, m\, g`}
           vars={[
-            { symbol: "F_traction", desc: "maximum horizontal force the driven tyres can transmit before slipping" },
-            { symbol: "μ_eff", desc: "effective grip coefficient, built up below from tyre, condition and layout factors" },
-            { symbol: "m", desc: "vehicle mass" },
-            { symbol: "g", desc: "gravitational acceleration" },
+            { symbol: String.raw`F_{\text{traction}}`, desc: "maximum horizontal force the driven tyres can transmit before slipping" },
+            { symbol: String.raw`\mu_{\text{eff}}`, desc: "effective grip coefficient, built up below from tyre, condition and layout factors" },
+            { symbol: String.raw`m`, desc: "vehicle mass" },
+            { symbol: String.raw`g`, desc: "gravitational acceleration" },
           ]}
         />
         <P>
@@ -324,11 +337,11 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
 & \times\, k_{\text{compound}}(\text{condition})
 \end{aligned}`}
           vars={[
-            { symbol: "μ_eff", desc: "the final effective grip coefficient" },
-            { symbol: "μ_base", desc: "base coefficient from tyre width, pressure, and drivetrain layout" },
-            { symbol: "k_cond", desc: "multiplier for road condition (dry, wet, rain, headwind)" },
-            { symbol: "k_type", desc: "multiplier for tyre type (slick vs. treaded) under that condition" },
-            { symbol: "k_compound", desc: "multiplier for tyre compound (soft/medium/hard/intermediate/wet) under that condition" },
+            { symbol: String.raw`\mu_{\text{eff}}`, desc: "the final effective grip coefficient" },
+            { symbol: String.raw`\mu_{\text{base}}`, desc: "base coefficient from tyre width, pressure, and drivetrain layout" },
+            { symbol: String.raw`k_{\text{cond}}`, desc: "multiplier for road condition (dry, wet, rain, headwind)" },
+            { symbol: String.raw`k_{\text{type}}`, desc: "multiplier for tyre type (slick vs. treaded) under that condition" },
+            { symbol: String.raw`k_{\text{compound}}`, desc: "multiplier for tyre compound (soft/medium/hard/intermediate/wet) under that condition" },
           ]}
         />
         <Ul>
@@ -374,10 +387,10 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
         <Formula
           tex={String.raw`\eta_{\text{slip}}(s) = \max\!\left(\eta_{\min},\ 1 - \frac{|s - s_{\text{opt}}|}{100}\right)`}
           vars={[
-            { symbol: "η_slip(s)", desc: "traction efficiency at a given commanded wheel-spin percentage" },
-            { symbol: "s", desc: "commanded wheel-spin percentage" },
-            { symbol: "s_opt", desc: "optimal slip percentage where efficiency peaks" },
-            { symbol: "η_min", desc: "floor efficiency, the minimum value this factor can fall to" },
+            { symbol: String.raw`\eta_{\text{slip}}(s)`, desc: "traction efficiency at a given commanded wheel-spin percentage" },
+            { symbol: String.raw`s`, desc: "commanded wheel-spin percentage" },
+            { symbol: String.raw`s_{\text{opt}}`, desc: "optimal slip percentage where efficiency peaks" },
+            { symbol: String.raw`\eta_{\min}`, desc: "floor efficiency, the minimum value this factor can fall to" },
           ]}
         />
         <P>This factor multiplies directly into the traction limit used for launches and hard acceleration.</P>
@@ -398,10 +411,10 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
 \end{cases}
 \quad (k_{\text{slip}} < 1)`}
           vars={[
-            { symbol: "F_drive", desc: "the force actually realized at the driven wheels" },
-            { symbol: "F_wheel", desc: "force demanded by the drivetrain, from the Gearbox chapter" },
-            { symbol: "F_traction", desc: "the traction limit from above" },
-            { symbol: "k_slip", desc: "kinetic-friction fraction realized once a tyre breaks loose without traction control" },
+            { symbol: String.raw`F_{\text{drive}}`, desc: "the force actually realized at the driven wheels" },
+            { symbol: String.raw`F_{\text{wheel}}`, desc: "force demanded by the drivetrain, from the Gearbox chapter" },
+            { symbol: String.raw`F_{\text{traction}}`, desc: "the traction limit from above" },
+            { symbol: String.raw`k_{\text{slip}}`, desc: "kinetic-friction fraction realized once a tyre breaks loose without traction control" },
           ]}
         />
         <H3>Rolling resistance</H3>
@@ -414,10 +427,10 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
         <Formula
           tex={String.raw`F_{\text{roll}} = C_{rr}\, m\, g`}
           vars={[
-            { symbol: "F_roll", desc: "rolling-resistance force opposing motion" },
-            { symbol: "C_rr", desc: "rolling-resistance coefficient" },
-            { symbol: "m", desc: "vehicle mass" },
-            { symbol: "g", desc: "gravitational acceleration" },
+            { symbol: String.raw`F_{\text{roll}}`, desc: "rolling-resistance force opposing motion" },
+            { symbol: String.raw`C_{rr}`, desc: "rolling-resistance coefficient" },
+            { symbol: String.raw`m`, desc: "vehicle mass" },
+            { symbol: String.raw`g`, desc: "gravitational acceleration" },
           ]}
         />
         <P>
@@ -441,13 +454,13 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
         <Formula
           tex={String.raw`F_{\text{drag}} = \tfrac{1}{2}\, \rho_{\text{air}}\, C_d\, A\, v_{\text{rel}}^{2}`}
           vars={[
-            { symbol: "ρ_air", desc: "air density, the standard sea-level reference value used throughout" },
+            { symbol: String.raw`\rho_{\text{air}}`, desc: "air density, the standard sea-level reference value used throughout" },
             {
-              symbol: "C_d",
+              symbol: String.raw`C_d`,
               desc: "drag coefficient, set by body type (a boxy minivan or SUV carries a higher coefficient than a low, shaped supercar body)",
             },
-            { symbol: "A", desc: "frontal area, also set by body type" },
-            { symbol: "v_rel", desc: "speed relative to the surrounding air, not just speed relative to the road" },
+            { symbol: String.raw`A`, desc: "frontal area, also set by body type" },
+            { symbol: String.raw`v_{\text{rel}}`, desc: "speed relative to the surrounding air, not just speed relative to the road" },
           ]}
         />
         <P>
@@ -465,9 +478,9 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
         <Formula
           tex={String.raw`v_{\text{rel}} = v_{\text{car}} + v_{\text{headwind}}`}
           vars={[
-            { symbol: "v_rel", desc: "airspeed used in the drag equation above" },
-            { symbol: "v_car", desc: "the car's own speed relative to the road" },
-            { symbol: "v_headwind", desc: "the steady headwind speed added under the headwind road condition" },
+            { symbol: String.raw`v_{\text{rel}}`, desc: "airspeed used in the drag equation above" },
+            { symbol: String.raw`v_{\text{car}}`, desc: "the car's own speed relative to the road" },
+            { symbol: String.raw`v_{\text{headwind}}`, desc: "the steady headwind speed added under the headwind road condition" },
           ]}
         />
         <P>
@@ -499,11 +512,11 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
         <Formula
           tex={String.raw`\text{rpm}(v) = \frac{v}{r_w} \, i_g \, i_0 \, \frac{60}{2\pi}`}
           vars={[
-            { symbol: "rpm(v)", desc: "engine RPM at a given road speed" },
-            { symbol: "v", desc: "road speed" },
-            { symbol: "r_w", desc: "driven wheel's rolling radius" },
-            { symbol: "i_g", desc: "current gear ratio" },
-            { symbol: "i_0", desc: "final-drive ratio" },
+            { symbol: String.raw`\text{rpm}(v)`, desc: "engine RPM at a given road speed" },
+            { symbol: String.raw`v`, desc: "road speed" },
+            { symbol: String.raw`r_w`, desc: "driven wheel's rolling radius" },
+            { symbol: String.raw`i_g`, desc: "current gear ratio" },
+            { symbol: String.raw`i_0`, desc: "final-drive ratio" },
           ]}
         />
         <P>
@@ -523,10 +536,10 @@ i_k &= i_1 \left(\frac{i_N}{i_1}\right)^{\frac{k-1}{N-1}} \\
 k &= 1, 2, \dots, N
 \end{aligned}`}
           vars={[
-            { symbol: "i_k", desc: "ratio of gear k" },
-            { symbol: "i_1", desc: "short launch ratio of gear one" },
-            { symbol: "i_N", desc: "tallest ratio of the top gear (scales taller as N grows)" },
-            { symbol: "N", desc: "total number of gears chosen" },
+            { symbol: String.raw`i_k`, desc: "ratio of gear k" },
+            { symbol: String.raw`i_1`, desc: "short launch ratio of gear one" },
+            { symbol: String.raw`i_N`, desc: "tallest ratio of the top gear (scales taller as N grows)" },
+            { symbol: String.raw`N`, desc: "total number of gears chosen" },
           ]}
         />
         <P>
@@ -555,12 +568,12 @@ k &= 1, 2, \dots, N
         <Formula
           tex={String.raw`F_{\text{wheel}} = \frac{T(\text{rpm}) \, i_g \, i_0 \, \eta_t}{r_w}`}
           vars={[
-            { symbol: "F_wheel", desc: "forward force delivered at the contact patch" },
-            { symbol: "T(rpm)", desc: "engine torque at the current RPM" },
-            { symbol: "i_g", desc: "current gear ratio" },
-            { symbol: "i_0", desc: "final-drive ratio" },
-            { symbol: "η_t", desc: "flat drivetrain efficiency (clutch, gears, differential losses)" },
-            { symbol: "r_w", desc: "driven wheel's rolling radius" },
+            { symbol: String.raw`F_{\text{wheel}}`, desc: "forward force delivered at the contact patch" },
+            { symbol: String.raw`T(\text{rpm})`, desc: "engine torque at the current RPM" },
+            { symbol: String.raw`i_g`, desc: "current gear ratio" },
+            { symbol: String.raw`i_0`, desc: "final-drive ratio" },
+            { symbol: String.raw`\eta_t`, desc: "flat drivetrain efficiency (clutch, gears, differential losses)" },
+            { symbol: String.raw`r_w`, desc: "driven wheel's rolling radius" },
           ]}
         />
         <P>
@@ -586,10 +599,10 @@ k &= 1, 2, \dots, N
         <Formula
           tex={String.raw`F_{\text{brake,max}} = \mu_{\text{eff}}\, m\, g`}
           vars={[
-            { symbol: "F_brake,max", desc: "idealized, perfect-ABS maximum braking force" },
-            { symbol: "μ_eff", desc: "the same effective grip coefficient used for traction" },
-            { symbol: "m", desc: "vehicle mass" },
-            { symbol: "g", desc: "gravitational acceleration" },
+            { symbol: String.raw`F_{\text{brake,max}}`, desc: "idealized, perfect-ABS maximum braking force" },
+            { symbol: String.raw`\mu_{\text{eff}}`, desc: "the same effective grip coefficient used for traction" },
+            { symbol: String.raw`m`, desc: "vehicle mass" },
+            { symbol: String.raw`g`, desc: "gravitational acceleration" },
           ]}
         />
         <P>
@@ -606,10 +619,10 @@ k &= 1, 2, \dots, N
         <Formula
           tex={String.raw`F_{\text{brake}} = F_{\text{brake,max}} \cdot \text{effectiveness}(\text{material}, T)`}
           vars={[
-            { symbol: "F_brake", desc: "braking force actually delivered" },
-            { symbol: "F_brake,max", desc: "the idealized peak braking force from above" },
-            { symbol: "T", desc: "current brake (rotor/pad) temperature" },
-            { symbol: "effectiveness(·)", desc: "material-specific curve of how much of the ceiling is realized at that temperature" },
+            { symbol: String.raw`F_{\text{brake}}`, desc: "braking force actually delivered" },
+            { symbol: String.raw`F_{\text{brake,max}}`, desc: "the idealized peak braking force from above" },
+            { symbol: String.raw`T`, desc: "current brake (rotor/pad) temperature" },
+            { symbol: String.raw`\text{effectiveness}(\text{material}, T)`, desc: "material-specific curve of how much of the ceiling is realized at that temperature" },
           ]}
         />
         <Ul>
@@ -637,11 +650,11 @@ k &= 1, 2, \dots, N
 T &\leftarrow T + \Delta T
 \end{aligned}`}
           vars={[
-            { symbol: "ΔT", desc: "temperature rise added this simulation step" },
-            { symbol: "F_brake", desc: "braking force delivered this step" },
-            { symbol: "Δd", desc: "distance covered this step" },
-            { symbol: "C_thermal", desc: "heat capacity of the lumped rotor/pad thermal mass" },
-            { symbol: "T", desc: "running brake temperature, updated each step" },
+            { symbol: String.raw`\Delta T`, desc: "temperature rise added this simulation step" },
+            { symbol: String.raw`F_{\text{brake}}`, desc: "braking force delivered this step" },
+            { symbol: String.raw`\Delta d`, desc: "distance covered this step" },
+            { symbol: String.raw`C_{\text{thermal}}`, desc: "heat capacity of the lumped rotor/pad thermal mass" },
+            { symbol: String.raw`T`, desc: "running brake temperature, updated each step" },
           ]}
         />
         <P>
@@ -679,16 +692,16 @@ m = \ & m_{\text{chassis}}(\text{bodyType}) \\
 & + \sum_{\text{axles}} \Delta(\text{diameter})\, k_{\text{dia}} \;+\; \Delta(\text{width})\, k_{\text{width}}
 \end{aligned}`}
           vars={[
-            { symbol: "m", desc: "total vehicle mass" },
-            { symbol: "m_chassis", desc: "base chassis mass, set by body type (minivan, SUV, supercar)" },
-            { symbol: "n_cyl", desc: "cylinder count" },
-            { symbol: "k_cyl", desc: "mass added per cylinder" },
-            { symbol: "D", desc: "engine displacement" },
-            { symbol: "k_D", desc: "mass added per unit of displacement" },
-            { symbol: "m_fi", desc: "fixed hardware mass added when turbocharged or supercharged" },
-            { symbol: "Δ(diameter)", desc: "wheel diameter delta from the reference dimension, per axle" },
-            { symbol: "Δ(width)", desc: "tyre width delta from the reference dimension, per axle" },
-            { symbol: "k_dia, k_width", desc: "mass added per unit of diameter/width delta" },
+            { symbol: String.raw`m`, desc: "total vehicle mass" },
+            { symbol: String.raw`m_{\text{chassis}}`, desc: "base chassis mass, set by body type (minivan, SUV, supercar)" },
+            { symbol: String.raw`n_{\text{cyl}}`, desc: "cylinder count" },
+            { symbol: String.raw`k_{\text{cyl}}`, desc: "mass added per cylinder" },
+            { symbol: String.raw`D`, desc: "engine displacement" },
+            { symbol: String.raw`k_D`, desc: "mass added per unit of displacement" },
+            { symbol: String.raw`m_{\text{fi}}`, desc: "fixed hardware mass added when turbocharged or supercharged" },
+            { symbol: String.raw`\Delta(\text{diameter})`, desc: "wheel diameter delta from the reference dimension, per axle" },
+            { symbol: String.raw`\Delta(\text{width})`, desc: "tyre width delta from the reference dimension, per axle" },
+            { symbol: String.raw`k_{\text{dia}},\ k_{\text{width}}`, desc: "mass added per unit of diameter/width delta" },
           ]}
         />
         <P>
@@ -752,11 +765,11 @@ m = \ & m_{\text{chassis}}(\text{bodyType}) \\
         <Formula
           tex={String.raw`a = \frac{F_{\text{drive}} - F_{\text{drag}} - F_{\text{roll}}}{m}`}
           vars={[
-            { symbol: "a", desc: "net acceleration for this time step" },
-            { symbol: "F_drive", desc: "drive force realized at the wheels (Friction chapter)" },
-            { symbol: "F_drag", desc: "aerodynamic drag (Aerodynamics chapter)" },
-            { symbol: "F_roll", desc: "rolling resistance (Friction chapter)" },
-            { symbol: "m", desc: "vehicle mass" },
+            { symbol: String.raw`a`, desc: "net acceleration for this time step" },
+            { symbol: String.raw`F_{\text{drive}}`, desc: "drive force realized at the wheels (Friction chapter)" },
+            { symbol: String.raw`F_{\text{drag}}`, desc: "aerodynamic drag (Aerodynamics chapter)" },
+            { symbol: String.raw`F_{\text{roll}}`, desc: "rolling resistance (Friction chapter)" },
+            { symbol: String.raw`m`, desc: "vehicle mass" },
           ]}
         />
         <H3>Stopping conditions</H3>
@@ -809,13 +822,13 @@ F_c &\le \mu_{\text{eff}}\, m\, g \quad \text{(friction ceiling)} \\
 v_{\text{apex}} &= \sqrt{\mu_{\text{eff}}\, g\, r}
 \end{aligned}`}
           vars={[
-            { symbol: "F_c", desc: "centripetal force required to hold the corner radius" },
-            { symbol: "m", desc: "vehicle mass" },
-            { symbol: "v", desc: "cornering speed" },
-            { symbol: "r", desc: "corner radius" },
-            { symbol: "μ_eff", desc: "effective grip coefficient (Friction chapter)" },
-            { symbol: "g", desc: "gravitational acceleration" },
-            { symbol: "v_apex", desc: "fastest speed the corner can be taken at" },
+            { symbol: String.raw`F_c`, desc: "centripetal force required to hold the corner radius" },
+            { symbol: String.raw`m`, desc: "vehicle mass" },
+            { symbol: String.raw`v`, desc: "cornering speed" },
+            { symbol: String.raw`r`, desc: "corner radius" },
+            { symbol: String.raw`\mu_{\text{eff}}`, desc: "effective grip coefficient (Friction chapter)" },
+            { symbol: String.raw`g`, desc: "gravitational acceleration" },
+            { symbol: String.raw`v_{\text{apex}}`, desc: "fastest speed the corner can be taken at" },
           ]}
         />
         <H3>Look-ahead braking</H3>
@@ -830,10 +843,10 @@ a_{\text{brake}} &= \mu_{\text{eff}}\, g \\
 d_{\text{brake}} &= \frac{v^2 - v_{\text{apex}}^2}{2\, a_{\text{brake}}}
 \end{aligned}`}
           vars={[
-            { symbol: "a_brake", desc: "tyre's maximum braking deceleration" },
-            { symbol: "d_brake", desc: "distance needed to shed speed down to the apex speed" },
-            { symbol: "v", desc: "current speed" },
-            { symbol: "v_apex", desc: "target apex speed for the upcoming corner" },
+            { symbol: String.raw`a_{\text{brake}}`, desc: "tyre's maximum braking deceleration" },
+            { symbol: String.raw`d_{\text{brake}}`, desc: "distance needed to shed speed down to the apex speed" },
+            { symbol: String.raw`v`, desc: "current speed" },
+            { symbol: String.raw`v_{\text{apex}}`, desc: "target apex speed for the upcoming corner" },
           ]}
         />
         <P>
@@ -881,9 +894,9 @@ d_{\text{brake}} &= \frac{v^2 - v_{\text{apex}}^2}{2\, a_{\text{brake}}}
         <Formula
           tex={String.raw`\hat{x} = \frac{x - \min(\text{allValues})}{\max(\text{allValues}) - \min(\text{allValues})}`}
           vars={[
-            { symbol: "x̂", desc: "the normalized stat value, in 0–1" },
-            { symbol: "x", desc: "the raw stat value being normalized" },
-            { symbol: "min/max(allValues)", desc: "the min and max of that stat across your build plus every reference car" },
+            { symbol: String.raw`\hat{x}`, desc: "the normalized stat value, in 0–1" },
+            { symbol: String.raw`x`, desc: "the raw stat value being normalized" },
+            { symbol: String.raw`\min(\text{allValues}),\ \max(\text{allValues})`, desc: "the min and max of that stat across your build plus every reference car" },
           ]}
         />
         <H3>Weighted distance</H3>
@@ -900,11 +913,11 @@ d^2 &= \sum_k w_k \left(\hat{t}_k - \hat{c}_k\right)^2 \;+\; w_a\,\mathbf{1}[\te
 d &= \sqrt{d^2}
 \end{aligned}`}
           vars={[
-            { symbol: "d", desc: "overall distance (dissimilarity) between your build and a reference car" },
-            { symbol: "w_k", desc: "weight for stat k (power and power-to-weight weighted more heavily)" },
-            { symbol: "t̂_k, ĉ_k", desc: "normalized stat k for your build and the reference car, respectively" },
-            { symbol: "w_a, w_ℓ", desc: "flat penalty weights for an aspiration or layout mismatch" },
-            { symbol: "𝟙[·]", desc: "indicator function: 1 if the mismatch condition holds, 0 otherwise" },
+            { symbol: String.raw`d`, desc: "overall distance (dissimilarity) between your build and a reference car" },
+            { symbol: String.raw`w_k`, desc: "weight for stat k (power and power-to-weight weighted more heavily)" },
+            { symbol: String.raw`\hat{t}_k,\ \hat{c}_k`, desc: "normalized stat k for your build and the reference car, respectively" },
+            { symbol: String.raw`w_a,\ w_\ell`, desc: "flat penalty weights for an aspiration or layout mismatch" },
+            { symbol: String.raw`\mathbf{1}[\cdot]`, desc: "indicator function: 1 if the mismatch condition holds, 0 otherwise" },
           ]}
         />
         <P>
