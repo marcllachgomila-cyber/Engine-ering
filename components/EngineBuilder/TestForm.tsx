@@ -28,9 +28,17 @@ interface TestFormProps {
   value: TestConfig;
   onChange: (test: TestConfig) => void;
   onSubmit: () => void;
+  skipHotLapAnimation: boolean;
+  onSkipHotLapAnimationChange: (skip: boolean) => void;
 }
 
-export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
+export default function TestForm({
+  value,
+  onChange,
+  onSubmit,
+  skipHotLapAnimation,
+  onSkipHotLapAnimationChange,
+}: TestFormProps) {
   return (
     <div className="w-full space-y-8">
       <StepHeader
@@ -95,6 +103,24 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
                 </button>
               ))}
             </div>
+
+            <label className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={skipHotLapAnimation}
+                onChange={(e) => onSkipHotLapAnimationChange(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-amber-500"
+              />
+              <span>
+                <span className="text-sm font-medium text-zinc-300 block">
+                  Skip live simulation
+                </span>
+                <span className="text-xs text-zinc-500">
+                  Jump straight to the results instead of watching the lap play out in
+                  real time.
+                </span>
+              </span>
+            </label>
           </div>
         )}
 
@@ -227,7 +253,9 @@ export default function TestForm({ value, onChange, onSubmit }: TestFormProps) {
       </SectionCard>
 
       <ContinueButton onClick={onSubmit}>
-        Start {TEST_TYPE_LABELS[value.testType]} Run
+        {value.testType === "hotLap" && skipHotLapAnimation
+          ? "Show Hot Lap Results"
+          : `Start ${TEST_TYPE_LABELS[value.testType]} Run`}
       </ContinueButton>
     </div>
   );

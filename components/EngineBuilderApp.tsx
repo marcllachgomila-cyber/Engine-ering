@@ -17,6 +17,7 @@ import {
 } from "@/lib/physics/defaults";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import { findClosestCars } from "@/lib/matching/matchCars";
+import { simulate } from "@/lib/physics/simulate";
 import {
   addFavorite,
   getFavoritesServerSnapshot,
@@ -50,20 +51,13 @@ export default function EngineBuilderApp() {
   const [audioEngine, setAudioEngine] = useState<EngineAudioEngine | null>(null);
   const [saved, setSaved] = useState(false);
   const [previousStep, setPreviousStep] = useState<Step>("chassis");
+  const [skipHotLapAnimation, setSkipHotLapAnimation] = useState(false);
 
   const favorites = useSyncExternalStore(
     subscribeFavorites,
     getFavoritesSnapshot,
     getFavoritesServerSnapshot,
   );
-
-  const handleRunTest = useCallback(() => {
-    const audio = new EngineAudioEngine(engine);
-    audio.start();
-    setAudioEngine(audio);
-    setSaved(false);
-    setStep("simulate");
-  }, [engine]);
 
   const handleComplete = useCallback(
     (simResult: SimulationResult) => {
@@ -73,6 +67,22 @@ export default function EngineBuilderApp() {
     },
     [engine],
   );
+
+  const handleRunTest = useCallback(() => {
+    // A hot lap's whole result is already computed up front (the live run
+    // just replays its telemetry in real time) - skipping straight to the
+    // results screen is just skipping that replay, not re-simulating.
+    if (test.testType === "hotLap" && skipHotLapAnimation) {
+      setSaved(false);
+      handleComplete(simulate(engine, chassis, gearbox, test));
+      return;
+    }
+    const audio = new EngineAudioEngine(engine);
+    audio.start();
+    setAudioEngine(audio);
+    setSaved(false);
+    setStep("simulate");
+  }, [engine, chassis, gearbox, test, skipHotLapAnimation, handleComplete]);
 
   const handleReset = useCallback(() => {
     audioEngine?.dispose();
@@ -143,7 +153,13 @@ export default function EngineBuilderApp() {
                 />
               )}
               {step === "test" && (
-                <TestForm value={test} onChange={setTest} onSubmit={handleRunTest} />
+                <TestForm
+                  value={test}
+                  onChange={setTest}
+                  onSubmit={handleRunTest}
+                  skipHotLapAnimation={skipHotLapAnimation}
+                  onSkipHotLapAnimationChange={setSkipHotLapAnimation}
+                />
               )}
             </div>
             <div className="lg:sticky lg:top-8 space-y-6">
