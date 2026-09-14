@@ -4,18 +4,46 @@ import { ReactNode, useEffect, useMemo, useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 
+interface FormulaVar {
+  symbol: string;
+  desc: string;
+}
+
 // Renders real LaTeX (KaTeX) so formulas are typeset the way a textbook or
 // Wikipedia's math renderer would show them, instead of as plain ASCII text.
-function Formula({ tex }: { tex: string }) {
+// An optional `vars` list renders as a collapsible legend beneath the
+// formula, so the meaning of each symbol is one click away instead of
+// requiring readers to hunt back through the surrounding prose.
+function Formula({ tex, vars }: { tex: string; vars?: FormulaVar[] }) {
   const html = useMemo(
     () => katex.renderToString(tex, { displayMode: true, throwOnError: false, strict: "ignore" }),
     [tex],
   );
   return (
-    <div
-      className="my-4 w-full overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950/80 px-5 py-4 text-[1.05rem] text-amber-100 [&_.katex-display]:my-0"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="my-4 w-full">
+      <div
+        className="w-full overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950/80 px-5 py-4 text-[1.05rem] text-amber-100 [&_.katex-display]:my-0"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      {vars && vars.length > 0 && (
+        <details className="group mt-1.5 w-full rounded-lg border border-zinc-800/70 bg-zinc-900/40 px-4 py-2 open:pb-3">
+          <summary className="flex cursor-pointer select-none items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 transition-colors hover:text-amber-400">
+            <span className="inline-block transition-transform group-open:rotate-90" aria-hidden>
+              &#9656;
+            </span>
+            Variables
+          </summary>
+          <dl className="mt-2 space-y-1.5">
+            {vars.map((v) => (
+              <div key={v.symbol} className="flex gap-3 text-sm leading-relaxed">
+                <dt className="shrink-0 whitespace-nowrap font-mono text-amber-300">{v.symbol}</dt>
+                <dd className="text-zinc-400">{v.desc}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
+    </div>
   );
 }
 
@@ -103,6 +131,12 @@ const CHAPTERS: Chapter[] = [
 v(t+\Delta t) &= v(t) + a(t)\,\Delta t \\
 x(t+\Delta t) &= x(t) + v(t+\Delta t)\,\Delta t
 \end{aligned}`}
+          vars={[
+            { symbol: "v(t)", desc: "velocity at time t" },
+            { symbol: "x(t)", desc: "position at time t" },
+            { symbol: "a(t)", desc: "net acceleration at time t, as derived in the chapters below" },
+            { symbol: "Δt", desc: "the fixed simulation time step" },
+          ]}
         />
         <P>
           Small enough steps make this a close approximation of the true (continuous)
@@ -136,7 +170,16 @@ x(t+\Delta t) &= x(t) + v(t+\Delta t)\,\Delta t
           rewards smoother multi-cylinder combustion but tapers off at very high cylinder counts
           where per-cylinder friction starts eating the gain:
         </P>
-        <Formula tex={String.raw`T_{\text{peak}} = D \cdot k_{\text{tpl}}(\text{aspiration}, \text{fuel}) \cdot f(n_{\text{cyl}})`} />
+        <Formula
+          tex={String.raw`T_{\text{peak}} = D \cdot k_{\text{tpl}}(\text{aspiration}, \text{fuel}) \cdot f(n_{\text{cyl}})`}
+          vars={[
+            { symbol: "T_peak", desc: "theoretical peak crankshaft torque" },
+            { symbol: "D", desc: "engine displacement" },
+            { symbol: "k_tpl", desc: "torque-per-litre figure, set by aspiration and fuel type" },
+            { symbol: "n_cyl", desc: "cylinder count" },
+            { symbol: "f(n_cyl)", desc: "cylinder-count factor rewarding smoother combustion, tapering off at very high counts" },
+          ]}
+        />
         <H3>Curve shape</H3>
         <P>
           The torque curve across the rev range is modeled as an asymmetric bell curve (a
@@ -150,6 +193,13 @@ x(t+\Delta t) &= x(t) + v(t+\Delta t)\,\Delta t
 x &= \frac{\text{rpm}}{\text{rpm}_{\text{redline}}} \\
 T(\text{rpm}) &= T_{\text{peak}}\, \exp\!\left(-\frac{(x - x_{\text{peak}})^2}{2\sigma^2}\right)
 \end{aligned}`}
+          vars={[
+            { symbol: "x", desc: "current RPM as a fraction of redline" },
+            { symbol: "T(rpm)", desc: "torque output at a given RPM" },
+            { symbol: "T_peak", desc: "theoretical peak torque" },
+            { symbol: "x_peak", desc: "fraction of redline where peak torque occurs, set by aspiration and fuel" },
+            { symbol: "σ", desc: "spread of the bell curve (asymmetric: one value below the peak, a wider one above it)" },
+          ]}
         />
         <P>
           The spread <code>σ</code> is not symmetric: one value governs how sharply torque rises
@@ -173,6 +223,12 @@ T(\text{rpm}) &= T_{\text{peak}}\, \exp\!\left(-\frac{(x - x_{\text{peak}})^2}{2
 P(\text{rpm}) &= T(\text{rpm}) \cdot \omega(\text{rpm}) \\
 P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
 \end{aligned}`}
+          vars={[
+            { symbol: "ω(rpm)", desc: "angular speed at a given RPM, in radians per second" },
+            { symbol: "T(rpm)", desc: "torque at that RPM, from the curve above" },
+            { symbol: "P(rpm)", desc: "power at that RPM, in watts" },
+            { symbol: "P_hp", desc: "power converted to horsepower (1 hp = 745.7 W)" },
+          ]}
         />
         <P>
           Because power keeps climbing as long as RPM grows faster than torque falls, peak power
@@ -190,13 +246,26 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
         </P>
         <Formula
           tex={String.raw`T_{\text{fric}}(\text{rpm}) = k_{\text{fric}}(D, n_{\text{cyl}}) \cdot \text{ramp}\!\left(\frac{\text{rpm}}{\text{rpm}_{\max}}\right)`}
+          vars={[
+            { symbol: "T_fric(rpm)", desc: "internal friction torque (mechanical + pumping losses) at a given RPM" },
+            { symbol: "k_fric", desc: "friction scale factor, growing with displacement D and cylinder count n_cyl" },
+            { symbol: "rpm_max", desc: "the engine's maximum (rev-limit) RPM, used to normalize the ramp" },
+            { symbol: "ramp(·)", desc: "an increasing, faster-than-linear function of normalized RPM" },
+          ]}
         />
         <P>
           where <code>ramp</code> is an increasing function of normalized RPM that grows faster
           than linear. The torque the combustion process must actually produce is then the net
           output torque plus whatever this friction term is consuming:
         </P>
-        <Formula tex={String.raw`T_{\text{comb}}(\text{rpm}) = T(\text{rpm}) + T_{\text{fric}}(\text{rpm})`} />
+        <Formula
+          tex={String.raw`T_{\text{comb}}(\text{rpm}) = T(\text{rpm}) + T_{\text{fric}}(\text{rpm})`}
+          vars={[
+            { symbol: "T_comb(rpm)", desc: "torque the combustion process must actually produce" },
+            { symbol: "T(rpm)", desc: "net output torque delivered at the crankshaft" },
+            { symbol: "T_fric(rpm)", desc: "internal friction torque being consumed at that RPM" },
+          ]}
+        />
         <H3>Locating the true peaks</H3>
         <P>
           Because the analytic curve shape is combined with RPM-dependent scaling to get power,
@@ -229,7 +298,15 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
           normal load times a friction coefficient. Applied to a car sitting on its tyres, the
           normal load is (approximately) its own weight, so:
         </P>
-        <Formula tex={String.raw`F_{\text{traction}} = \mu_{\text{eff}}\, m\, g`} />
+        <Formula
+          tex={String.raw`F_{\text{traction}} = \mu_{\text{eff}}\, m\, g`}
+          vars={[
+            { symbol: "F_traction", desc: "maximum horizontal force the driven tyres can transmit before slipping" },
+            { symbol: "μ_eff", desc: "effective grip coefficient, built up below from tyre, condition and layout factors" },
+            { symbol: "m", desc: "vehicle mass" },
+            { symbol: "g", desc: "gravitational acceleration" },
+          ]}
+        />
         <P>
           where <code>m</code> is vehicle mass, <code>g</code> is gravitational acceleration, and{" "}
           <code>μ_eff</code> is an effective grip coefficient built up from every factor that
@@ -246,6 +323,13 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
 & \times\, k_{\text{type}}(\text{condition}) \\
 & \times\, k_{\text{compound}}(\text{condition})
 \end{aligned}`}
+          vars={[
+            { symbol: "μ_eff", desc: "the final effective grip coefficient" },
+            { symbol: "μ_base", desc: "base coefficient from tyre width, pressure, and drivetrain layout" },
+            { symbol: "k_cond", desc: "multiplier for road condition (dry, wet, rain, headwind)" },
+            { symbol: "k_type", desc: "multiplier for tyre type (slick vs. treaded) under that condition" },
+            { symbol: "k_compound", desc: "multiplier for tyre compound (soft/medium/hard/intermediate/wet) under that condition" },
+          ]}
         />
         <Ul>
           <Li>
@@ -289,6 +373,12 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
         </P>
         <Formula
           tex={String.raw`\eta_{\text{slip}}(s) = \max\!\left(\eta_{\min},\ 1 - \frac{|s - s_{\text{opt}}|}{100}\right)`}
+          vars={[
+            { symbol: "η_slip(s)", desc: "traction efficiency at a given commanded wheel-spin percentage" },
+            { symbol: "s", desc: "commanded wheel-spin percentage" },
+            { symbol: "s_opt", desc: "optimal slip percentage where efficiency peaks" },
+            { symbol: "η_min", desc: "floor efficiency, the minimum value this factor can fall to" },
+          ]}
         />
         <P>This factor multiplies directly into the traction limit used for launches and hard acceleration.</P>
         <H3>Uncontrolled wheelspin</H3>
@@ -307,6 +397,12 @@ F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} \text{ and tractio
 k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} \text{ and traction control off}
 \end{cases}
 \quad (k_{\text{slip}} < 1)`}
+          vars={[
+            { symbol: "F_drive", desc: "the force actually realized at the driven wheels" },
+            { symbol: "F_wheel", desc: "force demanded by the drivetrain, from the Gearbox chapter" },
+            { symbol: "F_traction", desc: "the traction limit from above" },
+            { symbol: "k_slip", desc: "kinetic-friction fraction realized once a tyre breaks loose without traction control" },
+          ]}
         />
         <H3>Rolling resistance</H3>
         <P>
@@ -315,7 +411,15 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
           it rotates under load. Unlike aerodynamic drag this does not grow with speed; it is
           modeled as a constant fraction of the normal load:
         </P>
-        <Formula tex={String.raw`F_{\text{roll}} = C_{rr}\, m\, g`} />
+        <Formula
+          tex={String.raw`F_{\text{roll}} = C_{rr}\, m\, g`}
+          vars={[
+            { symbol: "F_roll", desc: "rolling-resistance force opposing motion" },
+            { symbol: "C_rr", desc: "rolling-resistance coefficient" },
+            { symbol: "m", desc: "vehicle mass" },
+            { symbol: "g", desc: "gravitational acceleration" },
+          ]}
+        />
         <P>
           where <code>C_rr</code> is a rolling-resistance coefficient. This force opposes motion in
           every test — acceleration, braking, and lap simulation alike — the same way it does on a
@@ -334,24 +438,18 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
           Aerodynamic drag is the other major force resisting motion, and it is modeled with the
           standard quadratic drag equation from fluid dynamics:
         </P>
-        <Formula tex={String.raw`F_{\text{drag}} = \tfrac{1}{2}\, \rho_{\text{air}}\, C_d\, A\, v_{\text{rel}}^{2}`} />
-        <Ul>
-          <Li>
-            <code>ρ_air</code> — air density, the standard sea-level reference value used
-            throughout.
-          </Li>
-          <Li>
-            <code>C_d</code> — drag coefficient, set by the chosen body type (a boxy minivan or
-            SUV carries a higher coefficient than a low, shaped supercar body).
-          </Li>
-          <Li>
-            <code>A</code> — frontal area, also set by body type.
-          </Li>
-          <Li>
-            <code>v_rel</code> — speed relative to the surrounding air, not just speed relative to
-            the road.
-          </Li>
-        </Ul>
+        <Formula
+          tex={String.raw`F_{\text{drag}} = \tfrac{1}{2}\, \rho_{\text{air}}\, C_d\, A\, v_{\text{rel}}^{2}`}
+          vars={[
+            { symbol: "ρ_air", desc: "air density, the standard sea-level reference value used throughout" },
+            {
+              symbol: "C_d",
+              desc: "drag coefficient, set by body type (a boxy minivan or SUV carries a higher coefficient than a low, shaped supercar body)",
+            },
+            { symbol: "A", desc: "frontal area, also set by body type" },
+            { symbol: "v_rel", desc: "speed relative to the surrounding air, not just speed relative to the road" },
+          ]}
+        />
         <P>
           Because drag grows with the <em>square</em> of relative airspeed, it is a minor
           resistance at low speed and the dominant one as a car approaches its top speed — which is
@@ -364,7 +462,14 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
           add directly onto the car&rsquo;s own speed when computing relative airspeed, which only ever
           increases drag:
         </P>
-        <Formula tex={String.raw`v_{\text{rel}} = v_{\text{car}} + v_{\text{headwind}}`} />
+        <Formula
+          tex={String.raw`v_{\text{rel}} = v_{\text{car}} + v_{\text{headwind}}`}
+          vars={[
+            { symbol: "v_rel", desc: "airspeed used in the drag equation above" },
+            { symbol: "v_car", desc: "the car's own speed relative to the road" },
+            { symbol: "v_headwind", desc: "the steady headwind speed added under the headwind road condition" },
+          ]}
+        />
         <P>
           This is why a headwind condition can only ever cost top speed and straight-line
           performance, never help it — there is no equivalent tailwind condition that subtracts
@@ -391,7 +496,16 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
           rolling radius <code>r_w</code> — the same relationship a real drivetrain enforces
           mechanically:
         </P>
-        <Formula tex={String.raw`\text{rpm}(v) = \frac{v}{r_w} \, i_g \, i_0 \, \frac{60}{2\pi}`} />
+        <Formula
+          tex={String.raw`\text{rpm}(v) = \frac{v}{r_w} \, i_g \, i_0 \, \frac{60}{2\pi}`}
+          vars={[
+            { symbol: "rpm(v)", desc: "engine RPM at a given road speed" },
+            { symbol: "v", desc: "road speed" },
+            { symbol: "r_w", desc: "driven wheel's rolling radius" },
+            { symbol: "i_g", desc: "current gear ratio" },
+            { symbol: "i_0", desc: "final-drive ratio" },
+          ]}
+        />
         <P>
           Inverting this relationship is how the model always knows what RPM the engine is turning
           at for any given speed and gear, without needing to separately track engine speed as its
@@ -408,6 +522,12 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
 i_k &= i_1 \left(\frac{i_N}{i_1}\right)^{\frac{k-1}{N-1}} \\
 k &= 1, 2, \dots, N
 \end{aligned}`}
+          vars={[
+            { symbol: "i_k", desc: "ratio of gear k" },
+            { symbol: "i_1", desc: "short launch ratio of gear one" },
+            { symbol: "i_N", desc: "tallest ratio of the top gear (scales taller as N grows)" },
+            { symbol: "N", desc: "total number of gears chosen" },
+          ]}
         />
         <P>
           The top-gear ratio itself is not fixed — it scales taller (numerically smaller) as more
@@ -432,7 +552,17 @@ k &= 1, 2, \dots, N
           everything lost to friction between the crank and the road (clutch, gears,
           differential):
         </P>
-        <Formula tex={String.raw`F_{\text{wheel}} = \frac{T(\text{rpm}) \, i_g \, i_0 \, \eta_t}{r_w}`} />
+        <Formula
+          tex={String.raw`F_{\text{wheel}} = \frac{T(\text{rpm}) \, i_g \, i_0 \, \eta_t}{r_w}`}
+          vars={[
+            { symbol: "F_wheel", desc: "forward force delivered at the contact patch" },
+            { symbol: "T(rpm)", desc: "engine torque at the current RPM" },
+            { symbol: "i_g", desc: "current gear ratio" },
+            { symbol: "i_0", desc: "final-drive ratio" },
+            { symbol: "η_t", desc: "flat drivetrain efficiency (clutch, gears, differential losses)" },
+            { symbol: "r_w", desc: "driven wheel's rolling radius" },
+          ]}
+        />
         <P>
           This wheel force is what gets compared against the traction limit from the Friction
           chapter — whichever is smaller actually accelerates the car.
@@ -453,7 +583,15 @@ k &= 1, 2, \dots, N
           that grip ceiling is actually reached.
         </P>
         <H3>Peak braking force</H3>
-        <Formula tex={String.raw`F_{\text{brake,max}} = \mu_{\text{eff}}\, m\, g`} />
+        <Formula
+          tex={String.raw`F_{\text{brake,max}} = \mu_{\text{eff}}\, m\, g`}
+          vars={[
+            { symbol: "F_brake,max", desc: "idealized, perfect-ABS maximum braking force" },
+            { symbol: "μ_eff", desc: "the same effective grip coefficient used for traction" },
+            { symbol: "m", desc: "vehicle mass" },
+            { symbol: "g", desc: "gravitational acceleration" },
+          ]}
+        />
         <P>
           This is the idealized, perfect-ABS maximum: the same Coulomb-friction ceiling used for
           traction, independent of the wheelspin-window tuning used for launches (braking is
@@ -467,6 +605,12 @@ k &= 1, 2, \dots, N
         </P>
         <Formula
           tex={String.raw`F_{\text{brake}} = F_{\text{brake,max}} \cdot \text{effectiveness}(\text{material}, T)`}
+          vars={[
+            { symbol: "F_brake", desc: "braking force actually delivered" },
+            { symbol: "F_brake,max", desc: "the idealized peak braking force from above" },
+            { symbol: "T", desc: "current brake (rotor/pad) temperature" },
+            { symbol: "effectiveness(·)", desc: "material-specific curve of how much of the ceiling is realized at that temperature" },
+          ]}
         />
         <Ul>
           <Li>
@@ -492,6 +636,13 @@ k &= 1, 2, \dots, N
 \Delta T &= \frac{F_{\text{brake}} \, \Delta d}{C_{\text{thermal}}} \\
 T &\leftarrow T + \Delta T
 \end{aligned}`}
+          vars={[
+            { symbol: "ΔT", desc: "temperature rise added this simulation step" },
+            { symbol: "F_brake", desc: "braking force delivered this step" },
+            { symbol: "Δd", desc: "distance covered this step" },
+            { symbol: "C_thermal", desc: "heat capacity of the lumped rotor/pad thermal mass" },
+            { symbol: "T", desc: "running brake temperature, updated each step" },
+          ]}
         />
         <P>
           The updated temperature feeds into the effectiveness curve for the next step, which is
@@ -527,6 +678,18 @@ m = \ & m_{\text{chassis}}(\text{bodyType}) \\
 & + \bigl(\text{turbo or supercharger} \;?\; m_{\text{fi}} : 0\bigr) \\
 & + \sum_{\text{axles}} \Delta(\text{diameter})\, k_{\text{dia}} \;+\; \Delta(\text{width})\, k_{\text{width}}
 \end{aligned}`}
+          vars={[
+            { symbol: "m", desc: "total vehicle mass" },
+            { symbol: "m_chassis", desc: "base chassis mass, set by body type (minivan, SUV, supercar)" },
+            { symbol: "n_cyl", desc: "cylinder count" },
+            { symbol: "k_cyl", desc: "mass added per cylinder" },
+            { symbol: "D", desc: "engine displacement" },
+            { symbol: "k_D", desc: "mass added per unit of displacement" },
+            { symbol: "m_fi", desc: "fixed hardware mass added when turbocharged or supercharged" },
+            { symbol: "Δ(diameter)", desc: "wheel diameter delta from the reference dimension, per axle" },
+            { symbol: "Δ(width)", desc: "tyre width delta from the reference dimension, per axle" },
+            { symbol: "k_dia, k_width", desc: "mass added per unit of diameter/width delta" },
+          ]}
         />
         <P>
           Base chassis mass comes from the chosen body type (minivan, SUV, or supercar, each with
@@ -586,7 +749,16 @@ m = \ & m_{\text{chassis}}(\text{bodyType}) \\
           <Li>Subtract aerodynamic drag (Aerodynamics chapter) and rolling resistance (Friction chapter) to get net force.</Li>
           <Li>Divide by mass for net acceleration, then integrate into velocity and distance as in the Overview.</Li>
         </Ul>
-        <Formula tex={String.raw`a = \frac{F_{\text{drive}} - F_{\text{drag}} - F_{\text{roll}}}{m}`} />
+        <Formula
+          tex={String.raw`a = \frac{F_{\text{drive}} - F_{\text{drag}} - F_{\text{roll}}}{m}`}
+          vars={[
+            { symbol: "a", desc: "net acceleration for this time step" },
+            { symbol: "F_drive", desc: "drive force realized at the wheels (Friction chapter)" },
+            { symbol: "F_drag", desc: "aerodynamic drag (Aerodynamics chapter)" },
+            { symbol: "F_roll", desc: "rolling resistance (Friction chapter)" },
+            { symbol: "m", desc: "vehicle mass" },
+          ]}
+        />
         <H3>Stopping conditions</H3>
         <P>
           Each test type ends on its own condition, checked every step: a fixed duration, a target
@@ -636,6 +808,15 @@ F_c &= \frac{m v^2}{r} \quad \text{(centripetal force required)} \\
 F_c &\le \mu_{\text{eff}}\, m\, g \quad \text{(friction ceiling)} \\
 v_{\text{apex}} &= \sqrt{\mu_{\text{eff}}\, g\, r}
 \end{aligned}`}
+          vars={[
+            { symbol: "F_c", desc: "centripetal force required to hold the corner radius" },
+            { symbol: "m", desc: "vehicle mass" },
+            { symbol: "v", desc: "cornering speed" },
+            { symbol: "r", desc: "corner radius" },
+            { symbol: "μ_eff", desc: "effective grip coefficient (Friction chapter)" },
+            { symbol: "g", desc: "gravitational acceleration" },
+            { symbol: "v_apex", desc: "fastest speed the corner can be taken at" },
+          ]}
         />
         <H3>Look-ahead braking</H3>
         <P>
@@ -648,6 +829,12 @@ v_{\text{apex}} &= \sqrt{\mu_{\text{eff}}\, g\, r}
 a_{\text{brake}} &= \mu_{\text{eff}}\, g \\
 d_{\text{brake}} &= \frac{v^2 - v_{\text{apex}}^2}{2\, a_{\text{brake}}}
 \end{aligned}`}
+          vars={[
+            { symbol: "a_brake", desc: "tyre's maximum braking deceleration" },
+            { symbol: "d_brake", desc: "distance needed to shed speed down to the apex speed" },
+            { symbol: "v", desc: "current speed" },
+            { symbol: "v_apex", desc: "target apex speed for the upcoming corner" },
+          ]}
         />
         <P>
           Once the remaining distance to the corner is less than or equal to that braking distance,
@@ -693,6 +880,11 @@ d_{\text{brake}} &= \frac{v^2 - v_{\text{apex}}^2}{2\, a_{\text{brake}}}
         </P>
         <Formula
           tex={String.raw`\hat{x} = \frac{x - \min(\text{allValues})}{\max(\text{allValues}) - \min(\text{allValues})}`}
+          vars={[
+            { symbol: "x̂", desc: "the normalized stat value, in 0–1" },
+            { symbol: "x", desc: "the raw stat value being normalized" },
+            { symbol: "min/max(allValues)", desc: "the min and max of that stat across your build plus every reference car" },
+          ]}
         />
         <H3>Weighted distance</H3>
         <P>
@@ -707,6 +899,13 @@ d_{\text{brake}} &= \frac{v^2 - v_{\text{apex}}^2}{2\, a_{\text{brake}}}
 d^2 &= \sum_k w_k \left(\hat{t}_k - \hat{c}_k\right)^2 \;+\; w_a\,\mathbf{1}[\text{aspiration mismatch}] \;+\; w_\ell\,\mathbf{1}[\text{layout mismatch}] \\
 d &= \sqrt{d^2}
 \end{aligned}`}
+          vars={[
+            { symbol: "d", desc: "overall distance (dissimilarity) between your build and a reference car" },
+            { symbol: "w_k", desc: "weight for stat k (power and power-to-weight weighted more heavily)" },
+            { symbol: "t̂_k, ĉ_k", desc: "normalized stat k for your build and the reference car, respectively" },
+            { symbol: "w_a, w_ℓ", desc: "flat penalty weights for an aspiration or layout mismatch" },
+            { symbol: "𝟙[·]", desc: "indicator function: 1 if the mismatch condition holds, 0 otherwise" },
+          ]}
         />
         <P>
           The reference cars are then sorted by ascending distance, and the closest handful are
