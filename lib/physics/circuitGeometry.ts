@@ -1,242 +1,206 @@
 import { CircuitPoint } from "./types";
 
-// Turns a closed polygon of waypoints into a lap centerline with distance,
-// heading and curvature *derived from the geometry* - no hand-assigned
-// corner radius or corner-speed table anywhere in this file. Each vertex is
-// rounded off with a circular-arc fillet whose radius falls straight out of
-// the vertex's own turn angle and the length of track available to build it
-// on either side, so a sharp direction change with short straights either
-// side naturally becomes a tight radius (a hairpin) and a gentle kink
-// between long straights naturally becomes a large radius (a fast sweeper) -
-// the same relationship real corners have, without picking either one by
-// hand.
-//
-// The waypoints below are this app's existing stylized per-circuit outlines
-// (see circuits.ts) - an approximate sketch of each track's real corner
-// sequence at a fixed illustrative scale, not surveyed geometry. Everything
-// in this file is written to key off of `waypoints` + `lengthM` alone, so a
-// real centerline dataset (e.g. GPS or CAD waypoints, or an already-dense
-// point cloud) can be dropped in later without changing any downstream
-// physics: distance/heading/curvature are recomputed from whatever geometry
-// is provided.
+// Turns a circuit's real centerline - a dense, ordered polyline of
+// [longitude, latitude] points downloaded from OpenStreetMap (see
+// lib/physics/circuitData/*.json and the README notes there on how that
+// data was produced) - into a physics-ready lap: even arc-length samples
+// with distance, heading and curvature all *derived from the geometry*,
+// exactly like the previous stylized-waypoint version, just fed by real
+// survey data instead of a hand-drawn sketch.
 
 type Vec = { x: number; y: number };
 
-function sub(a: Vec, b: Vec): Vec {
-  return { x: a.x - b.x, y: a.y - b.y };
-}
-function add(a: Vec, b: Vec): Vec {
-  return { x: a.x + b.x, y: a.y + b.y };
-}
-function scale(a: Vec, k: number): Vec {
-  return { x: a.x * k, y: a.y * k };
-}
-function length(a: Vec): number {
-  return Math.hypot(a.x, a.y);
-}
-function normalize(a: Vec): Vec {
-  const len = length(a);
-  return len > 1e-9 ? scale(a, 1 / len) : { x: 1, y: 0 };
-}
-function cross(a: Vec, b: Vec): number {
-  return a.x * b.y - a.y * b.x;
-}
-function dot(a: Vec, b: Vec): number {
-  return a.x * b.x + a.y * b.y;
-}
-// 90 degree CCW rotation.
-function perp(a: Vec): Vec {
-  return { x: -a.y, y: a.x };
+// Equirectangular projection centered on the circuit's own centroid. Real
+// circuits span at most a few kilometres, so the flat-earth approximation
+// this makes is accurate to well under a metre - far below the resolution
+// that matters for lap physics.
+function projectToLocalMeters(lonLat: number[][]): Vec[] {
+  const EARTH_RADIUS_M = 6371000;
+  const lat0 =
+    (lonLat.reduce((sum, [, lat]) => sum + lat, 0) / lonLat.length) * (Math.PI / 180);
+  const lon0 = lonLat.reduce((sum, [lon]) => sum + lon, 0) / lonLat.length;
+  return lonLat.map(([lon, lat]) => ({
+    x: ((lon - lon0) * Math.PI) / 180 * EARTH_RADIUS_M * Math.cos(lat0),
+    y: ((lat - lat0) * Math.PI) / 180 * EARTH_RADIUS_M,
+  }));
 }
 
-// How much of the *shorter* adjacent edge a single fillet is allowed to
-// consume (measured from the vertex outward on each side). Two neighboring
-// fillets can each claim up to this fraction of the edge between them
-// without overlapping, always leaving a straight remainder in between.
-const MAX_TANGENT_FRACTION = 0.42;
-// Below this deflection angle a vertex is treated as an imperceptible kink
-// in the outline art (not a corner at all) and left as a straight pass-through.
-const MIN_TURN_ANGLE_RAD = (0.5 * Math.PI) / 180;
-
-type PathPiece =
-  | { kind: "line"; start: Vec; dir: Vec; lengthUnits: number }
-  | {
-      kind: "arc";
-      center: Vec;
-      radiusUnits: number;
-      startAngleRad: number;
-      turnSign: 1 | -1;
-      lengthUnits: number;
-    };
-
-interface UnitSpacePath {
-  pieces: PathPiece[];
-  totalLengthUnits: number;
-}
-
-function buildUnitSpacePath(waypoints: [number, number][]): UnitSpacePath {
-  const n = waypoints.length;
-  const pts: Vec[] = waypoints.map(([x, y]) => ({ x, y }));
-
-  // Per-vertex fillet geometry: tangent points where the arc meets each
-  // straight, its radius, center and turn direction.
-  const fillets = pts.map((curr, i) => {
-    const prev = pts[(i - 1 + n) % n];
-    const next = pts[(i + 1) % n];
-    const edgeIn = sub(curr, prev);
-    const edgeOut = sub(next, curr);
-    const lenIn = length(edgeIn);
-    const lenOut = length(edgeOut);
-    const dirIn = normalize(edgeIn);
-    const dirOut = normalize(edgeOut);
-
-    const turnAngle = Math.acos(Math.max(-1, Math.min(1, dot(dirIn, dirOut))));
-    if (turnAngle < MIN_TURN_ANGLE_RAD || lenIn < 1e-6 || lenOut < 1e-6) {
-      return { hasFillet: false as const, dirIn, dirOut };
-    }
-
-    const turnSign: 1 | -1 = cross(dirIn, dirOut) >= 0 ? 1 : -1;
-    const tangentLength = MAX_TANGENT_FRACTION * Math.min(lenIn, lenOut);
-    // t = R * tan(turnAngle / 2)  =>  R = t / tan(turnAngle / 2). A sharper
-    // turn (turnAngle -> pi) drives the radius toward 0; a gentle kink
-    // (turnAngle -> 0) drives it toward infinity (i.e. effectively straight).
-    const radius = tangentLength / Math.tan(turnAngle / 2);
-
-    const tangentIn = add(curr, scale(dirIn, -tangentLength));
-    const tangentOut = add(curr, scale(dirOut, tangentLength));
-    const center = add(tangentIn, scale(perp(dirIn), turnSign * radius));
-
-    return {
-      hasFillet: true as const,
-      dirIn,
-      dirOut,
-      tangentIn,
-      tangentOut,
-      center,
-      radius,
-      turnAngle,
-      turnSign,
-    };
-  });
-
-  const pieces: PathPiece[] = [];
+// Resamples a closed polyline (wrapping from the last point back to the
+// first) at even arc-length spacing via linear interpolation. The source
+// polyline is already dense real geometry, so no curve-fitting is needed
+// here - just even spacing for the physics integrator downstream.
+function resampleClosed(pts: Vec[], stepM: number): { samples: Vec[]; stepM: number; totalLengthM: number } {
+  const n = pts.length;
+  const segLen: number[] = [];
+  let totalLengthM = 0;
   for (let i = 0; i < n; i++) {
-    const fillet = fillets[i];
-    const exitPoint = fillet.hasFillet ? fillet.tangentOut : pts[i];
+    const a = pts[i];
+    const b = pts[(i + 1) % n];
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    segLen.push(d);
+    totalLengthM += d;
+  }
+  const sampleCount = Math.max(8, Math.round(totalLengthM / stepM));
+  const actualStepM = totalLengthM / sampleCount;
 
-    if (fillet.hasFillet) {
-      const startAngleRad = Math.atan2(
-        fillet.tangentIn.y - fillet.center.y,
-        fillet.tangentIn.x - fillet.center.x,
-      );
-      pieces.push({
-        kind: "arc",
-        center: fillet.center,
-        radiusUnits: fillet.radius,
-        startAngleRad,
-        turnSign: fillet.turnSign,
-        lengthUnits: fillet.radius * fillet.turnAngle,
-      });
+  function sampleAt(distanceM: number): Vec {
+    let d = ((distanceM % totalLengthM) + totalLengthM) % totalLengthM;
+    let i = 0;
+    while (d > segLen[i]) {
+      d -= segLen[i];
+      i++;
     }
-
-    const nextFillet = fillets[(i + 1) % n];
-    const entryPoint = nextFillet.hasFillet ? nextFillet.tangentIn : pts[(i + 1) % n];
-    const straight = sub(entryPoint, exitPoint);
-    const straightLen = length(straight);
-    if (straightLen > 1e-6) {
-      pieces.push({
-        kind: "line",
-        start: exitPoint,
-        dir: normalize(straight),
-        lengthUnits: straightLen,
-      });
-    }
+    const a = pts[i];
+    const b = pts[(i + 1) % n];
+    const t = segLen[i] > 1e-9 ? d / segLen[i] : 0;
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
   }
 
-  const totalLengthUnits = pieces.reduce((sum, p) => sum + p.lengthUnits, 0);
-  return { pieces, totalLengthUnits };
+  const samples: Vec[] = [];
+  for (let i = 0; i < sampleCount; i++) samples.push(sampleAt(i * actualStepM));
+  return { samples, stepM: actualStepM, totalLengthM };
 }
 
-function sampleUnitSpace(
-  path: UnitSpacePath,
-  unitDistance: number,
-): { pos: Vec; headingRad: number; curvatureUnits: number } {
-  const wrapped = ((unitDistance % path.totalLengthUnits) + path.totalLengthUnits) % path.totalLengthUnits;
-  let cursor = 0;
-  for (const piece of path.pieces) {
-    const end = cursor + piece.lengthUnits;
-    if (wrapped <= end || piece === path.pieces[path.pieces.length - 1]) {
-      const local = Math.min(piece.lengthUnits, wrapped - cursor);
-      if (piece.kind === "line") {
-        return {
-          pos: add(piece.start, scale(piece.dir, local)),
-          headingRad: Math.atan2(piece.dir.y, piece.dir.x),
-          curvatureUnits: 0,
-        };
-      }
-      const angle = piece.startAngleRad + (piece.turnSign * local) / piece.radiusUnits;
-      const pos = add(piece.center, scale({ x: Math.cos(angle), y: Math.sin(angle) }, piece.radiusUnits));
-      const headingRad = angle + piece.turnSign * (Math.PI / 2);
-      return { pos, headingRad, curvatureUnits: piece.turnSign / piece.radiusUnits };
+// Real OSM waypoints carry digitisation jitter (survey/tracing noise of a
+// few tens of centimetres) that would otherwise blow up under the
+// finite-difference curvature calculation below. A small circular moving
+// average removes that jitter while leaving genuine corner geometry -
+// including the tightest hairpins on the calendar (~9m radius) - intact.
+const SMOOTHING_RADIUS_M = 8;
+// Baseline separation used for the 3-point curvature estimate. Larger values
+// trade fine detail for stability; this is small enough to still resolve
+// tight hairpins distinctly from the corners either side of them.
+const CURVATURE_BASELINE_M = 6;
+// Sample spacing for the physics centerline (matches the previous
+// stylized-geometry default).
+const DEFAULT_STEP_M = 2;
+
+function smoothCircular(samples: Vec[], stepM: number): Vec[] {
+  const n = samples.length;
+  const window = Math.max(1, Math.round(SMOOTHING_RADIUS_M / stepM));
+  return samples.map((_, i) => {
+    let sx = 0;
+    let sy = 0;
+    let count = 0;
+    for (let k = -window; k <= window; k++) {
+      const p = samples[((i + k) % n + n) % n];
+      sx += p.x;
+      sy += p.y;
+      count++;
     }
-    cursor = end;
-  }
-  // Unreachable (the loop above always returns once it reaches the last
-  // piece), kept only to satisfy the type checker.
-  return { pos: { x: 0, y: 0 }, headingRad: 0, curvatureUnits: 0 };
+    return { x: sx / count, y: sy / count };
+  });
 }
 
-// Samples the closed lap at (approximately) `targetStepM` spacing, scaling
-// the stylized unit-space geometry so the resulting centerline is exactly
-// `lengthM` long.
 export function buildCircuitGeometry(
-  waypoints: [number, number][],
-  lengthM: number,
-  targetStepM = 2,
+  coordinates: number[][],
+  targetStepM = DEFAULT_STEP_M,
 ): CircuitPoint[] {
-  const path = buildUnitSpacePath(waypoints);
-  const scaleToMeters = lengthM / path.totalLengthUnits;
-
-  const sampleCount = Math.max(8, Math.round(lengthM / targetStepM));
-  const stepM = lengthM / sampleCount;
+  const localPts = projectToLocalMeters(coordinates);
+  const { samples, stepM, totalLengthM } = resampleClosed(localPts, targetStepM);
+  const smoothed = smoothCircular(samples, stepM);
+  const n = smoothed.length;
+  const curvOffset = Math.max(1, Math.round(CURVATURE_BASELINE_M / stepM));
 
   const points: CircuitPoint[] = [];
-  for (let i = 0; i < sampleCount; i++) {
-    const distanceM = i * stepM;
-    const { pos, headingRad, curvatureUnits } = sampleUnitSpace(path, distanceM / scaleToMeters);
+  for (let i = 0; i < n; i++) {
+    const prev = smoothed[((i - 1) % n + n) % n];
+    const next = smoothed[(i + 1) % n];
+    const headingRad = Math.atan2(next.y - prev.y, next.x - prev.x);
+
+    // Signed Menger curvature from three points spaced CURVATURE_BASELINE_M
+    // apart: 2 * (signed triangle area) / (product of the three side
+    // lengths). Positive = turning left/CCW, matching CircuitPoint's
+    // documented sign convention.
+    const cp = smoothed[((i - curvOffset) % n + n) % n];
+    const cc = smoothed[i];
+    const cn = smoothed[(i + curvOffset) % n];
+    const a = Math.hypot(cc.x - cp.x, cc.y - cp.y);
+    const b = Math.hypot(cn.x - cc.x, cn.y - cc.y);
+    const c = Math.hypot(cn.x - cp.x, cn.y - cp.y);
+    const cross = (cc.x - cp.x) * (cn.y - cp.y) - (cc.y - cp.y) * (cn.x - cp.x);
+    const curvature = a * b * c > 1e-6 ? (2 * cross) / (a * b * c) : 0;
+
     points.push({
-      distanceM,
-      x: pos.x * scaleToMeters,
-      y: pos.y * scaleToMeters,
+      distanceM: i * stepM,
+      x: smoothed[i].x,
+      y: smoothed[i].y,
       headingRad,
-      curvature: curvatureUnits / scaleToMeters,
+      curvature,
     });
   }
+
+  // buildCircuitGeometry samples at a fixed step derived from the real
+  // geometry's own arc length, so the last sample already lands one step
+  // short of totalLengthM - nothing further to reconcile against lengthM
+  // here; callers that need the authoritative lap length use totalLengthM
+  // directly (see circuits.ts).
+  void totalLengthM;
   return points;
 }
 
-// Counts corners directly from the waypoint geometry: one per vertex whose
-// deflection angle is large enough to actually be filleted (see
-// MIN_TURN_ANGLE_RAD above), i.e. every place the track's outline actually
-// changes direction rather than running straight through. Each waypoint in
-// these stylized outlines was hand-placed to mark one real corner (a
-// waypoint count matching the track's real corner count was how the old,
-// hand-authored corner-class system got its `corners` figure right even
-// though its corner *radii* were arbitrary) - counting deflection points
-// keeps that same faithfulness while removing the arbitrary radius/speed
-// table entirely.
-export function countCorners(waypoints: [number, number][]): number {
-  const n = waypoints.length;
-  const pts: Vec[] = waypoints.map(([x, y]) => ({ x, y }));
-  let count = 0;
-  for (let i = 0; i < n; i++) {
-    const prev = pts[(i - 1 + n) % n];
-    const curr = pts[i];
-    const next = pts[(i + 1) % n];
-    const dirIn = normalize(sub(curr, prev));
-    const dirOut = normalize(sub(next, curr));
-    const turnAngle = Math.acos(Math.max(-1, Math.min(1, dot(dirIn, dirOut))));
-    if (turnAngle >= MIN_TURN_ANGLE_RAD) count += 1;
+// Fits a set of local-meter points into a fixed-size SVG viewBox (matching
+// the app's existing "0 0 300 180" convention) and returns both the
+// viewBox string and a straight-line-joined path string through the same
+// (uniformly scaled) points, for the track-map illustration. This is drawn
+// from the same real geometry as the physics centerline - just rescaled for
+// display - rather than a separate hand-drawn outline.
+const VIEW_BOX_WIDTH = 300;
+const VIEW_BOX_HEIGHT = 180;
+const VIEW_BOX_PADDING = 14;
+
+export function buildViewBoxAndOutline(coordinates: number[][]): {
+  viewBox: string;
+  outlinePath: string;
+} {
+  const localPts = projectToLocalMeters(coordinates);
+  const xs = localPts.map((p) => p.x);
+  const ys = localPts.map((p) => p.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const spanX = Math.max(maxX - minX, 1e-6);
+  const spanY = Math.max(maxY - minY, 1e-6);
+
+  const availW = VIEW_BOX_WIDTH - 2 * VIEW_BOX_PADDING;
+  const availH = VIEW_BOX_HEIGHT - 2 * VIEW_BOX_PADDING;
+  const scale = Math.min(availW / spanX, availH / spanY);
+
+  const offsetX = VIEW_BOX_PADDING + (availW - spanX * scale) / 2;
+  const offsetY = VIEW_BOX_PADDING + (availH - spanY * scale) / 2;
+
+  // SVG y grows downward; real-world y (north) grows upward, so flip it.
+  const toSvg = (p: Vec) => ({
+    x: offsetX + (p.x - minX) * scale,
+    y: offsetY + (maxY - p.y) * scale,
+  });
+
+  const svgPts = localPts.map(toSvg);
+  const [p0, ...rest] = svgPts;
+  const d = [`M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)}`, ...rest.map((p) => `L ${p.x.toFixed(2)} ${p.y.toFixed(2)}`), "Z"].join(
+    " ",
+  );
+
+  return { viewBox: `0 0 ${VIEW_BOX_WIDTH} ${VIEW_BOX_HEIGHT}`, outlinePath: d };
+}
+
+// Real lap length in metres, computed directly from the source geometry's
+// own arc length (great-circle distance between consecutive lon/lat
+// points) rather than a separately hand-entered constant.
+export function computeLengthM(coordinates: number[][]): number {
+  const EARTH_RADIUS_M = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  let total = 0;
+  for (let i = 0; i < coordinates.length; i++) {
+    const [lon1, lat1] = coordinates[i];
+    const [lon2, lat2] = coordinates[(i + 1) % coordinates.length];
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    total += 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
   }
-  return count;
+  return total;
 }
