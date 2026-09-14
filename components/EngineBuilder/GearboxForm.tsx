@@ -13,6 +13,7 @@ import {
   GearboxConfig,
   TransmissionType,
 } from "@/lib/physics/types";
+import { RealCarPreset } from "@/lib/physics/realCars";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
 import TractiveForceGraph from "../Simulation/TractiveForceGraph";
 
@@ -46,9 +47,17 @@ interface GearboxFormProps {
   onContinue: () => void;
   engine: EngineConfig;
   chassis: ChassisConfig;
+  realCar: RealCarPreset | null;
 }
 
-export default function GearboxForm({ value, onChange, onContinue, engine, chassis }: GearboxFormProps) {
+export default function GearboxForm({
+  value,
+  onChange,
+  onContinue,
+  engine,
+  chassis,
+  realCar,
+}: GearboxFormProps) {
   const recommended = recommendedGearRatios(value.gearCount);
 
   const tractiveData = useMemo(() => {
@@ -79,6 +88,17 @@ export default function GearboxForm({ value, onChange, onContinue, engine, chass
         description="Set the transmission, gear ratios, and which wheels put the power down."
       />
 
+      {realCar && (
+        <p className="text-xs text-amber-400/90">
+          Gearbox specs are locked to the {realCar.make} {realCar.model}. Go
+          back to Step 1 and choose &ldquo;Custom Build&rdquo; to edit them
+          yourself.
+        </p>
+      )}
+      <fieldset
+        disabled={!!realCar}
+        className={`space-y-8 ${realCar ? "opacity-50" : ""}`}
+      >
       <SectionCard title="Transmission">
         <div>
           <label className="text-sm font-medium text-zinc-300 block mb-2">Type</label>
@@ -229,6 +249,7 @@ export default function GearboxForm({ value, onChange, onContinue, engine, chass
         </div>
         <TractiveForceGraph data={tractiveData} />
       </SectionCard>
+      </fieldset>
 
       <ContinueButton onClick={onContinue}>
         Continue to Test Specifications &rarr;

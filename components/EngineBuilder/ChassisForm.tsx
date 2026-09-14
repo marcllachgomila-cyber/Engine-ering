@@ -1,6 +1,7 @@
 "use client";
 
 import { BODY_TYPE_PRESETS } from "@/lib/physics/defaults";
+import { REAL_CAR_PRESETS, RealCarPreset } from "@/lib/physics/realCars";
 import { BodyType, ChassisConfig, TyreCompound, TyreType } from "@/lib/physics/types";
 import BodyTypeIcon from "./BodyTypeIcon";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
@@ -28,12 +29,22 @@ interface ChassisFormProps {
   value: ChassisConfig;
   onChange: (chassis: ChassisConfig) => void;
   onContinue: () => void;
+  realCar: RealCarPreset | null;
+  onSelectRealCar: (car: RealCarPreset | null) => void;
 }
 
-export default function ChassisForm({ value, onChange, onContinue }: ChassisFormProps) {
+export default function ChassisForm({
+  value,
+  onChange,
+  onContinue,
+  realCar,
+  onSelectRealCar,
+}: ChassisFormProps) {
   const preset = BODY_TYPE_PRESETS[value.bodyType];
+  const carsForBodyType = REAL_CAR_PRESETS[value.bodyType];
 
   const setBodyType = (bodyType: BodyType) => {
+    onSelectRealCar(null);
     onChange({
       ...value,
       bodyType,
@@ -74,29 +85,75 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
         </div>
 
         <div>
-          <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium text-zinc-300">Weight</label>
-            <span className="text-lg font-mono text-amber-400">
-              {value.weightKg.toLocaleString()} kg
-            </span>
+          <label className="text-sm font-medium text-zinc-300 block mb-3">
+            Start From
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <OptionButton active={!realCar} onClick={() => onSelectRealCar(null)}>
+              Custom Build
+            </OptionButton>
+            {carsForBodyType.map((car) => (
+              <OptionButton
+                key={car.id}
+                active={realCar?.id === car.id}
+                onClick={() => onSelectRealCar(car)}
+              >
+                {car.make} {car.model}
+              </OptionButton>
+            ))}
           </div>
-          <input
-            type="range"
-            min={preset.weightMinKg}
-            max={preset.weightMaxKg}
-            step={10}
-            value={value.weightKg}
-            onChange={(e) => onChange({ ...value, weightKg: parseInt(e.target.value, 10) })}
-            className="w-full accent-amber-500"
-          />
-          <p className="text-xs text-zinc-500 mt-1">
-            Recommended: {preset.weightKg.toLocaleString()} kg for a {BODY_TYPE_LABELS[value.bodyType].toLowerCase()}.
-            The engine and wheels you pick add mass on top of this.
+          <p className="text-xs text-zinc-500 mt-2">
+            Picking a real car sets its engine, gearbox, weight, and wheels for
+            you. Tyre type, compound, pressure, wheel spin, and traction
+            control stay yours to tune.
           </p>
         </div>
+
+        <fieldset
+          disabled={!!realCar}
+          className={`space-y-6 ${realCar ? "opacity-50" : ""}`}
+        >
+          {realCar && (
+            <p className="text-xs text-amber-400/90 -mb-2">
+              Weight and wheels are locked to the {realCar.make} {realCar.model}.
+              Choose &ldquo;Custom Build&rdquo; above to set them yourself.
+            </p>
+          )}
+          <div>
+            <div className="flex items-baseline justify-between mb-1">
+              <label className="text-sm font-medium text-zinc-300">Weight</label>
+              <span className="text-lg font-mono text-amber-400">
+                {value.weightKg.toLocaleString()} kg
+              </span>
+            </div>
+            <input
+              type="range"
+              min={preset.weightMinKg}
+              max={preset.weightMaxKg}
+              step={10}
+              value={value.weightKg}
+              onChange={(e) => onChange({ ...value, weightKg: parseInt(e.target.value, 10) })}
+              className="w-full accent-amber-500"
+            />
+            <p className="text-xs text-zinc-500 mt-1">
+              Recommended: {preset.weightKg.toLocaleString()} kg for a {BODY_TYPE_LABELS[value.bodyType].toLowerCase()}.
+              The engine and wheels you pick add mass on top of this.
+            </p>
+          </div>
+        </fieldset>
       </SectionCard>
 
       <SectionCard title="Wheels & Tyres">
+        <fieldset
+          disabled={!!realCar}
+          className={realCar ? "opacity-50" : undefined}
+        >
+        {realCar && (
+          <p className="text-xs text-amber-400/90 mb-4">
+            Wheel size is locked to the {realCar.make} {realCar.model}. Choose
+            &ldquo;Custom Build&rdquo; in Step 1 to set it yourself.
+          </p>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
             <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-3">
@@ -196,6 +253,7 @@ export default function ChassisForm({ value, onChange, onContinue }: ChassisForm
             </div>
           </div>
         </div>
+        </fieldset>
         <p className="text-xs text-zinc-500">
           Bigger wheels overall add rotating mass, which costs a little acceleration.
         </p>

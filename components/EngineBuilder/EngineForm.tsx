@@ -2,6 +2,7 @@
 
 import { EngineConfig, EngineLayout, FuelType } from "@/lib/physics/types";
 import { DIESEL_MAX_REDLINE_RPM } from "@/lib/physics/defaults";
+import { RealCarPreset } from "@/lib/physics/realCars";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
 
 const CYLINDER_OPTIONS = [3, 4, 5, 6, 8, 10, 12, 16];
@@ -41,9 +42,10 @@ interface EngineFormProps {
   value: EngineConfig;
   onChange: (config: EngineConfig) => void;
   onContinue: () => void;
+  realCar: RealCarPreset | null;
 }
 
-export default function EngineForm({ value, onChange, onContinue }: EngineFormProps) {
+export default function EngineForm({ value, onChange, onContinue, realCar }: EngineFormProps) {
   const validLayouts = VALID_LAYOUTS[value.cylinders] ?? ["inline"];
   const redlineMax = value.fuelType === "diesel" ? DIESEL_MAX_REDLINE_RPM : 11000;
 
@@ -76,6 +78,17 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
       />
 
       <SectionCard title="Engine">
+        {realCar && (
+          <p className="text-xs text-amber-400/90">
+            Engine specs are locked to the {realCar.make} {realCar.model}. Go
+            back to Step 1 and choose &ldquo;Custom Build&rdquo; to edit them
+            yourself.
+          </p>
+        )}
+        <fieldset
+          disabled={!!realCar}
+          className={`space-y-8 ${realCar ? "opacity-50" : ""}`}
+        >
         <div>
           <div className="flex items-baseline justify-between mb-2">
             <label className="text-sm font-medium text-zinc-300">Cylinders</label>
@@ -200,6 +213,7 @@ export default function EngineForm({ value, onChange, onContinue }: EngineFormPr
             ))}
           </div>
         </div>
+        </fieldset>
 
       </SectionCard>
 

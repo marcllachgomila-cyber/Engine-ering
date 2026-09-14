@@ -15,6 +15,7 @@ import {
   DEFAULT_GEARBOX,
   DEFAULT_TEST_CONFIG,
 } from "@/lib/physics/defaults";
+import { gearboxFromPreset, RealCarPreset } from "@/lib/physics/realCars";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import { findClosestCars } from "@/lib/matching/matchCars";
 import { simulate } from "@/lib/physics/simulate";
@@ -45,6 +46,7 @@ export default function EngineBuilderApp() {
   const [chassis, setChassis] = useState<ChassisConfig>(DEFAULT_CHASSIS);
   const [engine, setEngine] = useState<EngineConfig>(DEFAULT_ENGINE);
   const [gearbox, setGearbox] = useState<GearboxConfig>(DEFAULT_GEARBOX);
+  const [realCar, setRealCar] = useState<RealCarPreset | null>(null);
   const [test, setTest] = useState<TestConfig>(DEFAULT_TEST_CONFIG);
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
@@ -66,6 +68,25 @@ export default function EngineBuilderApp() {
       setStep("results");
     },
     [engine],
+  );
+
+  const handleSelectRealCar = useCallback(
+    (car: RealCarPreset | null) => {
+      setRealCar(car);
+      if (!car) return;
+      setChassis((prev) => ({
+        ...prev,
+        bodyType: car.category,
+        weightKg: car.chassis.weightKg,
+        frontWheelDiameterIn: car.chassis.frontWheelDiameterIn,
+        rearWheelDiameterIn: car.chassis.rearWheelDiameterIn,
+        frontWheelWidthMm: car.chassis.frontWheelWidthMm,
+        rearWheelWidthMm: car.chassis.rearWheelWidthMm,
+      }));
+      setEngine(car.engine);
+      setGearbox(gearboxFromPreset(car));
+    },
+    [],
   );
 
   const handleRunTest = useCallback(() => {
@@ -149,6 +170,8 @@ export default function EngineBuilderApp() {
                   value={chassis}
                   onChange={setChassis}
                   onContinue={() => setStep("engine")}
+                  realCar={realCar}
+                  onSelectRealCar={handleSelectRealCar}
                 />
               )}
               {step === "engine" && (
@@ -156,6 +179,7 @@ export default function EngineBuilderApp() {
                   value={engine}
                   onChange={setEngine}
                   onContinue={() => setStep("gearbox")}
+                  realCar={realCar}
                 />
               )}
               {step === "gearbox" && (
@@ -165,6 +189,7 @@ export default function EngineBuilderApp() {
                   onContinue={() => setStep("test")}
                   engine={engine}
                   chassis={chassis}
+                  realCar={realCar}
                 />
               )}
               {step === "test" && (
