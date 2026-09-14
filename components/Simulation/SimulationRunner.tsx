@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getCircuit } from "@/lib/physics/circuits";
-import { computeCruiseState, simulate } from "@/lib/physics/simulate";
+import { buildEngineCurves } from "@/lib/physics/engineModel";
+import {
+  computeCruiseState,
+  computeLaunchRpm,
+  isClutchDumpLaunch,
+  simulate,
+} from "@/lib/physics/simulate";
 import {
   ChassisConfig,
   EngineConfig,
@@ -40,7 +46,7 @@ const RUNNING_LABELS: Record<TestConfig["testType"], string> = {
 // brakes come on. Purely presentational: the recorded result only covers
 // the braking phase itself.
 const BRAKING_CRUISE_DURATION_MS = 5000;
-const BRAKING_COUNTDOWN_STEP_MS = 1000;
+const COUNTDOWN_STEP_MS = 1000;
 
 type Phase = "cruise" | "countdown" | "running";
 
@@ -59,6 +65,7 @@ export default function SimulationRunner({
   );
   const isBraking = test.testType === "braking";
   const isHotLap = test.testType === "hotLap";
+  const isClutchDump = isClutchDumpLaunch(test);
   const circuit = useMemo(() => (isHotLap ? getCircuit(test.circuitId) : null), [isHotLap, test.circuitId]);
   const hasBrakeTemp = useMemo(
     () => result.telemetry.some((s) => s.brakeTempC !== undefined),
@@ -85,8 +92,30 @@ export default function SimulationRunner({
     brakeTempC: test.initialBrakeTempC,
   };
 
-  const [phase, setPhase] = useState<Phase>(isBraking ? "cruise" : "running");
-  const [countdown, setCountdown] = useState<number | null>(null);
+  // While a clutch-dump launch counts down, the engine is held revved at
+  // launch rpm (clutch slipping, wheels still at a standstill) rather than
+  // idling - the tach, audio, and stat panel should all reflect that hold.
+  const curves = useMemo(() => buildEngineCurves(engine), [engine]);
+  const launchRpm = useMemo(() => computeLaunchRpm(curves), [curves]);
+  const revSample: Telemetry | null = isClutchDump
+    ? {
+        t: 0,
+        speedKph: 0,
+        rpm: launchRpm,
+        gear: 1,
+        hp: curves.powerAt(launchRpm),
+        torqueNm: curves.torqueAt(launchRpm),
+        gForce: 0,
+        distanceM: 0,
+      }
+    : null;
+
+  const showsCountdown = isBraking || isClutchDump;
+
+  const [phase, setPhase] = useState<Phase>(
+    isBraking ? "cruise" : isClutchDump ? "countdown" : "running",
+  );
+  const [countdown, setCountdown] = useState<number | null>(isClutchDump ? 3 : null);
   const [current, setCurrent] = useState<Telemetry | null>(result.telemetry[0] ?? null);
   const [isPaused, setIsPaused] = useState(false);
   const rafRef = useRef<number | null>(null);
@@ -107,24 +136,41 @@ export default function SimulationRunner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBraking, phase, cruiseState]);
 
-  // Countdown: 3, 2, 1, 0 - then the braking run itself starts.
+  // Held revs: a clutch-dump launch skips straight into the countdown (no
+  // cruise lead-in - the car is stationary, clutch in, engine revved to
+  // launch rpm) and keeps the audio pinned there for as long as it lasts.
   useEffect(() => {
-    if (!isBraking || phase !== "countdown") return;
-    const timers = [1, 2, 3].map((step) =>
-      setTimeout(() => setCountdown(3 - step), step * BRAKING_COUNTDOWN_STEP_MS),
+    if (!isClutchDump || phase !== "countdown") return;
+    audioEngine.update(launchRpm, engine.redlineRpm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClutchDump, phase, launchRpm]);
+
+  // Countdown: 3, 2, 1, then GO!/BRAKE! and the run itself start in the same
+  // instant - no lag between the readout hitting zero and the car actually
+  // moving. The readout is left up there a moment longer purely for
+  // legibility; that lingering doesn't delay the run, which already started.
+  useEffect(() => {
+    if (!showsCountdown || phase !== "countdown") return;
+    const timers = [1, 2].map((step) =>
+      setTimeout(() => setCountdown(3 - step), step * COUNTDOWN_STEP_MS),
     );
-    const finish = setTimeout(() => {
-      setCountdown(null);
+    const launch = setTimeout(() => {
+      setCountdown(0);
       setPhase("running");
-    }, 3 * BRAKING_COUNTDOWN_STEP_MS + BRAKING_COUNTDOWN_STEP_MS * 0.6);
+    }, 3 * COUNTDOWN_STEP_MS);
+    const clearReadout = setTimeout(
+      () => setCountdown(null),
+      3 * COUNTDOWN_STEP_MS + COUNTDOWN_STEP_MS * 0.6,
+    );
     return () => {
       timers.forEach(clearTimeout);
-      clearTimeout(finish);
+      clearTimeout(launch);
+      clearTimeout(clearReadout);
     };
-  }, [isBraking, phase]);
+  }, [showsCountdown, phase]);
 
   useEffect(() => {
-    if (isBraking && phase !== "running") return;
+    if (showsCountdown && phase !== "running") return;
     if (isPaused) return;
 
     const telemetry = result.telemetry;
@@ -167,7 +213,7 @@ export default function SimulationRunner({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, isBraking, phase, isPaused]);
+  }, [result, showsCountdown, phase, isPaused]);
 
   const handleTogglePause = () => {
     setIsPaused((prev) => {
@@ -185,21 +231,25 @@ export default function SimulationRunner({
     ? Math.max(...result.telemetry.map((s) => s.speedKph), result.finalSpeedKph)
     : result.finalSpeedKph;
   const maxSpeedKph = Math.max(180, Math.ceil((referenceSpeedKph * 1.15) / 20) * 20);
-  const displaySample = phase === "running" ? current : cruiseSample;
+  const displaySample = phase === "running" ? current : (cruiseSample ?? revSample);
 
   const headline =
     phase === "cruise"
       ? `Cruising at ${test.initialSpeedKph} kph…`
       : phase === "countdown"
-        ? "Get ready to brake…"
+        ? isClutchDump
+          ? "Revving, clutch held…"
+          : "Get ready to brake…"
         : RUNNING_LABELS[test.testType];
+
+  const countdownLabel = isClutchDump ? "GO!" : "BRAKE!";
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center gap-8">
       <h2 className="text-2xl font-bold text-zinc-50">{headline}</h2>
-      {phase === "countdown" && countdown !== null && (
+      {countdown !== null && (
         <div className="text-8xl font-mono font-black text-amber-400 tabular-nums -mt-4">
-          {countdown === 0 ? "BRAKE!" : countdown}
+          {countdown === 0 ? countdownLabel : countdown}
         </div>
       )}
       <div className="flex gap-2 -mt-2">
@@ -232,7 +282,15 @@ export default function SimulationRunner({
           progress={(displaySample?.distanceM ?? 0) / circuit.lengthM}
         />
       )}
-      <LiveStatsPanel telemetry={displaySample} />
+      <LiveStatsPanel telemetry={displaySample} useLapTimeFormat={isHotLap} />
+      <TimeSeriesGraph
+        telemetry={result.telemetry}
+        currentT={displaySample?.t ?? 0}
+        getValue={(s) => s.speedKph}
+        peakValue={referenceSpeedKph}
+        color="#22d3ee"
+        label="Speed (kph)"
+      />
       <TimeSeriesGraph
         telemetry={result.telemetry}
         currentT={displaySample?.t ?? 0}

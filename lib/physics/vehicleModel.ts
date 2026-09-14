@@ -31,6 +31,14 @@ const GRIP_LOSS_PER_PSI = 0.012;
 // wheels at the exact same moment, making them more prone to wheelspin.
 const FWD_TRACTION_PENALTY = 0.88;
 
+// AWD splits power across all four contact patches, so it doesn't rely on
+// weight transfer the way RWD does and shrugs off wheelspin better than
+// either two-wheel-drive layout - at the cost of some efficiency lost to
+// the extra transfer case and front differential.
+const AWD_TRACTION_BONUS = 1.1;
+const AWD_DRIVETRAIN_EFFICIENCY = 0.8;
+const DRIVETRAIN_EFFICIENCY = 0.85;
+
 // Shift right before the hard limiter rather than the tuned redline, so a
 // higher max-rev setting genuinely extends each gear's pull. Manual boxes
 // (and the default "max RPM" auto strategy) always shift here, on the
@@ -90,11 +98,25 @@ export function deriveVehicle(
 
   // Whichever axle is driven is the one that puts power down, so its tire
   // width (contact patch) and diameter (gearing) are what matter for
-  // traction and the rpm-to-speed relationship - not always the rear.
+  // traction and the rpm-to-speed relationship - not always the rear. AWD
+  // drives both axles, so it splits the difference between the two.
   const isRwd = gearbox.drivetrain === "rwd";
-  const driveWidthMm = isRwd ? chassis.rearWheelWidthMm : chassis.frontWheelWidthMm;
-  const driveReferenceWidthMm = isRwd ? REFERENCE_REAR_WIDTH_MM : REFERENCE_FRONT_WIDTH_MM;
-  const driveDiameterIn = isRwd ? chassis.rearWheelDiameterIn : chassis.frontWheelDiameterIn;
+  const isAwd = gearbox.drivetrain === "awd";
+  const driveWidthMm = isAwd
+    ? (chassis.frontWheelWidthMm + chassis.rearWheelWidthMm) / 2
+    : isRwd
+      ? chassis.rearWheelWidthMm
+      : chassis.frontWheelWidthMm;
+  const driveReferenceWidthMm = isAwd
+    ? (REFERENCE_FRONT_WIDTH_MM + REFERENCE_REAR_WIDTH_MM) / 2
+    : isRwd
+      ? REFERENCE_REAR_WIDTH_MM
+      : REFERENCE_FRONT_WIDTH_MM;
+  const driveDiameterIn = isAwd
+    ? (chassis.frontWheelDiameterIn + chassis.rearWheelDiameterIn) / 2
+    : isRwd
+      ? chassis.rearWheelDiameterIn
+      : chassis.frontWheelDiameterIn;
 
   const driveGripMultiplier = Math.min(
     1.25,
@@ -108,7 +130,7 @@ export function deriveVehicle(
         GRIP_LOSS_PER_PSI,
   );
 
-  const drivetrainGripMultiplier = isRwd ? 1 : FWD_TRACTION_PENALTY;
+  const drivetrainGripMultiplier = isAwd ? AWD_TRACTION_BONUS : isRwd ? 1 : FWD_TRACTION_PENALTY;
 
   return {
     weightKg,
@@ -116,7 +138,7 @@ export function deriveVehicle(
     frontalAreaM2: preset.frontalAreaM2,
     liftCoefficient: preset.liftCoefficient,
     rollingResistanceCoefficient: 0.013,
-    drivetrainEfficiency: 0.85,
+    drivetrainEfficiency: isAwd ? AWD_DRIVETRAIN_EFFICIENCY : DRIVETRAIN_EFFICIENCY,
     tireGripMu: driveGripMultiplier * pressureGripMultiplier * drivetrainGripMultiplier,
     wheelRadiusM: wheelDiameterToRadiusM(driveDiameterIn),
     frontWheelRadiusM: wheelDiameterToRadiusM(chassis.frontWheelDiameterIn),

@@ -356,7 +356,9 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
           </Li>
           <Li>
             <b>Drivetrain layout</b> — see the weight-transfer note in the Vehicle Mass chapter:
-            rear-wheel drive gets a boost under acceleration, front-wheel drive a penalty.
+            rear-wheel drive gets a boost under acceleration, front-wheel drive a penalty, and
+            all-wheel drive the biggest boost of the three since power is split across every tyre
+            instead of riding on weight transfer alone.
           </Li>
           <Li>
             <b>Road condition</b> — a baseline multiplier for dry, wet, rain, or a headwind
@@ -774,6 +776,13 @@ m = \ & m_{\text{chassis}}(\text{bodyType}) \\
             to its grip coefficient, reflecting that the drive wheels are lightest exactly when
             asked to put down the most force.
           </Li>
+          <Li>
+            <b>All-wheel drive</b> — power reaches every contact patch instead of just one axle,
+            so AWD isn&rsquo;t relying on weight transfer at all and carries the biggest traction
+            bonus of the three; that comes at the cost of a lower drivetrain efficiency
+            <code> η_t</code>, since the extra transfer case and front differential eat into the
+            power that actually reaches the road.
+          </Li>
         </Ul>
       </>
     ),
@@ -808,6 +817,21 @@ m = \ & m_{\text{chassis}}(\text{bodyType}) \\
             { symbol: String.raw`m`, desc: "vehicle mass" },
           ]}
         />
+        <H3>Clutch-dump launches</H3>
+        <P>
+          On a standing-start acceleration or drag run, the Clutch-Dump Launch option changes
+          only the first step above: instead of reading rpm off road speed (which starts at
+          idle), the engine is held at its peak-torque rpm in first gear, as if the driver revved
+          it up and slipped the clutch to get there. That is strictly a torque-lookup change —
+          the resulting wheel force still runs through the exact same traction-limit check as
+          every other step, so it only pays off once road speed has caught up enough that the
+          held rpm would otherwise have been engine-force-limited rather than traction-limited;
+          with traction control off, it also makes the uncontrolled-slip penalty (Friction
+          chapter) far more likely to bite in that opening moment. Once road speed&rsquo;s own rpm
+          catches up to the held rpm, the clutch is treated as locked and the step sequence
+          continues exactly as it would without a dumped clutch - that handoff only ever lets rpm
+          be overtaken by the road-speed value, never snapped back down to it.
+        </P>
         <H3>Stopping conditions</H3>
         <P>
           Each test type ends on its own condition, checked every step: a fixed duration, a target

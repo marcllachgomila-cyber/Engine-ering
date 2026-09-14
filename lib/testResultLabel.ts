@@ -9,6 +9,15 @@ export const TEST_TYPE_LABELS: Record<TestType, string> = {
   hotLap: "Hot Lap",
 };
 
+// Lap times read as m:ss.mmm (standard motorsport timing format) rather
+// than raw seconds, since a lap can easily run past the one-minute mark.
+export function formatLapTime(elapsedS: number): string {
+  const totalMs = Math.round(elapsedS * 1000);
+  const minutes = Math.floor(totalMs / 60000);
+  const seconds = (totalMs % 60000) / 1000;
+  return `${minutes}:${seconds.toFixed(3).padStart(6, "0")}`;
+}
+
 interface ResultHeadlineInput {
   testType: TestType;
   initialSpeedKph: number;
@@ -33,7 +42,7 @@ export function resultHeadline({
       const circuit = circuitId ? getCircuit(circuitId) : null;
       return {
         label: circuit?.name ?? "Hot Lap",
-        value: `${elapsedS.toFixed(3)}s`,
+        value: formatLapTime(elapsedS),
         sub: circuit
           ? `${(circuit.lengthM / 1000).toFixed(3)} km · ${circuit.corners} corners`
           : null,

@@ -17,6 +17,7 @@ import {
 import {
   ChassisConfig,
   EngineConfig,
+  EngineCurves,
   GearboxConfig,
   SimulationResult,
   Telemetry,
@@ -33,6 +34,30 @@ const SAFETY_MAX_TIME_S = 60;
 // mercy of kinetic friction (lower than static) until grip is regained,
 // instead of the smooth, modulated cap traction control provides.
 const UNCONTROLLED_SLIP_PENALTY = 0.75;
+
+// A clutch-dump launch holds the engine at its torque peak and slips the
+// clutch to get there, instead of easing away from idle - the wheels see
+// peak-torque-rpm-level force from the very first instant. It only applies
+// while the clutch is actually slipping: once road speed (via the gear
+// ratio) catches back up to that held rpm, the clutch is effectively locked
+// and the engine behaves exactly as it would without a dumped clutch. That
+// handoff is deliberately one-directional - rpm is only ever held up to or
+// overtaken by the road-speed-derived value, never snapped back down to it.
+const LAUNCH_TEST_TYPES: TestConfig["testType"][] = ["zeroToHundred", "drag500m", "tenSecond"];
+
+// Whether a run actually gets the clutch-dump treatment - shared with
+// SimulationRunner so its pre-launch rev/countdown UI only appears when the
+// simulation itself will act on the option.
+export function isClutchDumpLaunch(test: TestConfig): boolean {
+  return test.clutchDump && test.initialSpeedKph === 0 && LAUNCH_TEST_TYPES.includes(test.testType);
+}
+
+// The rpm a clutch-dump launch holds the engine at - also used by
+// SimulationRunner to rev the audio/gauges to the same value during the
+// pre-launch countdown.
+export function computeLaunchRpm(curves: EngineCurves): number {
+  return Math.min(Math.max(curves.peakTorqueRpm, curves.idleRpm), curves.maxRevRpm);
+}
 
 export interface CruiseState {
   gear: number;
@@ -100,6 +125,9 @@ export function simulate(
   let brakeTempC = test.initialBrakeTempC;
   const brakeMaterial = BRAKE_MATERIALS[test.brakeMaterial];
   let reachedHundredAtS: number | null = speedMs >= HUNDRED_KPH_MS ? 0 : null;
+
+  const clutchDumpActive = isClutchDumpLaunch(test);
+  const launchRpm = computeLaunchRpm(curves);
 
   const telemetry: Telemetry[] = [];
   const rollingForce = vehicle.rollingResistanceCoefficient * vehicle.weightKg * G;
@@ -169,6 +197,11 @@ export function simulate(
 
     const gearRatio = vehicle.gearRatios[gear - 1];
     let rpm = Math.max(rpmFromSpeed(speedMs, gearRatio, vehicle), curves.idleRpm);
+
+    // Still slipping: held at launch rpm until road speed's natural rpm
+    // catches up to it, at which point the clutch locks up.
+    const clutchSlipping = clutchDumpActive && gear === 1 && rpm < launchRpm;
+    if (clutchSlipping) rpm = launchRpm;
 
     if (rpm > vehicle.shiftRpm && gear < vehicle.gearRatios.length) {
       gear += 1;

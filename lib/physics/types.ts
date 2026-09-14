@@ -1,7 +1,7 @@
 export type EngineLayout = "inline" | "v" | "flat" | "w";
 export type Aspiration = "na" | "turbo" | "supercharged";
 export type FuelType = "petrol" | "diesel";
-export type Drivetrain = "fwd" | "rwd";
+export type Drivetrain = "fwd" | "rwd" | "awd";
 
 export interface EngineConfig {
   cylinders: number;
@@ -55,6 +55,10 @@ export interface TestConfig {
   initialBrakeTempC: number;
   brakeMaterial: BrakeMaterial;
   circuitId: string;
+  // Rev the engine and slip the clutch instead of easing away from idle -
+  // only meaningful for a standing-start acceleration/drag run (see
+  // simulate.ts). Ignored otherwise.
+  clutchDump: boolean;
 }
 
 export interface EngineCurves {

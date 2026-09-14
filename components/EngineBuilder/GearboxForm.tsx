@@ -27,6 +27,7 @@ const TRANSMISSION_LABELS: Record<TransmissionType, string> = {
 const DRIVETRAIN_LABELS: Record<Drivetrain, string> = {
   fwd: "Front-Wheel Drive",
   rwd: "Rear-Wheel Drive",
+  awd: "All-Wheel Drive",
 };
 
 const AUTO_SHIFT_LABELS: Record<AutoShiftStrategy, string> = {
@@ -202,6 +203,9 @@ export default function GearboxForm({
           <p className="text-xs text-zinc-500 mt-2">
             RWD gets a traction boost from weight shifting onto the drive
             wheels under acceleration; FWD loses a little grip the same way.
+            AWD puts power down through all four tires for the best traction
+            of the three, at the cost of some efficiency lost to the extra
+            driveline hardware.
           </p>
         </div>
       </SectionCard>

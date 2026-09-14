@@ -104,8 +104,8 @@ export default function ChassisForm({
           </div>
           <p className="text-xs text-zinc-500 mt-2">
             Picking a real car sets its engine, gearbox, weight, and wheels for
-            you. Tyre type, compound, pressure, wheel spin, and traction
-            control stay yours to tune.
+            you. Tyre type, compound, pressure, and wheel spin stay yours to
+            tune here; traction control is set on the Test step.
           </p>
         </div>
 
@@ -344,30 +344,6 @@ export default function ChassisForm({
           <p className="text-xs text-zinc-500 mt-1">
             Recommended: 10% - a little intentional slip uses the tire&apos;s peak
             grip; too little or too much both waste it.
-          </p>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-zinc-300 block mb-2">
-            Traction Control
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <OptionButton
-              active={value.tractionControl}
-              onClick={() => onChange({ ...value, tractionControl: true })}
-            >
-              On
-            </OptionButton>
-            <OptionButton
-              active={!value.tractionControl}
-              onClick={() => onChange({ ...value, tractionControl: false })}
-            >
-              Off
-            </OptionButton>
-          </div>
-          <p className="text-xs text-zinc-500 mt-2">
-            Off risks wheelspin costing you grip once torque exceeds the tires&apos;
-            limit.
           </p>
         </div>
       </SectionCard>

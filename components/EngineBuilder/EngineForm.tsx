@@ -1,8 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import { EngineConfig, EngineLayout, FuelType } from "@/lib/physics/types";
 import { DIESEL_MAX_REDLINE_RPM } from "@/lib/physics/defaults";
 import { RealCarPreset } from "@/lib/physics/realCars";
+import { buildEngineCurves } from "@/lib/physics/engineModel";
+import CombustionFrictionGraph from "../Simulation/CombustionFrictionGraph";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
 
 const CYLINDER_OPTIONS = [3, 4, 5, 6, 8, 10, 12, 16];
@@ -48,6 +51,7 @@ interface EngineFormProps {
 export default function EngineForm({ value, onChange, onContinue, realCar }: EngineFormProps) {
   const validLayouts = VALID_LAYOUTS[value.cylinders] ?? ["inline"];
   const redlineMax = value.fuelType === "diesel" ? DIESEL_MAX_REDLINE_RPM : 11000;
+  const curves = useMemo(() => buildEngineCurves(value), [value]);
 
   const setCylinders = (cylinders: number) => {
     const layouts = VALID_LAYOUTS[cylinders] ?? ["inline"];
@@ -214,6 +218,10 @@ export default function EngineForm({ value, onChange, onContinue, realCar }: Eng
           </div>
         </div>
         </fieldset>
+
+        <div className="pt-2 border-t border-zinc-800">
+          <CombustionFrictionGraph curves={curves} />
+        </div>
 
       </SectionCard>
 

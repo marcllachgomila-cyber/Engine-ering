@@ -86,6 +86,7 @@ export const DEFAULT_TEST_CONFIG: TestConfig = {
   initialBrakeTempC: 80,
   brakeMaterial: "steel",
   circuitId: DEFAULT_CIRCUIT_ID,
+  clutchDump: false,
 };
 
 export const DIESEL_MAX_REDLINE_RPM = 5200;

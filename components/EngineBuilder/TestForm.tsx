@@ -2,7 +2,7 @@
 
 import { BRAKE_MATERIALS, BRAKE_TEMP_MAX_C, BRAKE_TEMP_MIN_C } from "@/lib/physics/brakeModel";
 import { CIRCUITS } from "@/lib/physics/circuits";
-import { BrakeMaterial, RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
+import { BrakeMaterial, ChassisConfig, RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
 import { CircuitOutlineIcon } from "../Simulation/CircuitMap";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
 
@@ -30,6 +30,8 @@ interface TestFormProps {
   onSubmit: () => void;
   skipHotLapAnimation: boolean;
   onSkipHotLapAnimationChange: (skip: boolean) => void;
+  chassis: ChassisConfig;
+  onChassisChange: (chassis: ChassisConfig) => void;
 }
 
 export default function TestForm({
@@ -38,6 +40,8 @@ export default function TestForm({
   onSubmit,
   skipHotLapAnimation,
   onSkipHotLapAnimationChange,
+  chassis,
+  onChassisChange,
 }: TestFormProps) {
   return (
     <div className="w-full space-y-8">
@@ -72,6 +76,30 @@ export default function TestForm({
               </OptionButton>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-zinc-300 block mb-2">
+            Traction Control
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <OptionButton
+              active={chassis.tractionControl}
+              onClick={() => onChassisChange({ ...chassis, tractionControl: true })}
+            >
+              On
+            </OptionButton>
+            <OptionButton
+              active={!chassis.tractionControl}
+              onClick={() => onChassisChange({ ...chassis, tractionControl: false })}
+            >
+              Off
+            </OptionButton>
+          </div>
+          <p className="text-xs text-zinc-500 mt-2">
+            Off risks wheelspin costing you grip once torque exceeds the tires&apos;
+            limit.
+          </p>
         </div>
 
         {value.testType === "hotLap" && (
@@ -122,6 +150,35 @@ export default function TestForm({
               </span>
             </label>
           </div>
+        )}
+
+        {(value.testType === "zeroToHundred" ||
+          value.testType === "drag500m" ||
+          value.testType === "tenSecond") && (
+          <label
+            className={`flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 ${
+              value.initialSpeedKph > 0 ? "opacity-50" : "cursor-pointer"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={value.clutchDump}
+              disabled={value.initialSpeedKph > 0}
+              onChange={(e) => onChange({ ...value, clutchDump: e.target.checked })}
+              className="mt-0.5 h-4 w-4 accent-amber-500"
+            />
+            <span>
+              <span className="text-sm font-medium text-zinc-300 block">
+                Clutch-Dump Launch
+              </span>
+              <span className="text-xs text-zinc-500">
+                Rev to the torque peak and dump the clutch instead of easing away
+                from idle - a stronger getaway, with more wheelspin risk if
+                traction control is off.
+                {value.initialSpeedKph > 0 && " Only applies from a standing start."}
+              </span>
+            </span>
+          </label>
         )}
 
         {value.testType === "braking" && (

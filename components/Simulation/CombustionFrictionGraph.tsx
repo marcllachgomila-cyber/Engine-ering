@@ -1,5 +1,6 @@
 "use client";
 
+import { PointerEvent, useState } from "react";
 import { EngineCurves } from "@/lib/physics/types";
 import { niceMax } from "./TimeSeriesGraph";
 
@@ -7,6 +8,7 @@ const COMBUSTION_COLOR = "#f59e0b";
 const FRICTION_COLOR = "#ef4444";
 const GRID_COLOR = "#2c2f36";
 const AXIS_TEXT_COLOR = "#898781";
+const HOVER_LINE_COLOR = "#e2e8f0";
 
 const WIDTH = 400;
 const HEIGHT = 170;
@@ -21,6 +23,8 @@ interface CombustionFrictionGraphProps {
 }
 
 export default function CombustionFrictionGraph({ curves }: CombustionFrictionGraphProps) {
+  const [hoverRpm, setHoverRpm] = useState<number | null>(null);
+
   const points = Array.from({ length: STEPS + 1 }, (_, i) => {
     const rpm = curves.idleRpm + ((curves.maxRevRpm - curves.idleRpm) * i) / STEPS;
     return {
@@ -50,6 +54,19 @@ export default function CombustionFrictionGraph({ curves }: CombustionFrictionGr
   const baseline = PAD_TOP + plotHeight;
   const gridFractions = [0, 0.5, 1];
 
+  const handlePointerMove = (e: PointerEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const svgX = ((e.clientX - rect.left) / rect.width) * WIDTH;
+    const rpm = Math.min(
+      curves.maxRevRpm,
+      Math.max(curves.idleRpm, curves.idleRpm + ((svgX - PAD_LEFT) / plotWidth) * (curves.maxRevRpm - curves.idleRpm)),
+    );
+    setHoverRpm(rpm);
+  };
+
+  const handlePointerLeave = () => setHoverRpm(null);
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-1">
@@ -75,8 +92,10 @@ export default function CombustionFrictionGraph({ curves }: CombustionFrictionGr
       </div>
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="w-full h-auto"
+        className="w-full h-auto cursor-crosshair"
         preserveAspectRatio="none"
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
       >
         {gridFractions.map((g) => {
           const y = PAD_TOP + plotHeight - g * plotHeight;
@@ -127,6 +146,29 @@ export default function CombustionFrictionGraph({ curves }: CombustionFrictionGr
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+
+        {hoverRpm !== null && (
+          <>
+            <line
+              x1={xFor(hoverRpm)}
+              x2={xFor(hoverRpm)}
+              y1={PAD_TOP}
+              y2={baseline}
+              stroke={HOVER_LINE_COLOR}
+              strokeWidth={1}
+              strokeDasharray="4 3"
+            />
+            <text
+              x={Math.min(xFor(hoverRpm) + 4, WIDTH - PAD_RIGHT - 60)}
+              y={PAD_TOP + 10}
+              fontSize={11}
+              fontFamily="ui-monospace, monospace"
+              fill={HOVER_LINE_COLOR}
+            >
+              {Math.round(hoverRpm).toLocaleString()} rpm
+            </text>
+          </>
+        )}
       </svg>
     </div>
   );

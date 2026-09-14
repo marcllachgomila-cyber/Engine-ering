@@ -1,10 +1,12 @@
 "use client";
 
+import { PointerEvent, useState } from "react";
 import { Telemetry } from "@/lib/physics/types";
 
 const SURFACE_COLOR = "#14171d";
 const GRID_COLOR = "#2c2f36";
 const AXIS_TEXT_COLOR = "#898781";
+const HOVER_LINE_COLOR = "#e2e8f0";
 
 const WIDTH = 400;
 const HEIGHT = 150;
@@ -44,6 +46,8 @@ export default function TimeSeriesGraph({
   label,
   formatValue = (v) => Math.round(v).toString(),
 }: TimeSeriesGraphProps) {
+  const [hoverT, setHoverT] = useState<number | null>(null);
+
   if (telemetry.length === 0) return null;
 
   const totalDuration = telemetry[telemetry.length - 1].t;
@@ -54,6 +58,16 @@ export default function TimeSeriesGraph({
   const xFor = (t: number) => PAD_LEFT + (t / totalDuration) * plotWidth;
   const yFor = (value: number) =>
     PAD_TOP + plotHeight - (Math.max(0, value) / maxValue) * plotHeight;
+
+  const handlePointerMove = (e: PointerEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const svgX = ((e.clientX - rect.left) / rect.width) * WIDTH;
+    const t = Math.min(totalDuration, Math.max(0, ((svgX - PAD_LEFT) / plotWidth) * totalDuration));
+    setHoverT(t);
+  };
+
+  const handlePointerLeave = () => setHoverT(null);
 
   const visible = telemetry.filter((s) => s.t <= currentT);
   const points = visible.length > 0 ? visible : [telemetry[0]];
@@ -78,8 +92,10 @@ export default function TimeSeriesGraph({
       </div>
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="w-full h-auto"
+        className="w-full h-auto cursor-crosshair"
         preserveAspectRatio="none"
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
       >
         {gridFractions.map((g) => {
           const y = PAD_TOP + plotHeight - g * plotHeight;
@@ -123,6 +139,29 @@ export default function TimeSeriesGraph({
         >
           {formatValue(getValue(last))}
         </text>
+
+        {hoverT !== null && (
+          <>
+            <line
+              x1={xFor(hoverT)}
+              x2={xFor(hoverT)}
+              y1={PAD_TOP}
+              y2={baseline}
+              stroke={HOVER_LINE_COLOR}
+              strokeWidth={1}
+              strokeDasharray="4 3"
+            />
+            <text
+              x={Math.min(xFor(hoverT) + 4, WIDTH - PAD_RIGHT - 34)}
+              y={PAD_TOP + 10}
+              fontSize={11}
+              fontFamily="ui-monospace, monospace"
+              fill={HOVER_LINE_COLOR}
+            >
+              {hoverT.toFixed(2)}s
+            </text>
+          </>
+        )}
       </svg>
     </div>
   );

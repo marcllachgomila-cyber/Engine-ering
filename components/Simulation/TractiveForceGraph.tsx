@@ -1,7 +1,10 @@
 "use client";
 
+import { PointerEvent, useState } from "react";
 import { ForcePoint, TractiveForceData } from "@/lib/physics/types";
 import { niceMax } from "./TimeSeriesGraph";
+
+const HOVER_LINE_COLOR = "#e2e8f0";
 
 const GEAR_COLORS = [
   "#38bdf8",
@@ -29,6 +32,8 @@ interface TractiveForceGraphProps {
 }
 
 export default function TractiveForceGraph({ data }: TractiveForceGraphProps) {
+  const [hoverSpeedKph, setHoverSpeedKph] = useState<number | null>(null);
+
   const allPoints = data.gearCurves.flatMap((g) => g.points);
   if (allPoints.length === 0) return null;
 
@@ -57,6 +62,19 @@ export default function TractiveForceGraph({ data }: TractiveForceGraphProps) {
   const baseline = PAD_TOP + plotHeight;
   const gridFractions = [0, 0.5, 1];
 
+  const handlePointerMove = (e: PointerEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const svgX = ((e.clientX - rect.left) / rect.width) * WIDTH;
+    const speedKph = Math.min(
+      maxSpeedKph,
+      Math.max(0, ((svgX - PAD_LEFT) / plotWidth) * maxSpeedKph),
+    );
+    setHoverSpeedKph(speedKph);
+  };
+
+  const handlePointerLeave = () => setHoverSpeedKph(null);
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-1 flex-wrap gap-x-3 gap-y-1">
@@ -84,8 +102,10 @@ export default function TractiveForceGraph({ data }: TractiveForceGraphProps) {
       </div>
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="w-full h-auto"
+        className="w-full h-auto cursor-crosshair"
         preserveAspectRatio="none"
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
       >
         {gridFractions.map((g) => {
           const y = PAD_TOP + plotHeight - g * plotHeight;
@@ -139,6 +159,29 @@ export default function TractiveForceGraph({ data }: TractiveForceGraphProps) {
             strokeLinejoin="round"
           />
         ))}
+
+        {hoverSpeedKph !== null && (
+          <>
+            <line
+              x1={xFor(hoverSpeedKph)}
+              x2={xFor(hoverSpeedKph)}
+              y1={PAD_TOP}
+              y2={baseline}
+              stroke={HOVER_LINE_COLOR}
+              strokeWidth={1}
+              strokeDasharray="4 3"
+            />
+            <text
+              x={Math.min(xFor(hoverSpeedKph) + 4, WIDTH - PAD_RIGHT - 46)}
+              y={PAD_TOP + 10}
+              fontSize={11}
+              fontFamily="ui-monospace, monospace"
+              fill={HOVER_LINE_COLOR}
+            >
+              {Math.round(hoverSpeedKph)} kph
+            </text>
+          </>
+        )}
       </svg>
     </div>
   );

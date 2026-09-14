@@ -12,7 +12,7 @@ import { recommendedGearRatios } from "./gearRatios";
 // and chassis layout (like BODY_TYPE_PRESETS elsewhere in this file) rather
 // than exact manufacturer figures - some real-world values (drivetrain,
 // gear count, weight) are nudged to fit within this simulator's supported
-// ranges (fwd/rwd only, 5-8 speed gearboxes, per-body-type weight bounds).
+// ranges (fwd/rwd/awd, 5-8 speed gearboxes, per-body-type weight bounds).
 
 export interface RealCarPreset {
   id: string;

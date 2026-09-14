@@ -1,7 +1,9 @@
 import { Telemetry } from "@/lib/physics/types";
+import { formatLapTime } from "@/lib/testResultLabel";
 
 interface LiveStatsPanelProps {
   telemetry: Telemetry | null;
+  useLapTimeFormat?: boolean;
 }
 
 function StatTile({
@@ -26,11 +28,15 @@ function StatTile({
   );
 }
 
-export default function LiveStatsPanel({ telemetry }: LiveStatsPanelProps) {
+export default function LiveStatsPanel({ telemetry, useLapTimeFormat }: LiveStatsPanelProps) {
   const isBraking = telemetry?.brakeTempC !== undefined;
   return (
     <div className="grid grid-cols-3 gap-3 w-full">
-      <StatTile label="Elapsed" value={(telemetry?.t ?? 0).toFixed(2)} unit="s" />
+      {useLapTimeFormat ? (
+        <StatTile label="Elapsed" value={formatLapTime(telemetry?.t ?? 0)} />
+      ) : (
+        <StatTile label="Elapsed" value={(telemetry?.t ?? 0).toFixed(2)} unit="s" />
+      )}
       <StatTile label="Gear" value={`${telemetry?.gear ?? 1}`} />
       {isBraking ? (
         <StatTile

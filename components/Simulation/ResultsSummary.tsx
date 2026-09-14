@@ -66,6 +66,10 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
     () => Math.max(0.1, ...result.telemetry.map((s) => Math.abs(s.lateralGForce ?? 0))),
     [result.telemetry],
   );
+  const peakSpeedKph = useMemo(
+    () => Math.max(1, ...result.telemetry.map((s) => s.speedKph)),
+    [result.telemetry],
+  );
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6">
@@ -117,6 +121,16 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
         </GraphCard>
       )}
 
+      <GraphCard>
+        <TimeSeriesGraph
+          telemetry={result.telemetry}
+          currentT={finalT}
+          getValue={(s) => s.speedKph}
+          peakValue={peakSpeedKph}
+          color="#22d3ee"
+          label="Speed (kph) vs Time"
+        />
+      </GraphCard>
       <GraphCard>
         <TimeSeriesGraph
           telemetry={result.telemetry}

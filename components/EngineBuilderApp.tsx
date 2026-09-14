@@ -199,6 +199,8 @@ export default function EngineBuilderApp() {
                   onSubmit={handleRunTest}
                   skipHotLapAnimation={skipHotLapAnimation}
                   onSkipHotLapAnimationChange={setSkipHotLapAnimation}
+                  chassis={chassis}
+                  onChassisChange={setChassis}
                 />
               )}
             </div>
