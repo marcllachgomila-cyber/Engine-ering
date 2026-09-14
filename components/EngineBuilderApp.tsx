@@ -73,16 +73,23 @@ export default function EngineBuilderApp() {
     // just replays its telemetry in real time) - skipping straight to the
     // results screen is just skipping that replay, not re-simulating.
     if (test.testType === "hotLap" && skipHotLapAnimation) {
+      audioEngine?.dispose();
+      setAudioEngine(null);
       setSaved(false);
       handleComplete(simulate(engine, chassis, gearbox, test));
       return;
     }
+    // Dispose the previous run's audio engine (and its AudioContext) up
+    // front instead of waiting on its own fade-out timer - re-running a
+    // test back-to-back from the results screen would otherwise try to
+    // spin up a second AudioContext before the first one finished closing.
+    audioEngine?.dispose();
     const audio = new EngineAudioEngine(engine);
     audio.start();
     setAudioEngine(audio);
     setSaved(false);
     setStep("simulate");
-  }, [engine, chassis, gearbox, test, skipHotLapAnimation, handleComplete]);
+  }, [engine, chassis, gearbox, test, skipHotLapAnimation, handleComplete, audioEngine]);
 
   const handleReset = useCallback(() => {
     audioEngine?.dispose();
@@ -208,8 +215,15 @@ export default function EngineBuilderApp() {
               </button>
               <button
                 type="button"
+                onClick={() => setStep("test")}
+                className="rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-6 py-3 font-medium transition-colors"
+              >
+                ↻ Run Another Test
+              </button>
+              <button
+                type="button"
                 onClick={handleReset}
-                className="rounded-xl border border-zinc-700 hover:border-zinc-500 text-zinc-200 px-6 py-3 font-medium transition-colors"
+                className="rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-6 py-3 font-medium transition-colors"
               >
                 Build Another Engine
               </button>
