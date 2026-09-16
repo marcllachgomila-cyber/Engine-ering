@@ -50,7 +50,7 @@ interface EngineFormProps {
 
 export default function EngineForm({ value, onChange, onContinue, realCar }: EngineFormProps) {
   const validLayouts = VALID_LAYOUTS[value.cylinders] ?? ["inline"];
-  const redlineMax = value.fuelType === "diesel" ? DIESEL_MAX_REDLINE_RPM : 11000;
+  const redlineMax = value.fuelType === "diesel" ? DIESEL_MAX_REDLINE_RPM : 13500;
   const curves = useMemo(() => buildEngineCurves(value), [value]);
 
   const setCylinders = (cylinders: number) => {
