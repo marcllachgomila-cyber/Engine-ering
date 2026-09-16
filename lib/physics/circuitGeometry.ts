@@ -170,6 +170,27 @@ const CURVATURE_BASELINE_M = 6;
 // stylized-geometry default).
 const DEFAULT_STEP_M = 2;
 
+// How strongly each relaxation pass pulls a point's offset toward its
+// neighbors' straightening target (see computeRacingLine). This only
+// controls how smoothly the relaxation approaches its answer - what keeps
+// it *bounded* (as opposed to collapsing the way naive smoothing of a
+// closed curve does) is that every offset is measured and clamped against
+// that point's own fixed centerline position, never against a moving
+// reference. Don't conflate the two.
+const RACING_LINE_DAMPING = 0.28;
+// Generous cap - the relaxation converges well before this for every
+// circuit on the calendar; it's a backstop against pathological geometry,
+// not the normal stopping condition (see RACING_LINE_CONVERGENCE_EPSILON_M).
+const RACING_LINE_MAX_ITERATIONS = 600;
+const RACING_LINE_CONVERGENCE_EPSILON_M = 1e-4;
+// Extra inward clamp, as a fraction of the centerline's own radius of
+// curvature at that point: offsetting a corner inward by more than its own
+// radius self-intersects the offset curve. Doesn't currently bite (a 12m
+// track width's 6m half-width is well under any real corner's radius, even
+// the tightest hairpins on the calendar), but keeps the relaxation correct
+// if either constant changes.
+const RACING_LINE_INSIDE_CLAMP_FACTOR = 0.8;
+
 function smoothCircular(samples: Vec[], stepM: number): Vec[] {
   const n = samples.length;
   const window = Math.max(1, Math.round(SMOOTHING_RADIUS_M / stepM));
@@ -187,51 +208,161 @@ function smoothCircular(samples: Vec[], stepM: number): Vec[] {
   });
 }
 
-export function buildCircuitGeometry(
-  coordinates: number[][],
-  circuitId?: string,
-  targetStepM = DEFAULT_STEP_M,
-): CircuitPoint[] {
-  const localPts = projectToLocalMeters(coordinates, circuitId);
-  const { samples, stepM, totalLengthM } = resampleClosed(localPts, targetStepM);
-  const smoothed = smoothCircular(samples, stepM);
-  const n = smoothed.length;
+// Heading (tangent direction) and signed Menger curvature at every point of
+// a closed, evenly-spaced polyline. Used twice by buildCircuitGeometry:
+// once on the raw centerline (heading feeds the racing-line normals below;
+// curvature feeds its inside-corner clamp), and once more on the final
+// racing-line polyline to produce the CircuitPoint output.
+function computeHeadingsAndCurvature(
+  pts: Vec[],
+  stepM: number,
+): { headingRad: number[]; curvature: number[] } {
+  const n = pts.length;
   const curvOffset = Math.max(1, Math.round(CURVATURE_BASELINE_M / stepM));
+  const headingRad: number[] = [];
+  const curvature: number[] = [];
 
-  const points: CircuitPoint[] = [];
   for (let i = 0; i < n; i++) {
-    const prev = smoothed[((i - 1) % n + n) % n];
-    const next = smoothed[(i + 1) % n];
-    const headingRad = Math.atan2(next.y - prev.y, next.x - prev.x);
+    const prev = pts[((i - 1) % n + n) % n];
+    const next = pts[(i + 1) % n];
+    headingRad.push(Math.atan2(next.y - prev.y, next.x - prev.x));
 
     // Signed Menger curvature from three points spaced CURVATURE_BASELINE_M
     // apart: 2 * (signed triangle area) / (product of the three side
     // lengths). Positive = turning left/CCW, matching CircuitPoint's
     // documented sign convention.
-    const cp = smoothed[((i - curvOffset) % n + n) % n];
-    const cc = smoothed[i];
-    const cn = smoothed[(i + curvOffset) % n];
+    const cp = pts[((i - curvOffset) % n + n) % n];
+    const cc = pts[i];
+    const cn = pts[(i + curvOffset) % n];
     const a = Math.hypot(cc.x - cp.x, cc.y - cp.y);
     const b = Math.hypot(cn.x - cc.x, cn.y - cc.y);
     const c = Math.hypot(cn.x - cp.x, cn.y - cp.y);
     const cross = (cc.x - cp.x) * (cn.y - cp.y) - (cc.y - cp.y) * (cn.x - cp.x);
-    const curvature = a * b * c > 1e-6 ? (2 * cross) / (a * b * c) : 0;
+    curvature.push(a * b * c > 1e-6 ? (2 * cross) / (a * b * c) : 0);
+  }
 
+  return { headingRad, curvature };
+}
+
+// Finds a racing line within the track corridor by letting each centerline
+// point slide sideways (within +-trackWidthM/2) and relaxing those offsets
+// toward whatever locally reduces curvature - the same thing a real driver
+// does by using the full track width to straighten a corner or link a
+// chicane into one smoother arc, which a pure centerline trace can't
+// represent. This directly addresses the reason the hot-lap solver was
+// finding corners far tighter than real drivers achieve: cornering speed
+// (speedProfile.ts) is derived entirely from curvature, and the centerline
+// alone systematically understates how straight a real line through a
+// corner actually is.
+//
+// This is a discrete Laplacian ("taut string") relaxation, but each point's
+// offset is measured, every pass, against that *same point's own fixed*
+// centerline position and normal - never against a moving reference frame.
+// That's what keeps it bounded: naive Laplacian smoothing of a closed curve
+// is curve-shortening flow, which collapses the whole curve to a point
+// given enough iterations, because each step re-measures from the curve's
+// own (shrinking) previous shape. Here, no matter how many passes run, no
+// point can ever move further than its own fixed corridor half-width from
+// where it started.
+function computeRacingLine(
+  centerline: Vec[],
+  centerlineHeadingRad: number[],
+  centerlineCurvature: number[],
+  trackWidthM: number,
+): Vec[] {
+  const n = centerline.length;
+  const halfWidth = trackWidthM / 2;
+  const alpha = new Array<number>(n).fill(0);
+  const normals = centerlineHeadingRad.map((h) => ({ x: -Math.sin(h), y: Math.cos(h) }));
+  // Per-point outer clamp: the track-width half-width, further restricted
+  // near tight corners so the offset can never exceed the centerline's own
+  // radius of curvature there (see RACING_LINE_INSIDE_CLAMP_FACTOR).
+  const bounds = centerlineCurvature.map((k) =>
+    Math.min(halfWidth, RACING_LINE_INSIDE_CLAMP_FACTOR / Math.max(Math.abs(k), 1e-6)),
+  );
+
+  const offsetPoint = (i: number): Vec => ({
+    x: centerline[i].x + alpha[i] * normals[i].x,
+    y: centerline[i].y + alpha[i] * normals[i].y,
+  });
+
+  for (let pass = 0; pass < RACING_LINE_MAX_ITERATIONS; pass++) {
+    let maxDelta = 0;
+    // Alternate sweep direction each pass (symmetric Gauss-Seidel) so a
+    // single fixed direction around the closed loop doesn't bias the
+    // result toward one side of every corner.
+    const forward = pass % 2 === 0;
+    for (let step = 0; step < n; step++) {
+      const i = forward ? step : n - 1 - step;
+      const prevP = offsetPoint((i - 1 + n) % n);
+      const nextP = offsetPoint((i + 1) % n);
+      const midX = (prevP.x + nextP.x) / 2;
+      const midY = (prevP.y + nextP.y) / 2;
+      // Project the straightening pull onto this point's own fixed normal
+      // only, so points never slide along the track (only sideways within
+      // the corridor) - each index stays anchored to the same arc-length
+      // position on the centerline it started at.
+      const desiredAlpha =
+        (midX - centerline[i].x) * normals[i].x + (midY - centerline[i].y) * normals[i].y;
+      const bound = bounds[i];
+      const next = Math.min(
+        bound,
+        Math.max(-bound, alpha[i] + RACING_LINE_DAMPING * (desiredAlpha - alpha[i])),
+      );
+      maxDelta = Math.max(maxDelta, Math.abs(next - alpha[i]));
+      alpha[i] = next;
+    }
+    if (maxDelta < RACING_LINE_CONVERGENCE_EPSILON_M) break;
+  }
+
+  return centerline.map((_, i) => offsetPoint(i));
+}
+
+export function buildCircuitGeometry(
+  coordinates: number[][],
+  circuitId?: string,
+  targetStepM = DEFAULT_STEP_M,
+  trackWidthM = 12,
+  officialLengthM?: number,
+): CircuitPoint[] {
+  const localPts = projectToLocalMeters(coordinates, circuitId);
+  const { samples, stepM } = resampleClosed(localPts, targetStepM);
+  const smoothed = smoothCircular(samples, stepM);
+
+  const centerlineShape = computeHeadingsAndCurvature(smoothed, stepM);
+  const racingLine = computeRacingLine(
+    smoothed,
+    centerlineShape.headingRad,
+    centerlineShape.curvature,
+    trackWidthM,
+  );
+
+  // The relaxation above leaves points unevenly spaced (each one only ever
+  // moved sideways, not along the track) - resample back to even arc-length
+  // spacing exactly as the raw centerline already was, then rescale
+  // distanceM so the geometry's own bookkeeping matches the circuit's
+  // official length (a racing line is typically ~1-2% shorter than the
+  // centerline, from cutting corners) - otherwise a lap-progress fraction
+  // computed as distanceM / circuit.lengthM elsewhere would never quite
+  // reach 1.
+  const resampledLine = resampleClosed(racingLine, targetStepM);
+  const targetLengthM = officialLengthM ?? resampledLine.totalLengthM;
+  const scale = targetLengthM / resampledLine.totalLengthM;
+
+  const finalShape = computeHeadingsAndCurvature(resampledLine.samples, resampledLine.stepM);
+  const n = resampledLine.samples.length;
+
+  const points: CircuitPoint[] = [];
+  for (let i = 0; i < n; i++) {
     points.push({
-      distanceM: i * stepM,
-      x: smoothed[i].x,
-      y: smoothed[i].y,
-      headingRad,
-      curvature,
+      distanceM: i * resampledLine.stepM * scale,
+      x: resampledLine.samples[i].x,
+      y: resampledLine.samples[i].y,
+      headingRad: finalShape.headingRad[i],
+      curvature: finalShape.curvature[i],
     });
   }
 
-  // buildCircuitGeometry samples at a fixed step derived from the real
-  // geometry's own arc length, so the last sample already lands one step
-  // short of totalLengthM - nothing further to reconcile against lengthM
-  // here; callers that need the authoritative lap length use totalLengthM
-  // directly (see circuits.ts).
-  void totalLengthM;
   return points;
 }
 

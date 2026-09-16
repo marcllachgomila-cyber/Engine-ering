@@ -478,14 +478,17 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
     }),
   ],
   // Every season here runs the same 1.6L turbo V6 hybrid power unit and
-  // 8-speed seamless-shift gearbox mandated since 2014 - this sim has no
-  // field for the electric (MGU-K/MGU-H) half of the power unit, so these
-  // are ICE-only approximations, same caveat as everywhere else in this
-  // file. What actually changes season to season is what the regulations
-  // changed: minimum weight crept up nearly every year as hybrid hardware
-  // got heavier, and the wheels jumped from 13" to 18" for the 2022
-  // ground-effect rules. The real 405mm rear tyre width is nudged down to
-  // this simulator's 355mm ceiling.
+  // 8-speed seamless-shift gearbox mandated since 2014. engine.displacementL
+  // etc. model the ICE half; engine.hybridBoostKw/hybridMaxTorqueNm add the
+  // MGU-K's electric half on top (see engineModel.ts) - 120kW was the
+  // regulated MGU-K output limit for the whole 2014-2025 era, jumping to
+  // 350kW for the 2026 rules' near-50/50 ICE/electric split (MGU-H is
+  // dropped for 2026). Torque caps are representative, not exact regulation
+  // figures, same caveat as everywhere else in this file. What actually
+  // changes season to season otherwise: minimum weight crept up nearly
+  // every year as hybrid hardware got heavier, and the wheels jumped from
+  // 13" to 18" for the 2022 ground-effect rules. The real 405mm rear tyre
+  // width is nudged down to this simulator's 355mm ceiling.
   f1: [
     preset({
       id: "f1-2017",
@@ -500,6 +503,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
         maxRevRpm: 11500,
         aspiration: "turbo",
         fuelType: "petrol",
+        hybridBoostKw: 120,
+        hybridMaxTorqueNm: 200,
       },
       gearbox: {
         transmissionType: "auto",
@@ -529,6 +534,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
         maxRevRpm: 11500,
         aspiration: "turbo",
         fuelType: "petrol",
+        hybridBoostKw: 120,
+        hybridMaxTorqueNm: 200,
       },
       gearbox: {
         transmissionType: "auto",
@@ -558,6 +565,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
         maxRevRpm: 11500,
         aspiration: "turbo",
         fuelType: "petrol",
+        hybridBoostKw: 120,
+        hybridMaxTorqueNm: 200,
       },
       gearbox: {
         transmissionType: "auto",
@@ -587,6 +596,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
         maxRevRpm: 11500,
         aspiration: "turbo",
         fuelType: "petrol",
+        hybridBoostKw: 120,
+        hybridMaxTorqueNm: 200,
       },
       gearbox: {
         transmissionType: "auto",
@@ -616,6 +627,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
         maxRevRpm: 11500,
         aspiration: "turbo",
         fuelType: "petrol",
+        hybridBoostKw: 120,
+        hybridMaxTorqueNm: 200,
       },
       gearbox: {
         transmissionType: "auto",
@@ -645,6 +658,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
         maxRevRpm: 11500,
         aspiration: "turbo",
         fuelType: "petrol",
+        hybridBoostKw: 120,
+        hybridMaxTorqueNm: 200,
       },
       gearbox: {
         transmissionType: "auto",
@@ -674,6 +689,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
         maxRevRpm: 11500,
         aspiration: "turbo",
         fuelType: "petrol",
+        hybridBoostKw: 120,
+        hybridMaxTorqueNm: 200,
       },
       gearbox: {
         transmissionType: "auto",
@@ -703,6 +720,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
         maxRevRpm: 11500,
         aspiration: "turbo",
         fuelType: "petrol",
+        hybridBoostKw: 120,
+        hybridMaxTorqueNm: 200,
       },
       gearbox: {
         transmissionType: "auto",
@@ -732,6 +751,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
         maxRevRpm: 11500,
         aspiration: "turbo",
         fuelType: "petrol",
+        hybridBoostKw: 120,
+        hybridMaxTorqueNm: 200,
       },
       gearbox: {
         transmissionType: "auto",
@@ -760,11 +781,15 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
         // New-generation power unit: roughly 50/50 electric/combustion
         // split and no MGU-H, but the ICE stays a 1.6L V6 turbo - modeled
         // here as revving slightly higher, up against this simulator's
-        // redline ceiling.
+        // redline ceiling. The MGU-K's regulated output nearly triples
+        // (120kW -> 350kW) to carry that heavier electric share, with a
+        // 500Nm mechanical torque limit per the FIA's 2026 PU regulations.
         redlineRpm: 11000,
         maxRevRpm: 12000,
         aspiration: "turbo",
         fuelType: "petrol",
+        hybridBoostKw: 350,
+        hybridMaxTorqueNm: 500,
       },
       gearbox: {
         transmissionType: "auto",

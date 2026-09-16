@@ -11,6 +11,16 @@ export interface EngineConfig {
   maxRevRpm: number;
   aspiration: Aspiration;
   fuelType: FuelType;
+  // Electric motor contribution (e.g. an F1 power unit's MGU-K) layered on
+  // top of the combustion curve below - undefined/0 for every non-hybrid
+  // engine. Modeled as available from idle up to redline, torque-capped at
+  // hybridMaxTorqueNm at low rpm and power-capped at hybridBoostKw above
+  // the rpm where that torque cap would exceed the power cap - the same
+  // torque-then-power-limited shape a real electric motor has, rather than
+  // a flat torque bonus that would make it strongest exactly where it's
+  // least realistic (screaming near the limiter).
+  hybridBoostKw?: number;
+  hybridMaxTorqueNm?: number;
 }
 
 export type TransmissionType = "manual" | "auto";

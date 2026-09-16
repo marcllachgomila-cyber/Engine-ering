@@ -72,7 +72,7 @@ function shapeMultiplier(
 }
 
 export function buildEngineCurves(engine: EngineConfig): EngineCurves {
-  const { displacementL, cylinders, redlineRpm, maxRevRpm, aspiration, fuelType } = engine;
+  const { displacementL, cylinders, redlineRpm, maxRevRpm, aspiration, fuelType, hybridBoostKw, hybridMaxTorqueNm } = engine;
 
   const peakTorqueNm =
     displacementL * torquePerLiter(aspiration, fuelType) * cylinderFactor(cylinders);
@@ -82,11 +82,29 @@ export function buildEngineCurves(engine: EngineConfig): EngineCurves {
   // tuned the curve to peak), but a car can be pushed past it up to
   // `maxRevRpm` before the hard limiter - torque just keeps tapering along
   // the same falling curve into that over-rev zone.
-  const torqueAt = (rpm: number): number => {
+  const iceTorqueAt = (rpm: number): number => {
     const clampedRpm = Math.min(Math.max(rpm, IDLE_RPM), maxRevRpm);
     const fraction = clampedRpm / redlineRpm;
     return peakTorqueNm * shapeMultiplier(fraction, peakFraction, aspiration);
   };
+
+  // Electric motor torque available at the wheel/crank: torque-limited at
+  // low rpm (hybridMaxTorqueNm), power-limited (constant hybridBoostKw)
+  // once that torque would need more power than the motor has - the same
+  // shape a real e-motor's torque curve has. Zero for any non-hybrid
+  // engine (hybridBoostKw unset).
+  const electricTorqueAt = (rpm: number): number => {
+    if (!hybridBoostKw) return 0;
+    const clampedRpm = Math.min(Math.max(rpm, IDLE_RPM), maxRevRpm);
+    const omegaRadPerS = clampedRpm * ((2 * Math.PI) / 60);
+    const powerLimitedTorqueNm = (hybridBoostKw * 1000) / omegaRadPerS;
+    return Math.min(hybridMaxTorqueNm ?? Infinity, powerLimitedTorqueNm);
+  };
+
+  // Net torque actually delivered to the wheels - what every force/power
+  // calculation downstream should use. combustionTorqueAt below stays
+  // ICE-only, for the combustion-vs-friction breakdown.
+  const torqueAt = (rpm: number): number => iceTorqueAt(rpm) + electricTorqueAt(rpm);
 
   const powerAt = (rpm: number): number => {
     const torqueNm = torqueAt(rpm);
@@ -106,7 +124,7 @@ export function buildEngineCurves(engine: EngineConfig): EngineCurves {
     return base * (0.4 + 0.6 * Math.pow(fraction, 1.3));
   };
 
-  const combustionTorqueAt = (rpm: number): number => torqueAt(rpm) + frictionTorqueAt(rpm);
+  const combustionTorqueAt = (rpm: number): number => iceTorqueAt(rpm) + frictionTorqueAt(rpm);
 
   // Scan the usable RPM range to find actual peak torque/power, since the
   // shape function doesn't guarantee the analytic peak lands exactly at

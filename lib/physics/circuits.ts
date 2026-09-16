@@ -26,9 +26,10 @@ import lasVegas from "./circuitData/las-vegas.json";
 import lusail from "./circuitData/lusail.json";
 import yasMarina from "./circuitData/yas-marina.json";
 
-// A single representative track width, used only where a width estimate is
-// unavoidable (e.g. a future racing-line optimizer). No per-corner width
-// survey data exists for any circuit here, so this is not varied per track.
+// A single representative track width, fed into the racing-line relaxation
+// in circuitGeometry.ts (computeRacingLine) as the corridor each circuit's
+// line is allowed to use. No per-corner width survey data exists for any
+// circuit here, so this is not varied per track.
 const TRACK_WIDTH_M = 12;
 
 // Each entry in circuitData/ is real circuit geometry - an ordered, closed
@@ -50,16 +51,23 @@ interface CircuitData {
 
 function defineCircuit(data: CircuitData): Circuit {
   const { viewBox, outlinePath } = buildViewBoxAndOutline(data.coordinates, data.id);
+  const lengthM = computeLengthM(data.coordinates);
   return {
     id: data.id,
     name: data.name,
     country: data.country,
-    lengthM: computeLengthM(data.coordinates),
+    lengthM,
     corners: data.corners,
     viewBox,
     outlinePath,
     trackWidthM: TRACK_WIDTH_M,
-    points: buildCircuitGeometry(data.coordinates, data.id),
+    // The physics centerline is relaxed into a racing line that uses the
+    // full track width (see computeRacingLine in circuitGeometry.ts) rather
+    // than tracing the raw centerline - TRACK_WIDTH_M finally gets used for
+    // its stated purpose here. officialLengthM keeps the result's distance
+    // bookkeeping matching lengthM above, since the racing line itself
+    // comes out very slightly shorter than the centerline.
+    points: buildCircuitGeometry(data.coordinates, data.id, undefined, TRACK_WIDTH_M, lengthM),
   };
 }
 
