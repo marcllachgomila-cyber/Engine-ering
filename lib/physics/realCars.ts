@@ -36,6 +36,17 @@ import { CAR_PRESET_DATA } from "./carData.generated";
 // every year as hybrid hardware got heavier, and the wheels jumped from
 // 13" to 18" for the 2022 ground-effect rules. The real 405mm rear tyre
 // width is nudged down to this simulator's 355mm ceiling.
+//
+// maxRevRpm is 15,000 for every season here - the FIA's hard PU rev limit
+// has held constant at 15,000rpm across the entire 2014-2026 hybrid era
+// (it isn't a per-season variable in reality, so it isn't one here).
+// redlineRpm (where each engine's power curve is modeled as peaking) does
+// vary: 2017-2021 steps up gradually season to season as fuel-flow
+// efficiency and engine mapping matured (representative, not measured, like
+// everything else here); 2022-2025 all share the same redline because the
+// FIA froze ICE/turbo homologation from March 2022 through the end of 2025
+// to redirect manufacturer effort at the 2026 rules - those four seasons
+// really did run near-identical hardware, not just similar-looking specs.
 
 export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
   minivan: [],
