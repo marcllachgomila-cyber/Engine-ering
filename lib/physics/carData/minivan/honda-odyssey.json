@@ -1,0 +1,29 @@
+{
+  "id": "honda-odyssey",
+  "make": "Honda",
+  "model": "Odyssey",
+  "category": "minivan",
+  "engine": {
+    "cylinders": 6,
+    "layout": "v",
+    "displacementL": 3.5,
+    "redlineRpm": 6600,
+    "maxRevRpm": 6800,
+    "aspiration": "na",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "fwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxTorque"
+  },
+  "chassis": {
+    "weightKg": 2010,
+    "frontWheelDiameterIn": 19,
+    "rearWheelDiameterIn": 19,
+    "frontWheelWidthMm": 235,
+    "rearWheelWidthMm": 235
+  }
+}

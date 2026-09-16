@@ -1,0 +1,29 @@
+{
+  "id": "porsche-911-turbo-s",
+  "make": "Porsche",
+  "model": "911 Turbo S",
+  "category": "supercar",
+  "engine": {
+    "cylinders": 6,
+    "layout": "flat",
+    "displacementL": 3.8,
+    "redlineRpm": 7200,
+    "maxRevRpm": 7500,
+    "aspiration": "turbo",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "rwd",
+    "dualClutch": true,
+    "autoShiftStrategy": "maxPower"
+  },
+  "chassis": {
+    "weightKg": 1640,
+    "frontWheelDiameterIn": 20,
+    "rearWheelDiameterIn": 21,
+    "frontWheelWidthMm": 255,
+    "rearWheelWidthMm": 315
+  }
+}

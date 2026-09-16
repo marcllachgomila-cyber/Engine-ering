@@ -1,0 +1,29 @@
+{
+  "id": "bmw-x5",
+  "make": "BMW",
+  "model": "X5",
+  "category": "suv",
+  "engine": {
+    "cylinders": 6,
+    "layout": "inline",
+    "displacementL": 3.0,
+    "redlineRpm": 6500,
+    "maxRevRpm": 6800,
+    "aspiration": "turbo",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "rwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxTorque"
+  },
+  "chassis": {
+    "weightKg": 2145,
+    "frontWheelDiameterIn": 20,
+    "rearWheelDiameterIn": 20,
+    "frontWheelWidthMm": 255,
+    "rearWheelWidthMm": 285
+  }
+}

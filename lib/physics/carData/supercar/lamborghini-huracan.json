@@ -1,0 +1,29 @@
+{
+  "id": "lamborghini-huracan",
+  "make": "Lamborghini",
+  "model": "Huracan",
+  "category": "supercar",
+  "engine": {
+    "cylinders": 10,
+    "layout": "v",
+    "displacementL": 5.2,
+    "redlineRpm": 8500,
+    "maxRevRpm": 8700,
+    "aspiration": "na",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 7,
+    "drivetrain": "rwd",
+    "dualClutch": true,
+    "autoShiftStrategy": "maxPower"
+  },
+  "chassis": {
+    "weightKg": 1422,
+    "frontWheelDiameterIn": 19,
+    "rearWheelDiameterIn": 20,
+    "frontWheelWidthMm": 245,
+    "rearWheelWidthMm": 305
+  }
+}

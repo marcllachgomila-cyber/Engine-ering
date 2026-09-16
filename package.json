@@ -4,7 +4,10 @@
   "private": true,
   "license": "MPL-2.0",
   "scripts": {
+    "generate:cars": "node scripts/generate-car-data.mjs",
+    "predev": "npm run generate:cars",
     "dev": "next dev",
+    "prebuild": "npm run generate:cars",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

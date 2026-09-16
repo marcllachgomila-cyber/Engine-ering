@@ -1,0 +1,29 @@
+{
+  "id": "chrysler-pacifica",
+  "make": "Chrysler",
+  "model": "Pacifica",
+  "category": "minivan",
+  "engine": {
+    "cylinders": 6,
+    "layout": "v",
+    "displacementL": 3.6,
+    "redlineRpm": 6400,
+    "maxRevRpm": 6600,
+    "aspiration": "na",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "fwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxTorque"
+  },
+  "chassis": {
+    "weightKg": 2030,
+    "frontWheelDiameterIn": 18,
+    "rearWheelDiameterIn": 18,
+    "frontWheelWidthMm": 235,
+    "rearWheelWidthMm": 235
+  }
+}

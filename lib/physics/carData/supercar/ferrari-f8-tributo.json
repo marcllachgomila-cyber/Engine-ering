@@ -1,0 +1,29 @@
+{
+  "id": "ferrari-f8-tributo",
+  "make": "Ferrari",
+  "model": "F8 Tributo",
+  "category": "supercar",
+  "engine": {
+    "cylinders": 8,
+    "layout": "v",
+    "displacementL": 3.9,
+    "redlineRpm": 8000,
+    "maxRevRpm": 8200,
+    "aspiration": "turbo",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 7,
+    "drivetrain": "rwd",
+    "dualClutch": true,
+    "autoShiftStrategy": "maxPower"
+  },
+  "chassis": {
+    "weightKg": 1435,
+    "frontWheelDiameterIn": 20,
+    "rearWheelDiameterIn": 20,
+    "frontWheelWidthMm": 245,
+    "rearWheelWidthMm": 305
+  }
+}

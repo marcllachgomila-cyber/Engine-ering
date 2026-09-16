@@ -1,0 +1,29 @@
+{
+  "id": "bugatti-chiron",
+  "make": "Bugatti",
+  "model": "Chiron",
+  "category": "supercar",
+  "engine": {
+    "cylinders": 16,
+    "layout": "w",
+    "displacementL": 8.0,
+    "redlineRpm": 6700,
+    "maxRevRpm": 6900,
+    "aspiration": "turbo",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 7,
+    "drivetrain": "rwd",
+    "dualClutch": true,
+    "autoShiftStrategy": "maxPower"
+  },
+  "chassis": {
+    "weightKg": 1900,
+    "frontWheelDiameterIn": 20,
+    "rearWheelDiameterIn": 21,
+    "frontWheelWidthMm": 285,
+    "rearWheelWidthMm": 355
+  }
+}

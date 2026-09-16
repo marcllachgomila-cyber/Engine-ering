@@ -1,0 +1,29 @@
+{
+  "id": "ford-explorer",
+  "make": "Ford",
+  "model": "Explorer",
+  "category": "suv",
+  "engine": {
+    "cylinders": 4,
+    "layout": "inline",
+    "displacementL": 2.3,
+    "redlineRpm": 6000,
+    "maxRevRpm": 6300,
+    "aspiration": "turbo",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "rwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxTorque"
+  },
+  "chassis": {
+    "weightKg": 2050,
+    "frontWheelDiameterIn": 20,
+    "rearWheelDiameterIn": 20,
+    "frontWheelWidthMm": 255,
+    "rearWheelWidthMm": 255
+  }
+}

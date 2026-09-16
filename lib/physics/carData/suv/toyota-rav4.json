@@ -1,0 +1,29 @@
+{
+  "id": "toyota-rav4",
+  "make": "Toyota",
+  "model": "RAV4",
+  "category": "suv",
+  "engine": {
+    "cylinders": 4,
+    "layout": "inline",
+    "displacementL": 2.5,
+    "redlineRpm": 6600,
+    "maxRevRpm": 6800,
+    "aspiration": "na",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "fwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxTorque"
+  },
+  "chassis": {
+    "weightKg": 1700,
+    "frontWheelDiameterIn": 18,
+    "rearWheelDiameterIn": 18,
+    "frontWheelWidthMm": 225,
+    "rearWheelWidthMm": 225
+  }
+}

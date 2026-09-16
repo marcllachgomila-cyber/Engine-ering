@@ -1,0 +1,29 @@
+{
+  "id": "mclaren-720s",
+  "make": "McLaren",
+  "model": "720S",
+  "category": "supercar",
+  "engine": {
+    "cylinders": 8,
+    "layout": "v",
+    "displacementL": 4.0,
+    "redlineRpm": 8100,
+    "maxRevRpm": 8300,
+    "aspiration": "turbo",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 7,
+    "drivetrain": "rwd",
+    "dualClutch": true,
+    "autoShiftStrategy": "maxPower"
+  },
+  "chassis": {
+    "weightKg": 1419,
+    "frontWheelDiameterIn": 19,
+    "rearWheelDiameterIn": 20,
+    "frontWheelWidthMm": 235,
+    "rearWheelWidthMm": 295
+  }
+}

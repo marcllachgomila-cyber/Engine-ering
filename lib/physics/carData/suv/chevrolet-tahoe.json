@@ -1,0 +1,29 @@
+{
+  "id": "chevrolet-tahoe",
+  "make": "Chevrolet",
+  "model": "Tahoe",
+  "category": "suv",
+  "engine": {
+    "cylinders": 8,
+    "layout": "v",
+    "displacementL": 5.3,
+    "redlineRpm": 5600,
+    "maxRevRpm": 5900,
+    "aspiration": "na",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "rwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxTorque"
+  },
+  "chassis": {
+    "weightKg": 2570,
+    "frontWheelDiameterIn": 20,
+    "rearWheelDiameterIn": 20,
+    "frontWheelWidthMm": 275,
+    "rearWheelWidthMm": 275
+  }
+}

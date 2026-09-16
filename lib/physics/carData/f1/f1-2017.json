@@ -1,0 +1,31 @@
+{
+  "id": "f1-2017",
+  "make": "Formula 1",
+  "model": "2017 Season",
+  "category": "f1",
+  "engine": {
+    "cylinders": 6,
+    "layout": "v",
+    "displacementL": 1.6,
+    "redlineRpm": 10500,
+    "maxRevRpm": 11500,
+    "aspiration": "turbo",
+    "fuelType": "petrol",
+    "hybridBoostKw": 120,
+    "hybridMaxTorqueNm": 200
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "rwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxPower"
+  },
+  "chassis": {
+    "weightKg": 728,
+    "frontWheelDiameterIn": 13,
+    "rearWheelDiameterIn": 13,
+    "frontWheelWidthMm": 305,
+    "rearWheelWidthMm": 355
+  }
+}

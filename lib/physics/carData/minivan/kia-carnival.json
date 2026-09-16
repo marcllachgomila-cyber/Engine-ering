@@ -1,0 +1,29 @@
+{
+  "id": "kia-carnival",
+  "make": "Kia",
+  "model": "Carnival",
+  "category": "minivan",
+  "engine": {
+    "cylinders": 6,
+    "layout": "v",
+    "displacementL": 3.5,
+    "redlineRpm": 6300,
+    "maxRevRpm": 6500,
+    "aspiration": "na",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "fwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxTorque"
+  },
+  "chassis": {
+    "weightKg": 2020,
+    "frontWheelDiameterIn": 19,
+    "rearWheelDiameterIn": 19,
+    "frontWheelWidthMm": 235,
+    "rearWheelWidthMm": 235
+  }
+}

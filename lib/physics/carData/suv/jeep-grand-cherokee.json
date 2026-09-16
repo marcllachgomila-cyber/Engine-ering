@@ -1,0 +1,29 @@
+{
+  "id": "jeep-grand-cherokee",
+  "make": "Jeep",
+  "model": "Grand Cherokee",
+  "category": "suv",
+  "engine": {
+    "cylinders": 6,
+    "layout": "v",
+    "displacementL": 3.6,
+    "redlineRpm": 6400,
+    "maxRevRpm": 6600,
+    "aspiration": "na",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "rwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxTorque"
+  },
+  "chassis": {
+    "weightKg": 2100,
+    "frontWheelDiameterIn": 20,
+    "rearWheelDiameterIn": 20,
+    "frontWheelWidthMm": 265,
+    "rearWheelWidthMm": 265
+  }
+}

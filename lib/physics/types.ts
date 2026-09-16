@@ -35,6 +35,28 @@ export interface GearboxConfig {
   autoShiftStrategy: AutoShiftStrategy;
 }
 
+export interface RealCarPreset {
+  id: string;
+  make: string;
+  model: string;
+  category: BodyType;
+  engine: EngineConfig;
+  gearbox: Omit<GearboxConfig, "gearRatios">;
+  chassis: Pick<
+    ChassisConfig,
+    | "weightKg"
+    | "frontWheelDiameterIn"
+    | "rearWheelDiameterIn"
+    | "frontWheelWidthMm"
+    | "rearWheelWidthMm"
+  >;
+  // Car-specific rationale for a modeling choice that doesn't fit the
+  // general disclaimers in realCars.ts (e.g. why a particular season's
+  // hybrid figures are what they are) - optional, shown nowhere in the UI
+  // yet, just carried alongside the data for whoever's reading the file.
+  notes?: string;
+}
+
 export type BodyType = "minivan" | "suv" | "supercar" | "f1";
 export type TyreType = "slick" | "standard";
 export type TyreCompound = "soft" | "medium" | "hard" | "intermediate" | "wet";

@@ -1,0 +1,32 @@
+{
+  "id": "f1-2026",
+  "make": "Formula 1",
+  "model": "2026 Season",
+  "category": "f1",
+  "engine": {
+    "cylinders": 6,
+    "layout": "v",
+    "displacementL": 1.6,
+    "redlineRpm": 11000,
+    "maxRevRpm": 12000,
+    "aspiration": "turbo",
+    "fuelType": "petrol",
+    "hybridBoostKw": 350,
+    "hybridMaxTorqueNm": 500
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 8,
+    "drivetrain": "rwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxPower"
+  },
+  "chassis": {
+    "weightKg": 768,
+    "frontWheelDiameterIn": 18,
+    "rearWheelDiameterIn": 18,
+    "frontWheelWidthMm": 305,
+    "rearWheelWidthMm": 355
+  },
+  "notes": "New-generation power unit: roughly 50/50 electric/combustion split and no MGU-H, but the ICE stays a 1.6L V6 turbo - modeled here as revving slightly higher, up against this simulator's redline ceiling. The MGU-K's regulated output nearly triples (120kW -> 350kW) to carry that heavier electric share, with a 500Nm mechanical torque limit per the FIA's 2026 PU regulations. New-generation cars are also mandated smaller and lighter than the 2022-2025 ground-effect era, reflected in the lower chassis weight here."
+}

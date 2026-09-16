@@ -1,0 +1,29 @@
+{
+  "id": "dodge-grand-caravan",
+  "make": "Dodge",
+  "model": "Grand Caravan",
+  "category": "minivan",
+  "engine": {
+    "cylinders": 6,
+    "layout": "v",
+    "displacementL": 3.6,
+    "redlineRpm": 6350,
+    "maxRevRpm": 6550,
+    "aspiration": "na",
+    "fuelType": "petrol"
+  },
+  "gearbox": {
+    "transmissionType": "auto",
+    "gearCount": 6,
+    "drivetrain": "fwd",
+    "dualClutch": false,
+    "autoShiftStrategy": "maxTorque"
+  },
+  "chassis": {
+    "weightKg": 1980,
+    "frontWheelDiameterIn": 17,
+    "rearWheelDiameterIn": 17,
+    "frontWheelWidthMm": 225,
+    "rearWheelWidthMm": 225
+  }
+}
