@@ -484,9 +484,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
   // file. What actually changes season to season is what the regulations
   // changed: minimum weight crept up nearly every year as hybrid hardware
   // got heavier, and the wheels jumped from 13" to 18" for the 2022
-  // ground-effect rules (13" is below this simulator's wheel-diameter
-  // floor, so pre-2022 seasons are nudged up to 15"; the real 405mm rear
-  // tyre width is likewise nudged down to this simulator's 355mm ceiling).
+  // ground-effect rules. The real 405mm rear tyre width is nudged down to
+  // this simulator's 355mm ceiling.
   f1: [
     preset({
       id: "f1-2017",
@@ -511,8 +510,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
       },
       chassis: {
         weightKg: 728,
-        frontWheelDiameterIn: 15,
-        rearWheelDiameterIn: 15,
+        frontWheelDiameterIn: 13,
+        rearWheelDiameterIn: 13,
         frontWheelWidthMm: 305,
         rearWheelWidthMm: 355,
       },
@@ -540,8 +539,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
       },
       chassis: {
         weightKg: 733,
-        frontWheelDiameterIn: 15,
-        rearWheelDiameterIn: 15,
+        frontWheelDiameterIn: 13,
+        rearWheelDiameterIn: 13,
         frontWheelWidthMm: 305,
         rearWheelWidthMm: 355,
       },
@@ -569,8 +568,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
       },
       chassis: {
         weightKg: 743,
-        frontWheelDiameterIn: 15,
-        rearWheelDiameterIn: 15,
+        frontWheelDiameterIn: 13,
+        rearWheelDiameterIn: 13,
         frontWheelWidthMm: 305,
         rearWheelWidthMm: 355,
       },
@@ -598,8 +597,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
       },
       chassis: {
         weightKg: 746,
-        frontWheelDiameterIn: 15,
-        rearWheelDiameterIn: 15,
+        frontWheelDiameterIn: 13,
+        rearWheelDiameterIn: 13,
         frontWheelWidthMm: 305,
         rearWheelWidthMm: 355,
       },
@@ -627,8 +626,8 @@ export const REAL_CAR_PRESETS: Record<BodyType, RealCarPreset[]> = {
       },
       chassis: {
         weightKg: 752,
-        frontWheelDiameterIn: 15,
-        rearWheelDiameterIn: 15,
+        frontWheelDiameterIn: 13,
+        rearWheelDiameterIn: 13,
         frontWheelWidthMm: 305,
         rearWheelWidthMm: 355,
       },

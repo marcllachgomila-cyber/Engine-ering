@@ -181,8 +181,8 @@ export default function ChassisForm({
                 </div>
                 <input
                   type="range"
-                  min={15}
-                  max={34}
+                  min={10}
+                  max={25}
                   step={1}
                   value={value.frontWheelDiameterIn}
                   onChange={(e) =>
@@ -190,7 +190,7 @@ export default function ChassisForm({
                   }
                   className="w-full accent-amber-500"
                 />
-                <p className="text-xs text-zinc-500 mt-1">Recommended: 25&Prime;</p>
+                <p className="text-xs text-zinc-500 mt-1">Recommended: 20&Prime;</p>
               </div>
               <div>
                 <div className="flex items-baseline justify-between mb-1">
@@ -229,8 +229,8 @@ export default function ChassisForm({
                 </div>
                 <input
                   type="range"
-                  min={15}
-                  max={34}
+                  min={10}
+                  max={25}
                   step={1}
                   value={value.rearWheelDiameterIn}
                   onChange={(e) =>
@@ -238,7 +238,7 @@ export default function ChassisForm({
                   }
                   className="w-full accent-amber-500"
                 />
-                <p className="text-xs text-zinc-500 mt-1">Recommended: 26&Prime;</p>
+                <p className="text-xs text-zinc-500 mt-1">Recommended: 21&Prime;</p>
               </div>
               <div>
                 <div className="flex items-baseline justify-between mb-1">
