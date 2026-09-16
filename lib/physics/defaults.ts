@@ -62,6 +62,17 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     frontalAreaM2: 1.9,
     liftCoefficient: 0.9,
   },
+  f1: {
+    weightKg: 798,
+    weightMinKg: 700,
+    weightMaxKg: 850,
+    // Open wheels and a barn-door front wing mean far more drag than any
+    // closed-bodywork car here, but it's paired with by far the highest
+    // lift coefficient - the whole car is one big wing.
+    dragCoefficient: 0.9,
+    frontalAreaM2: 1.5,
+    liftCoefficient: 3.0,
+  },
 };
 
 export const DEFAULT_CHASSIS: ChassisConfig = {

@@ -10,6 +10,17 @@ const BODY_TYPE_LABELS: Record<BodyType, string> = {
   minivan: "Minivan",
   suv: "SUV",
   supercar: "Supercar",
+  f1: "F1",
+};
+
+// Lowercase(-ish) form for mid-sentence use, plus the article that goes with
+// it - "minivan"/"supercar" downcase cleanly, but acronyms like "SUV" and
+// "F1" need to stay capitalized and paired with "an" to read correctly.
+const BODY_TYPE_MENTION: Record<BodyType, { article: string; noun: string }> = {
+  minivan: { article: "a", noun: "minivan" },
+  suv: { article: "an", noun: "SUV" },
+  supercar: { article: "a", noun: "supercar" },
+  f1: { article: "an", noun: "F1" },
 };
 
 const TYRE_TYPE_LABELS: Record<TyreType, string> = {
@@ -65,7 +76,7 @@ export default function ChassisForm({
           <label className="text-sm font-medium text-zinc-300 block mb-3">
             Body Type
           </label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {(Object.keys(BODY_TYPE_LABELS) as BodyType[]).map((bodyType) => (
               <button
                 key={bodyType}
@@ -136,7 +147,8 @@ export default function ChassisForm({
               className="w-full accent-amber-500"
             />
             <p className="text-xs text-zinc-500 mt-1">
-              Recommended: {preset.weightKg.toLocaleString()} kg for a {BODY_TYPE_LABELS[value.bodyType].toLowerCase()}.
+              Recommended: {preset.weightKg.toLocaleString()} kg for{" "}
+              {BODY_TYPE_MENTION[value.bodyType].article} {BODY_TYPE_MENTION[value.bodyType].noun}.
               The engine and wheels you pick add mass on top of this.
             </p>
           </div>

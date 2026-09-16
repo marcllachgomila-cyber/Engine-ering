@@ -25,7 +25,7 @@ export interface GearboxConfig {
   autoShiftStrategy: AutoShiftStrategy;
 }
 
-export type BodyType = "minivan" | "suv" | "supercar";
+export type BodyType = "minivan" | "suv" | "supercar" | "f1";
 export type TyreType = "slick" | "standard";
 export type TyreCompound = "soft" | "medium" | "hard" | "intermediate" | "wet";
 

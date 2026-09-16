@@ -459,7 +459,7 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
             { symbol: String.raw`\rho_{\text{air}}`, desc: "air density, the standard sea-level reference value used throughout" },
             {
               symbol: String.raw`C_d`,
-              desc: "drag coefficient, set by body type (a boxy minivan or SUV carries a higher coefficient than a low, shaped supercar body)",
+              desc: "drag coefficient, set by body type (a boxy minivan or SUV carries a higher coefficient than a low, shaped supercar body; an open-wheel F1 car runs higher still)",
             },
             { symbol: String.raw`A`, desc: "frontal area, also set by body type" },
             { symbol: String.raw`v_{\text{rel}}`, desc: "speed relative to the surrounding air, not just speed relative to the road" },
@@ -501,7 +501,7 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
           vars={[
             {
               symbol: String.raw`C_l`,
-              desc: "lift coefficient, set by body type - positive is genuine downforce (a supercar's splitter/diffuser/wing package), negative is aerodynamic lift (a boxy minivan or SUV, which have neither)",
+              desc: "lift coefficient, set by body type - positive is genuine downforce (a supercar's splitter/diffuser/wing package, or an F1 car's far larger one), negative is aerodynamic lift (a boxy minivan or SUV, which have neither)",
             },
             { symbol: String.raw`A`, desc: "frontal area, same value used for drag" },
             { symbol: String.raw`v`, desc: "road speed" },
@@ -731,7 +731,7 @@ m = \ & m_{\text{chassis}}(\text{bodyType}) \\
 \end{aligned}`}
           vars={[
             { symbol: String.raw`m`, desc: "total vehicle mass" },
-            { symbol: String.raw`m_{\text{chassis}}`, desc: "base chassis mass, set by body type (minivan, SUV, supercar)" },
+            { symbol: String.raw`m_{\text{chassis}}`, desc: "base chassis mass, set by body type (minivan, SUV, supercar, F1)" },
             { symbol: String.raw`n_{\text{cyl}}`, desc: "cylinder count" },
             { symbol: String.raw`k_{\text{cyl}}`, desc: "mass added per cylinder" },
             { symbol: String.raw`D`, desc: "engine displacement" },
@@ -743,8 +743,8 @@ m = \ & m_{\text{chassis}}(\text{bodyType}) \\
           ]}
         />
         <P>
-          Base chassis mass comes from the chosen body type (minivan, SUV, or supercar, each with
-          its own realistic mass range). Engine mass grows with both cylinder count and
+          Base chassis mass comes from the chosen body type (minivan, SUV, supercar, or F1, each
+          with its own realistic mass range). Engine mass grows with both cylinder count and
           displacement — more metal, more reciprocating parts. Forced induction adds fixed hardware
           mass for the turbocharger or supercharger and its plumbing. Wheel and tyre mass is
           expressed as a delta from reference wheel dimensions: larger diameter or width than the

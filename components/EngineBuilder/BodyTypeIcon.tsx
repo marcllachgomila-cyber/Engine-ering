@@ -63,5 +63,27 @@ export default function BodyTypeIcon({ bodyType, className }: BodyTypeIconProps)
           <Wheels cx1={24} cx2={78} />
         </svg>
       );
+    case "f1":
+      return (
+        <svg viewBox="0 0 100 50" className={className} fill="none">
+          <path
+            d="M14 34 L28 34 L34 28 L52 28 L58 34 L86 34"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <path
+            d="M34 28 L38 20 L48 20 L52 28 Z"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinejoin="round"
+          />
+          <line x1="4" y1="34" x2="20" y2="34" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
+          <line x1="80" y1="34" x2="96" y2="34" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
+          <circle cx={16} cy={38} r={8} stroke="currentColor" strokeWidth={2.5} />
+          <circle cx={84} cy={38} r={8} stroke="currentColor" strokeWidth={2.5} />
+        </svg>
+      );
   }
 }
