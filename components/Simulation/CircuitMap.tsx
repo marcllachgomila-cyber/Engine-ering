@@ -6,6 +6,10 @@ import { Circuit } from "@/lib/physics/types";
 const TRACK_COLOR = "#a1a1aa";
 const SURFACE_COLOR = "#14171d";
 const DOT_COLOR = "#f59e0b";
+// Thin enough that tight real-world sections (parallel straights, hairpins a
+// few metres apart - Baku, Jeddah, Marina Bay all have these) read as close
+// but separate lines rather than merging into a single blob at this scale.
+const TRACK_STROKE_WIDTH = 3;
 
 export function CircuitOutlineIcon({
   circuit,
@@ -20,7 +24,7 @@ export function CircuitOutlineIcon({
         d={circuit.outlinePath}
         fill="none"
         stroke={TRACK_COLOR}
-        strokeWidth={8}
+        strokeWidth={TRACK_STROKE_WIDTH}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -58,7 +62,7 @@ export default function CircuitMap({ circuit, progress, label }: CircuitMapProps
           d={circuit.outlinePath}
           fill="none"
           stroke={TRACK_COLOR}
-          strokeWidth={8}
+          strokeWidth={TRACK_STROKE_WIDTH}
           strokeLinecap="round"
           strokeLinejoin="round"
         />

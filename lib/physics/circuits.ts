@@ -49,7 +49,7 @@ interface CircuitData {
 }
 
 function defineCircuit(data: CircuitData): Circuit {
-  const { viewBox, outlinePath } = buildViewBoxAndOutline(data.coordinates);
+  const { viewBox, outlinePath } = buildViewBoxAndOutline(data.coordinates, data.id);
   return {
     id: data.id,
     name: data.name,
@@ -59,7 +59,7 @@ function defineCircuit(data: CircuitData): Circuit {
     viewBox,
     outlinePath,
     trackWidthM: TRACK_WIDTH_M,
-    points: buildCircuitGeometry(data.coordinates),
+    points: buildCircuitGeometry(data.coordinates, data.id),
   };
 }
 

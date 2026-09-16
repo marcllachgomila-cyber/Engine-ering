@@ -15,12 +15,17 @@ type Vec = { x: number; y: number };
 // this makes is accurate to well under a metre - far below the resolution
 // that matters for lap physics.
 //
-// The result is then rotated so every circuit is drawn in the same
-// orientation - start/finish (point 0, see circuits.ts on how that got
-// there) horizontal and at the top - rather than true-north-up, which
-// would otherwise point each track map in whatever direction its front
-// straight happens to run in real life.
-function projectToLocalMeters(lonLat: number[][]): Vec[] {
+// The result is then rotated so every circuit's *shape as a whole* reads as
+// landscape (wide, not tall) - regardless of which way the start/finish
+// line happens to face in real life - rather than true-north-up, which
+// would otherwise point each track map in whatever direction it was
+// surveyed in. `circuitId` optionally selects a per-circuit adjustment (see
+// ORIENTATION_OVERRIDE_DEG below) to match the layout each circuit is
+// conventionally drawn in (e.g. the F1 calendar's circuit maps): the
+// landscape-fit alone only pins the track down to within a 180-degree turn
+// (and, for a roughly symmetric outline like Monza's, sometimes a 90-degree
+// one too), with no way to prefer the conventional option on its own.
+function projectToLocalMeters(lonLat: number[][], circuitId?: string): Vec[] {
   const EARTH_RADIUS_M = 6371000;
   const lat0 =
     (lonLat.reduce((sum, [, lat]) => sum + lat, 0) / lonLat.length) * (Math.PI / 180);
@@ -29,7 +34,9 @@ function projectToLocalMeters(lonLat: number[][]): Vec[] {
     x: ((lon - lon0) * Math.PI) / 180 * EARTH_RADIUS_M * Math.cos(lat0),
     y: ((lat - lat0) * Math.PI) / 180 * EARTH_RADIUS_M,
   }));
-  const angle = startFinishOrientationAngle(pts);
+  let angle = landscapeOrientationAngle(pts);
+  const overrideDeg = circuitId ? ORIENTATION_OVERRIDE_DEG[circuitId] : undefined;
+  if (overrideDeg) angle += (overrideDeg * Math.PI) / 180;
   const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);
   return pts.map((p) => ({
@@ -38,55 +45,79 @@ function projectToLocalMeters(lonLat: number[][]): Vec[] {
   }));
 }
 
-// How far to walk along the track (in each direction from the start/finish
-// point) when estimating the direction of travel there. Long enough to
-// average out raw OSM digitisation jitter, short enough to stay on the
-// start/finish straight rather than bleeding into the corner at either end.
-const ORIENTATION_TANGENT_M = 20;
+// Circuits whose landscape-fit orientation (see landscapeOrientationAngle)
+// doesn't match how they're conventionally drawn (e.g. on the official F1
+// calendar's circuit maps), checked against those references by eye, and
+// the extra rotation (degrees, added on top of the landscape fit) that
+// corrects it. Only ever a pure rotation here - never a mirror - since
+// mirroring would reverse the circuit's real CW/CCW racing direction.
+const ORIENTATION_OVERRIDE_DEG: Record<string, number> = {
+  lusail: 180,
+  cota: 180,
+};
 
-// Walks a closed polyline from `fromIndex`, in index direction `dir` (+1 or
-// -1), until `targetDistM` of arc length has been covered, and returns the
-// (linearly interpolated) point there. Mirrors resampleClosed's walk below,
-// just anchored at an arbitrary start index instead of index 0.
-function pointAtArcLength(pts: Vec[], fromIndex: number, targetDistM: number, dir: 1 | -1): Vec {
-  const n = pts.length;
-  let remaining = targetDistM;
-  let i = fromIndex;
-  while (remaining > 0) {
-    const j = ((i + dir) % n + n) % n;
-    const a = pts[i];
-    const b = pts[j];
-    const segLen = Math.hypot(b.x - a.x, b.y - a.y);
-    if (segLen >= remaining) {
-      const t = remaining / segLen;
-      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+// Convex hull of a 2D point set via Andrew's monotone chain, O(n log n).
+function convexHull(pts: Vec[]): Vec[] {
+  const sorted = [...pts].sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+  const cross = (o: Vec, a: Vec, b: Vec) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const buildHalf = (points: Vec[]) => {
+    const half: Vec[] = [];
+    for (const p of points) {
+      while (half.length >= 2 && cross(half[half.length - 2], half[half.length - 1], p) <= 0) {
+        half.pop();
+      }
+      half.push(p);
     }
-    remaining -= segLen;
-    i = j;
-  }
-  return pts[fromIndex];
+    return half;
+  };
+  const lower = buildHalf(sorted);
+  const upper = buildHalf([...sorted].reverse());
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
 }
 
-// The rotation (radians) that puts the start/finish point's direction of
-// travel on the horizontal, with the rest of the track hanging below it
-// (so start/finish reads as being "at the top" once toSvg's later
-// north-is-up flip turns largest-y into topmost-on-screen).
-function startFinishOrientationAngle(pts: Vec[]): number {
-  const behind = pointAtArcLength(pts, 0, ORIENTATION_TANGENT_M, -1);
-  const ahead = pointAtArcLength(pts, 0, ORIENTATION_TANGENT_M, 1);
-  const tangentHeading = Math.atan2(ahead.y - behind.y, ahead.x - behind.x);
+// The rotation (radians) that lays the track's own shape out as landscape
+// (as wide as possible relative to its height) - via rotating calipers over
+// the convex hull: for every hull edge direction, measure the axis-aligned
+// bounding box that edge direction would produce, and keep whichever is
+// widest relative to its height. This is a well-defined, start/finish-blind
+// notion of "horizontal" - unlike aligning to the start/finish straight
+// (the previous approach), it doesn't depend on where that straight happens
+// to sit on an otherwise tall or lopsided circuit.
+function landscapeOrientationAngle(pts: Vec[]): number {
+  const hull = convexHull(pts);
+  const n = hull.length;
+  if (n < 2) return 0;
 
-  // Unit normal to the tangent that would point "up" (+y) once rotated by
-  // -tangentHeading - used to test which side of the start/finish line the
-  // rest of the track sits on, without a throwaway full rotation.
-  const normal = { x: -Math.sin(tangentHeading), y: Math.cos(tangentHeading) };
-  const centroid = pts.reduce((s, p) => ({ x: s.x + p.x, y: s.y + p.y }), { x: 0, y: 0 });
-  centroid.x /= pts.length;
-  centroid.y /= pts.length;
-  const rel = { x: centroid.x - pts[0].x, y: centroid.y - pts[0].y };
-  const trackIsAboveStart = rel.x * normal.x + rel.y * normal.y > 0;
-
-  return trackIsAboveStart ? -tangentHeading + Math.PI : -tangentHeading;
+  let bestAngle = 0;
+  let bestAspect = -Infinity; // width / height of the bounding box, to maximize
+  for (let i = 0; i < n; i++) {
+    const a = hull[i];
+    const b = hull[(i + 1) % n];
+    const edgeAngle = Math.atan2(b.y - a.y, b.x - a.x);
+    // Rotate by -edgeAngle so this hull edge becomes horizontal, then
+    // measure the resulting bounding box.
+    const cosA = Math.cos(-edgeAngle);
+    const sinA = Math.sin(-edgeAngle);
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of hull) {
+      const rx = p.x * cosA - p.y * sinA;
+      const ry = p.x * sinA + p.y * cosA;
+      if (rx < minX) minX = rx;
+      if (rx > maxX) maxX = rx;
+      if (ry < minY) minY = ry;
+      if (ry > maxY) maxY = ry;
+    }
+    const width = maxX - minX;
+    const height = Math.max(maxY - minY, 1e-6);
+    const aspect = width / height;
+    if (aspect > bestAspect) {
+      bestAspect = aspect;
+      bestAngle = -edgeAngle;
+    }
+  }
+  return bestAngle;
 }
 
 // Resamples a closed polyline (wrapping from the last point back to the
@@ -158,9 +189,10 @@ function smoothCircular(samples: Vec[], stepM: number): Vec[] {
 
 export function buildCircuitGeometry(
   coordinates: number[][],
+  circuitId?: string,
   targetStepM = DEFAULT_STEP_M,
 ): CircuitPoint[] {
-  const localPts = projectToLocalMeters(coordinates);
+  const localPts = projectToLocalMeters(coordinates, circuitId);
   const { samples, stepM, totalLengthM } = resampleClosed(localPts, targetStepM);
   const smoothed = smoothCircular(samples, stepM);
   const n = smoothed.length;
@@ -203,21 +235,28 @@ export function buildCircuitGeometry(
   return points;
 }
 
-// Fits a set of local-meter points into a fixed-size SVG viewBox (matching
-// the app's existing "0 0 300 180" convention) and returns both the
+// Fits a set of local-meter points into an SVG viewBox and returns both the
 // viewBox string and a straight-line-joined path string through the same
 // (uniformly scaled) points, for the track-map illustration. This is drawn
 // from the same real geometry as the physics centerline - just rescaled for
 // display - rather than a separate hand-drawn outline.
+//
+// The width is fixed and always fully used - every circuit is scaled to
+// span the same side-to-side extent regardless of its real-world aspect
+// ratio - while the height instead varies per circuit to fit whatever that
+// scale requires. A shared fixed box (as both dimensions previously were)
+// necessarily under-uses the narrower axis for any circuit whose aspect
+// ratio doesn't match the box's; since orientation is already normalized
+// (see projectToLocalMeters) so every circuit's start/finish reads
+// horizontally, width is the axis worth maximizing consistently.
 const VIEW_BOX_WIDTH = 300;
-const VIEW_BOX_HEIGHT = 180;
 const VIEW_BOX_PADDING = 14;
 
-export function buildViewBoxAndOutline(coordinates: number[][]): {
+export function buildViewBoxAndOutline(coordinates: number[][], circuitId?: string): {
   viewBox: string;
   outlinePath: string;
 } {
-  const localPts = projectToLocalMeters(coordinates);
+  const localPts = projectToLocalMeters(coordinates, circuitId);
   const xs = localPts.map((p) => p.x);
   const ys = localPts.map((p) => p.y);
   const minX = Math.min(...xs);
@@ -228,11 +267,11 @@ export function buildViewBoxAndOutline(coordinates: number[][]): {
   const spanY = Math.max(maxY - minY, 1e-6);
 
   const availW = VIEW_BOX_WIDTH - 2 * VIEW_BOX_PADDING;
-  const availH = VIEW_BOX_HEIGHT - 2 * VIEW_BOX_PADDING;
-  const scale = Math.min(availW / spanX, availH / spanY);
+  const scale = availW / spanX;
+  const viewBoxHeight = spanY * scale + 2 * VIEW_BOX_PADDING;
 
-  const offsetX = VIEW_BOX_PADDING + (availW - spanX * scale) / 2;
-  const offsetY = VIEW_BOX_PADDING + (availH - spanY * scale) / 2;
+  const offsetX = VIEW_BOX_PADDING;
+  const offsetY = VIEW_BOX_PADDING;
 
   // SVG y grows downward; real-world y (north) grows upward, so flip it.
   const toSvg = (p: Vec) => ({
@@ -246,7 +285,7 @@ export function buildViewBoxAndOutline(coordinates: number[][]): {
     " ",
   );
 
-  return { viewBox: `0 0 ${VIEW_BOX_WIDTH} ${VIEW_BOX_HEIGHT}`, outlinePath: d };
+  return { viewBox: `0 0 ${VIEW_BOX_WIDTH} ${viewBoxHeight.toFixed(2)}`, outlinePath: d };
 }
 
 // Real lap length in metres, computed directly from the source geometry's
