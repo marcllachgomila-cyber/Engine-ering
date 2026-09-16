@@ -14,15 +14,79 @@ type Vec = { x: number; y: number };
 // circuits span at most a few kilometres, so the flat-earth approximation
 // this makes is accurate to well under a metre - far below the resolution
 // that matters for lap physics.
+//
+// The result is then rotated so every circuit is drawn in the same
+// orientation - start/finish (point 0, see circuits.ts on how that got
+// there) horizontal and at the top - rather than true-north-up, which
+// would otherwise point each track map in whatever direction its front
+// straight happens to run in real life.
 function projectToLocalMeters(lonLat: number[][]): Vec[] {
   const EARTH_RADIUS_M = 6371000;
   const lat0 =
     (lonLat.reduce((sum, [, lat]) => sum + lat, 0) / lonLat.length) * (Math.PI / 180);
   const lon0 = lonLat.reduce((sum, [lon]) => sum + lon, 0) / lonLat.length;
-  return lonLat.map(([lon, lat]) => ({
+  const pts = lonLat.map(([lon, lat]) => ({
     x: ((lon - lon0) * Math.PI) / 180 * EARTH_RADIUS_M * Math.cos(lat0),
     y: ((lat - lat0) * Math.PI) / 180 * EARTH_RADIUS_M,
   }));
+  const angle = startFinishOrientationAngle(pts);
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+  return pts.map((p) => ({
+    x: p.x * cosA - p.y * sinA,
+    y: p.x * sinA + p.y * cosA,
+  }));
+}
+
+// How far to walk along the track (in each direction from the start/finish
+// point) when estimating the direction of travel there. Long enough to
+// average out raw OSM digitisation jitter, short enough to stay on the
+// start/finish straight rather than bleeding into the corner at either end.
+const ORIENTATION_TANGENT_M = 20;
+
+// Walks a closed polyline from `fromIndex`, in index direction `dir` (+1 or
+// -1), until `targetDistM` of arc length has been covered, and returns the
+// (linearly interpolated) point there. Mirrors resampleClosed's walk below,
+// just anchored at an arbitrary start index instead of index 0.
+function pointAtArcLength(pts: Vec[], fromIndex: number, targetDistM: number, dir: 1 | -1): Vec {
+  const n = pts.length;
+  let remaining = targetDistM;
+  let i = fromIndex;
+  while (remaining > 0) {
+    const j = ((i + dir) % n + n) % n;
+    const a = pts[i];
+    const b = pts[j];
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+    if (segLen >= remaining) {
+      const t = remaining / segLen;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    }
+    remaining -= segLen;
+    i = j;
+  }
+  return pts[fromIndex];
+}
+
+// The rotation (radians) that puts the start/finish point's direction of
+// travel on the horizontal, with the rest of the track hanging below it
+// (so start/finish reads as being "at the top" once toSvg's later
+// north-is-up flip turns largest-y into topmost-on-screen).
+function startFinishOrientationAngle(pts: Vec[]): number {
+  const behind = pointAtArcLength(pts, 0, ORIENTATION_TANGENT_M, -1);
+  const ahead = pointAtArcLength(pts, 0, ORIENTATION_TANGENT_M, 1);
+  const tangentHeading = Math.atan2(ahead.y - behind.y, ahead.x - behind.x);
+
+  // Unit normal to the tangent that would point "up" (+y) once rotated by
+  // -tangentHeading - used to test which side of the start/finish line the
+  // rest of the track sits on, without a throwaway full rotation.
+  const normal = { x: -Math.sin(tangentHeading), y: Math.cos(tangentHeading) };
+  const centroid = pts.reduce((s, p) => ({ x: s.x + p.x, y: s.y + p.y }), { x: 0, y: 0 });
+  centroid.x /= pts.length;
+  centroid.y /= pts.length;
+  const rel = { x: centroid.x - pts[0].x, y: centroid.y - pts[0].y };
+  const trackIsAboveStart = rel.x * normal.x + rel.y * normal.y > 0;
+
+  return trackIsAboveStart ? -tangentHeading + Math.PI : -tangentHeading;
 }
 
 // Resamples a closed polyline (wrapping from the last point back to the
