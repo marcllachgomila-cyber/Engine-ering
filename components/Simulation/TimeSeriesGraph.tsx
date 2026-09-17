@@ -35,6 +35,9 @@ interface TimeSeriesGraphProps {
   color: string;
   label: string;
   formatValue?: (value: number) => string;
+  /** Controlled hover position (seconds), shared across multiple graphs. Omit for standalone use. */
+  hoverT?: number | null;
+  onHoverTChange?: (t: number | null) => void;
 }
 
 export default function TimeSeriesGraph({
@@ -45,8 +48,12 @@ export default function TimeSeriesGraph({
   color,
   label,
   formatValue = (v) => Math.round(v).toString(),
+  hoverT: controlledHoverT,
+  onHoverTChange,
 }: TimeSeriesGraphProps) {
-  const [hoverT, setHoverT] = useState<number | null>(null);
+  const [internalHoverT, setInternalHoverT] = useState<number | null>(null);
+  const hoverT = controlledHoverT !== undefined ? controlledHoverT : internalHoverT;
+  const setHoverT = onHoverTChange ?? setInternalHoverT;
 
   if (telemetry.length === 0) return null;
 
@@ -140,28 +147,35 @@ export default function TimeSeriesGraph({
           {formatValue(getValue(last))}
         </text>
 
-        {hoverT !== null && (
-          <>
-            <line
-              x1={xFor(hoverT)}
-              x2={xFor(hoverT)}
-              y1={PAD_TOP}
-              y2={baseline}
-              stroke={HOVER_LINE_COLOR}
-              strokeWidth={1}
-              strokeDasharray="4 3"
-            />
-            <text
-              x={Math.min(xFor(hoverT) + 4, WIDTH - PAD_RIGHT - 34)}
-              y={PAD_TOP + 10}
-              fontSize={11}
-              fontFamily="ui-monospace, monospace"
-              fill={HOVER_LINE_COLOR}
-            >
-              {hoverT.toFixed(2)}s
-            </text>
-          </>
-        )}
+        {hoverT !== null && (() => {
+          const hoverSample = telemetry.reduce((closest, s) =>
+            Math.abs(s.t - hoverT) < Math.abs(closest.t - hoverT) ? s : closest,
+          );
+          const hoverValue = getValue(hoverSample);
+          return (
+            <>
+              <line
+                x1={xFor(hoverT)}
+                x2={xFor(hoverT)}
+                y1={PAD_TOP}
+                y2={baseline}
+                stroke={HOVER_LINE_COLOR}
+                strokeWidth={1}
+                strokeDasharray="4 3"
+              />
+              <circle cx={xFor(hoverSample.t)} cy={yFor(hoverValue)} r={3.5} fill={HOVER_LINE_COLOR} />
+              <text
+                x={Math.min(xFor(hoverT) + 4, WIDTH - PAD_RIGHT - 34)}
+                y={PAD_TOP + 10}
+                fontSize={11}
+                fontFamily="ui-monospace, monospace"
+                fill={HOVER_LINE_COLOR}
+              >
+                {hoverT.toFixed(2)}s · {formatValue(hoverValue)}
+              </text>
+            </>
+          );
+        })()}
       </svg>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { EngineConfig, SimulationResult } from "@/lib/physics/types";
 import { buildEngineCurves } from "@/lib/physics/engineModel";
 import { getCircuit } from "@/lib/physics/circuits";
@@ -36,6 +36,7 @@ function GraphCard({ children }: { children: React.ReactNode }) {
 }
 
 export default function ResultsSummary({ engine, result }: ResultsSummaryProps) {
+  const [hoverT, setHoverT] = useState<number | null>(null);
   const headline = resultHeadline(result);
 
   let subtext = headline.sub;
@@ -129,6 +130,8 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
           peakValue={peakSpeedKph}
           color="#22d3ee"
           label="Speed (kph) vs Time"
+          hoverT={hoverT}
+          onHoverTChange={setHoverT}
         />
       </GraphCard>
       <GraphCard>
@@ -139,6 +142,8 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
           peakValue={engine.maxRevRpm}
           color="#f59e0b"
           label="RPM vs Time"
+          hoverT={hoverT}
+          onHoverTChange={setHoverT}
         />
       </GraphCard>
       <GraphCard>
@@ -149,6 +154,8 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
           peakValue={result.peakHp}
           color="#9085e9"
           label="Power (hp) vs Time"
+          hoverT={hoverT}
+          onHoverTChange={setHoverT}
         />
       </GraphCard>
       <GraphCard>
@@ -159,6 +166,8 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
           peakValue={result.peakTorqueNm}
           color="#38bdf8"
           label="Engine Torque (Nm) vs Time"
+          hoverT={hoverT}
+          onHoverTChange={setHoverT}
         />
       </GraphCard>
       <GraphCard>
@@ -176,6 +185,8 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
               color="#34d399"
               label="Lateral G (cornering load) vs Time"
               formatValue={(v) => v.toFixed(2)}
+              hoverT={hoverT}
+              onHoverTChange={setHoverT}
             />
           </GraphCard>
           <GraphCard>
@@ -187,6 +198,8 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
               color="#a78bfa"
               label="Tyre Utilisation (% of friction circle) vs Time"
               formatValue={(v) => `${Math.round(v)}%`}
+              hoverT={hoverT}
+              onHoverTChange={setHoverT}
             />
           </GraphCard>
           <GraphCard>
@@ -197,6 +210,8 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
               peakValue={peakBrakeForceN}
               color="#f87171"
               label="Braking Force (N) vs Time"
+              hoverT={hoverT}
+              onHoverTChange={setHoverT}
             />
           </GraphCard>
           <GraphCard>
@@ -207,6 +222,8 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
               peakValue={peakBrakeTempC}
               color="#fb923c"
               label="Brake Temp (°C) vs Time"
+              hoverT={hoverT}
+              onHoverTChange={setHoverT}
             />
           </GraphCard>
         </>
