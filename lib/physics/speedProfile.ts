@@ -1,7 +1,7 @@
 import { BRAKE_MATERIALS, ABS_OFF_PENALTY } from "./brakeModel";
 import { downforceN, dragForceN, normalLoadN } from "./aeroModel";
 import { brakingMuLong, combinedLongCapacityN, computeTyreLimits } from "./tyreModel";
-import { ChassisConfig, CircuitPoint, EngineCurves, TestConfig, VehicleSpec } from "./types";
+import { ChassisConfig, CircuitPoint, EngineCurves, LapStartMode, TestConfig, VehicleSpec } from "./types";
 import {
   AIR_DENSITY_KG_M3,
   G,
@@ -177,11 +177,16 @@ export function computeSpeedProfile(
   points: CircuitPoint[],
   vehicle: VehicleSpec,
   model: LongitudinalModel,
+  startMode: LapStartMode = "flying",
 ): SpeedProfilePoint[] {
   const n = points.length;
   const ds = n > 1 ? points[1].distanceM - points[0].distanceM : 0;
+  const standingStart = startMode === "standing";
 
   const speedMs = points.map((p) => cornerSpeedLimitMs(p.curvature, model.muLat, vehicle));
+  // A standing start begins from a dead stop on the line rather than
+  // whatever speed the corner before it would otherwise allow.
+  if (standingStart) speedMs[0] = 0;
 
   for (let pass = 0; pass < CONVERGENCE_PASSES; pass++) {
     // Forward sweep: how fast could the car be going here, given how fast
@@ -197,6 +202,10 @@ export function computeSpeedProfile(
     // the look-ahead braking point - it naturally pushes braking earlier
     // than the corner entrance whenever one pass isn't enough distance.
     for (let i = n - 1; i >= 0; i--) {
+      // On a standing start there's no next lap to brake for by the line -
+      // skip the wrap-around edge so the final sector's exit speed isn't
+      // wrongly capped by needing to slow to a stop at the start/finish.
+      if (standingStart && i === n - 1) continue;
       const next = (i + 1) % n;
       const a = model.maxBrakeDecelMs2(speedMs[next], points[next].curvature);
       const reachable = Math.sqrt(Math.max(0, speedMs[next] * speedMs[next] + 2 * a * ds));

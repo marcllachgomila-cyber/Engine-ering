@@ -78,6 +78,10 @@ export interface ChassisConfig {
 export type TestType = "zeroToHundred" | "tenSecond" | "drag500m" | "braking" | "hotLap";
 export type RoadCondition = "dry" | "wet" | "rain" | "wind";
 export type BrakeMaterial = "steel" | "ceramic" | "carbon";
+// A hot lap either starts already at speed, as if arriving from the corner
+// before the line (a qualifying "flying lap"), or from a dead stop on the
+// line itself, lights-out style. Only meaningful when testType is "hotLap".
+export type LapStartMode = "flying" | "standing";
 
 export interface TestConfig {
   testType: TestType;
@@ -87,6 +91,7 @@ export interface TestConfig {
   initialBrakeTempC: number;
   brakeMaterial: BrakeMaterial;
   circuitId: string;
+  lapStartMode: LapStartMode;
   // Rev the engine and slip the clutch instead of easing away from idle -
   // only meaningful for a standing-start acceleration/drag run (see
   // simulate.ts). Ignored otherwise.

@@ -863,12 +863,20 @@ topSpeed = lastValidSpeed`}</Pseudocode>
     render: () => (
       <>
         <P>
-          The hot lap test calculates one theoretical flying lap of a chosen circuit from the
+          The hot lap test calculates one theoretical lap of a chosen circuit from the
           track&rsquo;s own geometry and the car&rsquo;s physics — it does not look up or blend toward any
           real-world lap time, and no corner is ever assigned a hand-picked speed. The chain is:
           circuit geometry → tyre friction ellipse (with aerodynamics feeding into it) → a
           physically-constrained speed profile → per-point driver pedal/gear inputs → time
           integration. Each stage below feeds the next.
+        </P>
+        <P>
+          Two start modes share that same chain. A <em>flying lap</em> crosses the start/finish
+          line already at whatever speed the corner before it allows — a qualifying bomb lap,
+          which is how the speed-profile solver treats the line by default (it&rsquo;s just another
+          point on a closed loop). A <em>standing start</em> instead pins the line to a dead
+          stop and launches from there, lights-out style, so the first sector is a genuine
+          traction-limited getaway rather than a lap already in progress.
         </P>
         <H3>Circuit geometry: curvature from the track shape, not a lookup table</H3>
         <P>

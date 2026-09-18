@@ -62,7 +62,7 @@ export function simulateHotLap(
   const vehicle = deriveVehicle(engine, curves, chassis, gearbox);
   const model = buildLongitudinalModel(vehicle, chassis, curves, test);
 
-  const profile = computeSpeedProfile(circuit.points, vehicle, model);
+  const profile = computeSpeedProfile(circuit.points, vehicle, model, test.lapStartMode);
   const inputs = deriveDriverInputs(profile, vehicle, curves, model);
 
   const n = profile.length;
@@ -84,7 +84,16 @@ export function simulateHotLap(
       prevGear = input.gear;
     }
 
-    const integrationSpeedMs = Math.max(MIN_INTEGRATION_SPEED_MS, point.speedMs);
+    // A standing start begins the lap at rest, so holding this point's own
+    // speed constant across the segment (the usual approximation, fine when
+    // consecutive points are close in speed) would wildly overstate the
+    // time for that first, near-zero-speed segment. Use the segment's
+    // average speed instead - exact for the constant-acceleration launch
+    // the speed profile itself already assumes.
+    const integrationSpeedMs =
+      i === 0 && test.lapStartMode === "standing" && n > 1
+        ? Math.max(MIN_INTEGRATION_SPEED_MS, (point.speedMs + profile[1].speedMs) / 2)
+        : Math.max(MIN_INTEGRATION_SPEED_MS, point.speedMs);
     const dt = ds / integrationSpeedMs;
     t += dt;
 

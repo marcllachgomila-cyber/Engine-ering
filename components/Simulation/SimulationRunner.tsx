@@ -19,6 +19,7 @@ import {
 } from "@/lib/physics/types";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import CircuitMap from "./CircuitMap";
+import { flyingLapLeadInFraction } from "./flyingLapLeadIn";
 import Gauges from "./Gauges";
 import LiveStatsPanel from "./LiveStatsPanel";
 import TimeSeriesGraph from "./TimeSeriesGraph";
@@ -48,7 +49,13 @@ const RUNNING_LABELS: Record<TestConfig["testType"], string> = {
 const BRAKING_CRUISE_DURATION_MS = 5000;
 const COUNTDOWN_STEP_MS = 1000;
 
-type Phase = "cruise" | "countdown" | "running";
+// A flying lap doesn't just appear at the line already at speed - it's
+// arriving there off the last corner. This is how long the circuit map
+// spends animating that approach before the timed lap itself (the
+// "running" phase, whose telemetry is what's actually recorded) begins.
+const FLYING_LAP_LEAD_IN_DURATION_MS = 1000;
+
+type Phase = "cruise" | "countdown" | "leadIn" | "running";
 
 export default function SimulationRunner({
   engine,
@@ -67,6 +74,11 @@ export default function SimulationRunner({
   const isHotLap = test.testType === "hotLap";
   const isClutchDump = isClutchDumpLaunch(test);
   const circuit = useMemo(() => (isHotLap ? getCircuit(test.circuitId) : null), [isHotLap, test.circuitId]);
+  const isFlyingLap = isHotLap && test.lapStartMode === "flying";
+  const leadInStartFraction = useMemo(
+    () => (isFlyingLap && circuit ? flyingLapLeadInFraction(circuit) : null),
+    [isFlyingLap, circuit],
+  );
   const hasBrakeTemp = useMemo(
     () => result.telemetry.some((s) => s.brakeTempC !== undefined),
     [result.telemetry],
@@ -113,10 +125,11 @@ export default function SimulationRunner({
   const showsCountdown = isBraking || isClutchDump;
 
   const [phase, setPhase] = useState<Phase>(
-    isBraking ? "cruise" : isClutchDump ? "countdown" : "running",
+    isBraking ? "cruise" : isClutchDump ? "countdown" : leadInStartFraction !== null ? "leadIn" : "running",
   );
   const [countdown, setCountdown] = useState<number | null>(isClutchDump ? 3 : null);
   const [current, setCurrent] = useState<Telemetry | null>(result.telemetry[0] ?? null);
+  const [leadInProgress, setLeadInProgress] = useState<number | null>(leadInStartFraction);
   const [isPaused, setIsPaused] = useState(false);
   const rafRef = useRef<number | null>(null);
   // How far into the "running" phase's telemetry playback we'd gotten when
@@ -145,6 +158,32 @@ export default function SimulationRunner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClutchDump, phase, launchRpm]);
 
+  // Flying lap lead-in: sweep the circuit-map dot from the last corner up to
+  // the line before the timed "running" phase (whose telemetry starts right
+  // at the line, already at speed) takes over - purely presentational, the
+  // recorded lap time only ever covers the running phase.
+  useEffect(() => {
+    if (phase !== "leadIn" || leadInStartFraction === null) return;
+    const firstSample = result.telemetry[0];
+    if (firstSample) audioEngine.update(firstSample.rpm, engine.redlineRpm);
+
+    let raf: number;
+    let start: number | null = null;
+    const tick = (now: number) => {
+      if (start === null) start = now;
+      const t = Math.min(1, (now - start) / FLYING_LAP_LEAD_IN_DURATION_MS);
+      setLeadInProgress(leadInStartFraction + (1 - leadInStartFraction) * t);
+      if (t < 1) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        setPhase("running");
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, leadInStartFraction]);
+
   // Countdown: 3, 2, 1, then GO!/BRAKE! and the run itself start in the same
   // instant - no lag between the readout hitting zero and the car actually
   // moving. The readout is left up there a moment longer purely for
@@ -170,7 +209,7 @@ export default function SimulationRunner({
   }, [showsCountdown, phase]);
 
   useEffect(() => {
-    if (showsCountdown && phase !== "running") return;
+    if (phase !== "running") return;
     if (isPaused) return;
 
     const telemetry = result.telemetry;
@@ -213,7 +252,7 @@ export default function SimulationRunner({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, showsCountdown, phase, isPaused]);
+  }, [result, phase, isPaused]);
 
   const handleTogglePause = () => {
     setIsPaused((prev) => {
@@ -231,16 +270,25 @@ export default function SimulationRunner({
     ? Math.max(...result.telemetry.map((s) => s.speedKph), result.finalSpeedKph)
     : result.finalSpeedKph;
   const maxSpeedKph = Math.max(180, Math.ceil((referenceSpeedKph * 1.15) / 20) * 20);
-  const displaySample = phase === "running" ? current : (cruiseSample ?? revSample);
+  const displaySample =
+    phase === "running"
+      ? current
+      : phase === "leadIn"
+        ? result.telemetry[0] ?? null
+        : (cruiseSample ?? revSample);
 
   const headline =
     phase === "cruise"
       ? `Cruising at ${test.initialSpeedKph} kph…`
-      : phase === "countdown"
-        ? isClutchDump
-          ? "Revving, clutch held…"
-          : "Get ready to brake…"
-        : RUNNING_LABELS[test.testType];
+      : phase === "leadIn"
+        ? "Carrying speed through the last corner…"
+        : phase === "countdown"
+          ? isClutchDump
+            ? "Revving, clutch held…"
+            : "Get ready to brake…"
+          : isHotLap && test.lapStartMode === "standing"
+            ? "Lights out - setting a hot lap…"
+            : RUNNING_LABELS[test.testType];
 
   const countdownLabel = isClutchDump ? "GO!" : "BRAKE!";
 
@@ -266,7 +314,7 @@ export default function SimulationRunner({
           onClick={onRestart}
           className="rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-6 py-3 font-medium transition-colors"
         >
-          ↻ Restart
+          Start Another Test
         </button>
       </div>
       <Gauges
@@ -279,7 +327,11 @@ export default function SimulationRunner({
       {isHotLap && circuit && (
         <CircuitMap
           circuit={circuit}
-          progress={(displaySample?.distanceM ?? 0) / circuit.lengthM}
+          progress={
+            phase === "leadIn" && leadInProgress !== null
+              ? leadInProgress
+              : (displaySample?.distanceM ?? 0) / circuit.lengthM
+          }
         />
       )}
       <LiveStatsPanel telemetry={displaySample} useLapTimeFormat={isHotLap} />

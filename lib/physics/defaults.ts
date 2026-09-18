@@ -97,6 +97,7 @@ export const DEFAULT_TEST_CONFIG: TestConfig = {
   initialBrakeTempC: 80,
   brakeMaterial: "steel",
   circuitId: DEFAULT_CIRCUIT_ID,
+  lapStartMode: "flying",
   clutchDump: false,
 };
 

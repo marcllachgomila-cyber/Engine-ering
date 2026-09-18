@@ -40,12 +40,13 @@ export function resultHeadline({
   switch (testType) {
     case "hotLap": {
       const circuit = circuitId ? getCircuit(circuitId) : null;
+      const startLabel = initialSpeedKph < 0.5 ? "Standing start" : "Flying lap";
       return {
         label: circuit?.name ?? "Hot Lap",
         value: formatLapTime(elapsedS),
         sub: circuit
-          ? `${(circuit.lengthM / 1000).toFixed(3)} km · ${circuit.corners} corners`
-          : null,
+          ? `${(circuit.lengthM / 1000).toFixed(3)} km · ${circuit.corners} corners · ${startLabel}`
+          : startLabel,
       };
     }
     case "zeroToHundred": {

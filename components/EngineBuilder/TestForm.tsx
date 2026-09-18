@@ -2,7 +2,7 @@
 
 import { BRAKE_MATERIALS, BRAKE_TEMP_MAX_C, BRAKE_TEMP_MIN_C } from "@/lib/physics/brakeModel";
 import { CIRCUITS } from "@/lib/physics/circuits";
-import { BrakeMaterial, ChassisConfig, RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
+import { BrakeMaterial, ChassisConfig, LapStartMode, RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
 import { CircuitOutlineIcon } from "../Simulation/CircuitMap";
 import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
 
@@ -19,6 +19,11 @@ const CONDITION_LABELS: Record<RoadCondition, string> = {
   wet: "Wet",
   rain: "Rain",
   wind: "Headwind",
+};
+
+const LAP_START_MODE_LABELS: Record<LapStartMode, string> = {
+  flying: "Flying Lap",
+  standing: "Standing Start",
 };
 
 const MAX_SPEED_KPH = 150;
@@ -130,6 +135,28 @@ export default function TestForm({
                   </span>
                 </button>
               ))}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-zinc-300 block mb-2">
+                Start
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(LAP_START_MODE_LABELS) as LapStartMode[]).map((mode) => (
+                  <OptionButton
+                    key={mode}
+                    active={value.lapStartMode === mode}
+                    onClick={() => onChange({ ...value, lapStartMode: mode })}
+                  >
+                    {LAP_START_MODE_LABELS[mode]}
+                  </OptionButton>
+                ))}
+              </div>
+              <p className="text-xs text-zinc-500 mt-2">
+                Flying lap: crosses the line already at speed, as if arriving from the
+                corner before it - a qualifying bomb lap. Standing start: launches from a
+                dead stop on the line, lights-out style.
+              </p>
             </div>
 
             <label className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 cursor-pointer">
