@@ -35,6 +35,14 @@ function GraphCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="pt-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+      {children}
+    </div>
+  );
+}
+
 export default function ResultsSummary({ engine, result }: ResultsSummaryProps) {
   const [hoverT, setHoverT] = useState<number | null>(null);
   const headline = resultHeadline(result);
@@ -122,6 +130,7 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
         </GraphCard>
       )}
 
+      <SectionLabel>Performance Over Time</SectionLabel>
       <GraphCard>
         <TimeSeriesGraph
           telemetry={result.telemetry}
@@ -176,6 +185,7 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
 
       {result.testType === "hotLap" && (
         <>
+          <SectionLabel>Hot Lap Telemetry</SectionLabel>
           <GraphCard>
             <TimeSeriesGraph
               telemetry={result.telemetry}
