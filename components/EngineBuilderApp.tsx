@@ -27,6 +27,7 @@ import {
   subscribeFavorites,
 } from "@/lib/favorites";
 import ChassisForm from "./EngineBuilder/ChassisForm";
+import { CornerMarks, FOCUS_RING } from "./EngineBuilder/FormControls";
 import EngineForm from "./EngineBuilder/EngineForm";
 import GearboxForm from "./EngineBuilder/GearboxForm";
 import TestForm from "./EngineBuilder/TestForm";
@@ -153,7 +154,7 @@ export default function EngineBuilderApp() {
         <button
           type="button"
           onClick={openFavorites}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${FOCUS_RING} ${
             step === "favorites"
               ? "bg-amber-500 border-amber-500 text-zinc-950"
               : "border-zinc-700 text-zinc-300 hover:border-zinc-500 bg-zinc-900/40"
@@ -165,8 +166,8 @@ export default function EngineBuilderApp() {
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
         {(step === "chassis" || step === "engine" || step === "gearbox" || step === "test") && (
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start">
-            <div className="w-full max-w-3xl mx-auto lg:mx-0">
+          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 items-start">
+            <div className="order-2 lg:order-1 w-full max-w-3xl mx-auto lg:mx-0">
               <StepNav current={step} onNavigate={(s) => setStep(s)} />
               {step === "chassis" && (
                 <ChassisForm
@@ -207,12 +208,22 @@ export default function EngineBuilderApp() {
                 />
               )}
             </div>
-            <div className="lg:sticky lg:top-8 space-y-6">
-              <div className="flex flex-col items-center">
-                <div className="text-xs uppercase tracking-wider text-zinc-400 mb-2">
-                  Live Preview
+            <div className="order-1 lg:order-2 lg:sticky lg:top-8 space-y-6">
+              <div className="relative rounded-2xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md overflow-hidden shadow-[0_0_60px_-12px_rgba(245,158,11,0.5)]">
+                <CornerMarks className="border-amber-500/40" />
+                <div className="px-5 py-3 border-b border-zinc-800/80 flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-sm font-medium text-amber-400">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                    </span>
+                    Live Preview
+                  </span>
+                  <span className="text-xs text-zinc-500 uppercase tracking-wider truncate">
+                    {engine.cylinders}-cyl {engine.layout.toUpperCase()}
+                  </span>
                 </div>
-                <div className="w-full h-72 relative">
+                <div className="w-full h-[26rem] relative">
                   <div className="absolute inset-x-8 bottom-4 h-8 rounded-full bg-black/50 blur-xl" />
                   <EnginePreview engine={engine} />
                 </div>
@@ -242,7 +253,7 @@ export default function EngineBuilderApp() {
                 type="button"
                 onClick={handleSaveFavorite}
                 disabled={saved}
-                className={`rounded-xl px-6 py-3 font-medium transition-colors ${
+                className={`rounded-xl px-6 py-3 font-medium transition-colors ${FOCUS_RING} ${
                   saved
                     ? "border border-zinc-700 text-zinc-500 cursor-default"
                     : "bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold"
@@ -253,14 +264,14 @@ export default function EngineBuilderApp() {
               <button
                 type="button"
                 onClick={() => setStep("test")}
-                className="rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-6 py-3 font-medium transition-colors"
+                className={`rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-6 py-3 font-medium transition-colors ${FOCUS_RING}`}
               >
                 ↻ Run Another Test
               </button>
               <button
                 type="button"
                 onClick={handleReset}
-                className="rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-6 py-3 font-medium transition-colors"
+                className={`rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-6 py-3 font-medium transition-colors ${FOCUS_RING}`}
               >
                 Build Another Engine
               </button>
@@ -273,7 +284,7 @@ export default function EngineBuilderApp() {
             <button
               type="button"
               onClick={() => setStep(previousStep)}
-              className="rounded-xl border border-zinc-700 hover:border-zinc-500 text-zinc-200 px-6 py-3 font-medium transition-colors"
+              className={`rounded-xl border border-zinc-700 hover:border-zinc-500 text-zinc-200 px-6 py-3 font-medium transition-colors ${FOCUS_RING}`}
             >
               Back
             </button>

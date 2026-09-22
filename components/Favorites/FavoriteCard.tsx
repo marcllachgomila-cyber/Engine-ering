@@ -1,5 +1,6 @@
 import { SavedEngine } from "@/lib/favorites";
 import { resultHeadline, TEST_TYPE_LABELS } from "@/lib/testResultLabel";
+import { CornerMarks, FOCUS_RING } from "@/components/EngineBuilder/FormControls";
 
 interface FavoriteCardProps {
   favorite: SavedEngine;
@@ -32,7 +33,8 @@ export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) 
   });
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md p-4">
+    <div className="relative rounded-xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md p-4 transition-colors hover:border-zinc-700">
+      <CornerMarks />
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="font-semibold text-zinc-50">
@@ -44,7 +46,7 @@ export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) 
             {TEST_TYPE_LABELS[test.testType]}
           </div>
           {favorite.topMatch && (
-            <div className="text-sm text-zinc-400 mt-1 truncate">
+            <div className="text-sm text-zinc-400 mt-1.5 truncate">
               Closest match: {favorite.topMatch.year} {favorite.topMatch.make}{" "}
               {favorite.topMatch.model}
             </div>
@@ -53,12 +55,12 @@ export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) 
         <button
           type="button"
           onClick={onRemove}
-          className="text-zinc-500 hover:text-red-400 transition-colors text-sm shrink-0"
+          className={`rounded text-zinc-500 hover:text-red-400 transition-colors text-sm shrink-0 ${FOCUS_RING}`}
         >
           Remove
         </button>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
         <MiniStat label="Peak Power" value={`${Math.round(favorite.peakHp)} hp`} />
         <MiniStat
           label="Peak Torque"

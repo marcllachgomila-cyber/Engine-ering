@@ -4,7 +4,16 @@ import { BRAKE_MATERIALS, BRAKE_TEMP_MAX_C, BRAKE_TEMP_MIN_C } from "@/lib/physi
 import { CIRCUITS } from "@/lib/physics/circuits";
 import { BrakeMaterial, ChassisConfig, LapStartMode, RoadCondition, TestConfig, TestType } from "@/lib/physics/types";
 import { CircuitOutlineIcon } from "../Simulation/CircuitMap";
-import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
+import {
+  ContinueButton,
+  FOCUS_RING,
+  formatUnitValue,
+  OptionButton,
+  SectionCard,
+  Slider,
+  StepHeader,
+  ToggleSwitch,
+} from "./FormControls";
 
 const TEST_TYPE_LABELS: Record<TestType, string> = {
   zeroToHundred: "0–100 kph",
@@ -56,7 +65,7 @@ export default function TestForm({
         description="Choose the test and the conditions to run it under."
       />
 
-      <SectionCard title="Test">
+      <SectionCard title="Test" tag="TST-01">
         <div>
           <label className="text-sm font-medium text-zinc-300 block mb-2">
             Test Type
@@ -83,29 +92,12 @@ export default function TestForm({
           </div>
         </div>
 
-        <div>
-          <label className="text-sm font-medium text-zinc-300 block mb-2">
-            Traction Control
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <OptionButton
-              active={chassis.tractionControl}
-              onClick={() => onChassisChange({ ...chassis, tractionControl: true })}
-            >
-              On
-            </OptionButton>
-            <OptionButton
-              active={!chassis.tractionControl}
-              onClick={() => onChassisChange({ ...chassis, tractionControl: false })}
-            >
-              Off
-            </OptionButton>
-          </div>
-          <p className="text-xs text-zinc-500 mt-2">
-            Off risks wheelspin costing you grip once torque exceeds the tires&apos;
-            limit.
-          </p>
-        </div>
+        <ToggleSwitch
+          label="Traction Control"
+          checked={chassis.tractionControl}
+          onChange={(checked) => onChassisChange({ ...chassis, tractionControl: checked })}
+          description="Off risks wheelspin."
+        />
 
         {value.testType === "hotLap" && (
           <div>
@@ -118,7 +110,7 @@ export default function TestForm({
                   key={circuit.id}
                   type="button"
                   onClick={() => onChange({ ...value, circuitId: circuit.id })}
-                  className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition-colors ${
+                  className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition-colors ${FOCUS_RING} ${
                     value.circuitId === circuit.id
                       ? "bg-amber-500 border-amber-500 text-zinc-950"
                       : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
@@ -131,7 +123,8 @@ export default function TestForm({
                       value.circuitId === circuit.id ? "text-zinc-800" : "text-zinc-500"
                     }`}
                   >
-                    {circuit.country} · {(circuit.lengthM / 1000).toFixed(3)} km · {circuit.corners} corners
+                    {circuit.country} · {formatUnitValue(circuit.lengthM / 1000, "km", 3)} ·{" "}
+                    {circuit.corners} corners
                   </span>
                 </button>
               ))}
@@ -153,112 +146,58 @@ export default function TestForm({
                 ))}
               </div>
               <p className="text-xs text-zinc-500 mt-2">
-                Flying lap: crosses the line already at speed, as if arriving from the
-                corner before it - a qualifying bomb lap. Standing start: launches from a
-                dead stop on the line, lights-out style.
+                Flying lap crosses the line at speed; standing start launches from a stop.
               </p>
             </div>
 
-            <label className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+              <ToggleSwitch
+                label="Skip live simulation"
                 checked={skipHotLapAnimation}
-                onChange={(e) => onSkipHotLapAnimationChange(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-amber-500"
+                onChange={onSkipHotLapAnimationChange}
+                description="Jump straight to the results."
               />
-              <span>
-                <span className="text-sm font-medium text-zinc-300 block">
-                  Skip live simulation
-                </span>
-                <span className="text-xs text-zinc-500">
-                  Jump straight to the results instead of watching the lap play out in
-                  real time.
-                </span>
-              </span>
-            </label>
+            </div>
           </div>
         )}
 
         {(value.testType === "zeroToHundred" ||
           value.testType === "drag500m" ||
           value.testType === "tenSecond") && (
-          <label
-            className={`flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 ${
-              value.initialSpeedKph > 0 ? "opacity-50" : "cursor-pointer"
-            }`}
-          >
-            <input
-              type="checkbox"
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+            <ToggleSwitch
+              label="Clutch-Dump Launch"
               checked={value.clutchDump}
               disabled={value.initialSpeedKph > 0}
-              onChange={(e) => onChange({ ...value, clutchDump: e.target.checked })}
-              className="mt-0.5 h-4 w-4 accent-amber-500"
+              onChange={(checked) => onChange({ ...value, clutchDump: checked })}
+              description={`A stronger getaway, with more wheelspin risk if traction control is off.${
+                value.initialSpeedKph > 0 ? " Only applies from a standing start." : ""
+              }`}
             />
-            <span>
-              <span className="text-sm font-medium text-zinc-300 block">
-                Clutch-Dump Launch
-              </span>
-              <span className="text-xs text-zinc-500">
-                Rev to the torque peak and dump the clutch instead of easing away
-                from idle - a stronger getaway, with more wheelspin risk if
-                traction control is off.
-                {value.initialSpeedKph > 0 && " Only applies from a standing start."}
-              </span>
-            </span>
-          </label>
+          </div>
         )}
 
         {value.testType === "braking" && (
           <div className="space-y-6 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
-            <div>
-              <label className="text-sm font-medium text-zinc-300 block mb-2">
-                ABS
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <OptionButton
-                  active={value.absEnabled}
-                  onClick={() => onChange({ ...value, absEnabled: true })}
-                >
-                  On
-                </OptionButton>
-                <OptionButton
-                  active={!value.absEnabled}
-                  onClick={() => onChange({ ...value, absEnabled: false })}
-                >
-                  Off
-                </OptionButton>
-              </div>
-              <p className="text-xs text-zinc-500 mt-2">
-                Off risks lock-up - a sliding tyre grips worse than one held right
-                at the edge of traction.
-              </p>
-            </div>
+            <ToggleSwitch
+              label="ABS"
+              checked={value.absEnabled}
+              onChange={(checked) => onChange({ ...value, absEnabled: checked })}
+              description="Off risks lock-up."
+            />
 
-            <div>
-              <div className="flex items-baseline justify-between mb-1">
-                <label className="text-sm font-medium text-zinc-300">
-                  Initial Brake Temperature
-                </label>
-                <span className="text-lg font-mono text-amber-400">
-                  {value.initialBrakeTempC}°C
-                </span>
-              </div>
-              <input
-                type="range"
-                min={BRAKE_TEMP_MIN_C}
-                max={BRAKE_TEMP_MAX_C}
-                step={10}
-                value={value.initialBrakeTempC}
-                onChange={(e) =>
-                  onChange({ ...value, initialBrakeTempC: parseInt(e.target.value, 10) })
-                }
-                className="w-full accent-amber-500"
-              />
-              <p className="text-xs text-zinc-500 mt-1">
-                How hot the brakes already are going into the stop - cold or
-                overheated, both can cost effectiveness depending on material.
-              </p>
-            </div>
+            <Slider
+              label="Initial Brake Temperature"
+              value={value.initialBrakeTempC}
+              valueLabel={formatUnitValue(value.initialBrakeTempC, "°C")}
+              min={BRAKE_TEMP_MIN_C}
+              max={BRAKE_TEMP_MAX_C}
+              step={10}
+              onChange={(v) => onChange({ ...value, initialBrakeTempC: v })}
+              minLabel={formatUnitValue(BRAKE_TEMP_MIN_C, "°C")}
+              maxLabel={formatUnitValue(BRAKE_TEMP_MAX_C, "°C")}
+              helpText="How hot the brakes already are going into the stop."
+            />
 
             <div>
               <label className="text-sm font-medium text-zinc-300 block mb-2">
@@ -275,11 +214,6 @@ export default function TestForm({
                   </OptionButton>
                 ))}
               </div>
-              <p className="text-xs text-zinc-500 mt-2">
-                Steel bites hard from cold but fades under sustained heat; ceramic
-                trades a little cold bite for a much wider comfort zone; carbon is
-                weak until it&apos;s properly hot, then out-brakes both.
-              </p>
             </div>
           </div>
         )}
@@ -300,39 +234,30 @@ export default function TestForm({
             ))}
           </div>
           {value.condition === "wind" && (
-            <p className="text-xs text-zinc-500 mt-2">
-              A steady headwind straight off the nose - it only ever adds drag.
-            </p>
+            <p className="text-xs text-zinc-500 mt-2">Only ever adds drag.</p>
           )}
         </div>
 
         {value.testType !== "hotLap" && (
-          <div>
-            <div className="flex items-baseline justify-between mb-1">
-              <label className="text-sm font-medium text-zinc-300">
-                {value.testType === "braking" ? "Braking Speed" : "Initial Velocity"}
-              </label>
-              <span className="text-lg font-mono text-amber-400">
-                {value.initialSpeedKph} kph
-              </span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={value.testType === "braking" ? MAX_BRAKING_SPEED_KPH : MAX_SPEED_KPH}
-              step={5}
-              value={value.initialSpeedKph}
-              onChange={(e) =>
-                onChange({ ...value, initialSpeedKph: parseInt(e.target.value, 10) })
-              }
-              className="w-full accent-amber-500"
-            />
-            <p className="text-xs text-zinc-500 mt-1">
-              {value.testType === "braking"
-                ? "Speed to brake from in a straight line - the test measures time and distance to a full stop."
-                : "Start the run already rolling instead of from a standstill - 0 for a normal standing-start test."}
-            </p>
-          </div>
+          <Slider
+            label={value.testType === "braking" ? "Braking Speed" : "Initial Velocity"}
+            value={value.initialSpeedKph}
+            valueLabel={formatUnitValue(value.initialSpeedKph, "kph")}
+            min={0}
+            max={value.testType === "braking" ? MAX_BRAKING_SPEED_KPH : MAX_SPEED_KPH}
+            step={5}
+            onChange={(v) => onChange({ ...value, initialSpeedKph: v })}
+            minLabel={formatUnitValue(0, "kph")}
+            maxLabel={formatUnitValue(
+              value.testType === "braking" ? MAX_BRAKING_SPEED_KPH : MAX_SPEED_KPH,
+              "kph",
+            )}
+            helpText={
+              value.testType === "braking"
+                ? "Speed to brake from to a full stop."
+                : "0 for a standing-start test."
+            }
+          />
         )}
       </SectionCard>
 

@@ -14,7 +14,15 @@ import {
   TransmissionType,
 } from "@/lib/physics/types";
 import { RealCarPreset } from "@/lib/physics/realCars";
-import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
+import {
+  ContinueButton,
+  FOCUS_RING,
+  formatUnitValue,
+  OptionButton,
+  SectionCard,
+  Slider,
+  StepHeader,
+} from "./FormControls";
 import TractiveForceGraph from "../Simulation/TractiveForceGraph";
 
 const GEAR_COUNT_OPTIONS = [5, 6, 7, 8];
@@ -37,9 +45,9 @@ const AUTO_SHIFT_LABELS: Record<AutoShiftStrategy, string> = {
 };
 
 const AUTO_SHIFT_DESCRIPTIONS: Record<AutoShiftStrategy, string> = {
-  maxRpm: "Holds every gear to the rev limiter before shifting - best for outright acceleration.",
-  maxTorque: "Shifts as soon as peak torque passes - keeps the engine pulling hardest, at the cost of some top-end.",
-  maxPower: "Shifts at peak power - the fastest way from one corner to the next.",
+  maxRpm: "Holds every gear to the limiter - best acceleration.",
+  maxTorque: "Shifts at peak torque - keeps the strongest pull.",
+  maxPower: "Shifts at peak power - fastest corner to corner.",
 };
 
 interface GearboxFormProps {
@@ -100,7 +108,7 @@ export default function GearboxForm({
         disabled={!!realCar}
         className={`space-y-8 ${realCar ? "opacity-50" : ""}`}
       >
-      <SectionCard title="Transmission">
+      <SectionCard title="Transmission" tag="GBX-01">
         <div>
           <label className="text-sm font-medium text-zinc-300 block mb-2">Type</label>
           <div className="flex flex-wrap gap-2">
@@ -115,8 +123,7 @@ export default function GearboxForm({
             ))}
           </div>
           <p className="text-xs text-zinc-500 mt-2">
-            Automatic lets you pick when it shifts below; manual assumes a
-            driver who takes every gear to the limiter.
+            Manual takes every gear to the limiter.
           </p>
         </div>
 
@@ -163,7 +170,7 @@ export default function GearboxForm({
         )}
       </SectionCard>
 
-      <SectionCard title="Gearbox">
+      <SectionCard title="Gearbox" tag="GBX-02">
         <div>
           <div className="flex items-baseline justify-between mb-2">
             <label className="text-sm font-medium text-zinc-300">Gears</label>
@@ -201,54 +208,40 @@ export default function GearboxForm({
             ))}
           </div>
           <p className="text-xs text-zinc-500 mt-2">
-            RWD gets a traction boost from weight shifting onto the drive
-            wheels under acceleration; FWD loses a little grip the same way.
-            AWD puts power down through all four tires for the best traction
-            of the three, at the cost of some efficiency lost to the extra
-            driveline hardware.
+            AWD grips best but costs some drivetrain efficiency.
           </p>
         </div>
       </SectionCard>
 
-      <SectionCard title="Gear Ratios">
+      <SectionCard title="Gear Ratios" tag="GBX-03">
         <div className="flex items-baseline justify-between">
           <p className="text-xs text-zinc-500">
-            Lower numbers are taller gears (higher top speed, less
-            acceleration); higher numbers are shorter (more acceleration,
-            lower top speed).
+            Lower = taller (top speed); higher = shorter (acceleration).
           </p>
           <button
             type="button"
             onClick={resetGearRatios}
-            className="shrink-0 text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors"
+            className={`shrink-0 rounded text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors ${FOCUS_RING}`}
           >
             Reset to Recommended
           </button>
         </div>
         <div className="space-y-4">
           {value.gearRatios.map((ratio, i) => (
-            <div key={i}>
-              <div className="flex items-baseline justify-between mb-1">
-                <label className="text-sm font-medium text-zinc-300">
-                  Gear {i + 1}
-                </label>
-                <span className="text-lg font-mono text-amber-400">
-                  {ratio.toFixed(2)}
-                </span>
-              </div>
-              <input
-                type="range"
-                min={MIN_GEAR_RATIO}
-                max={MAX_GEAR_RATIO}
-                step={0.01}
-                value={ratio}
-                onChange={(e) => setGearRatio(i, parseFloat(e.target.value))}
-                className="w-full accent-amber-500"
-              />
-              <p className="text-xs text-zinc-500 mt-1">
-                Recommended: {recommended[i].toFixed(2)}
-              </p>
-            </div>
+            <Slider
+              key={i}
+              label={`Gear ${i + 1}`}
+              value={ratio}
+              valueLabel={formatUnitValue(ratio, "", 2)}
+              min={MIN_GEAR_RATIO}
+              max={MAX_GEAR_RATIO}
+              step={0.01}
+              onChange={(v) => setGearRatio(i, v)}
+              minLabel={formatUnitValue(MIN_GEAR_RATIO, "", 2)}
+              maxLabel={formatUnitValue(MAX_GEAR_RATIO, "", 2)}
+              recommended={recommended[i]}
+              helpText={`Recommended: ${formatUnitValue(recommended[i], "", 2)}`}
+            />
           ))}
         </div>
         <TractiveForceGraph data={tractiveData} />

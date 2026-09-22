@@ -4,23 +4,22 @@ import { BODY_TYPE_PRESETS } from "@/lib/physics/defaults";
 import { REAL_CAR_PRESETS, RealCarPreset } from "@/lib/physics/realCars";
 import { BodyType, ChassisConfig, TyreCompound, TyreType } from "@/lib/physics/types";
 import BodyTypeIcon from "./BodyTypeIcon";
-import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
+import {
+  ContinueButton,
+  FOCUS_RING,
+  formatUnitValue,
+  OptionButton,
+  SectionCard,
+  Slider,
+  StepHeader,
+} from "./FormControls";
+import { RealCarPresetCard } from "./RealCarPresetCard";
 
 const BODY_TYPE_LABELS: Record<BodyType, string> = {
   minivan: "Minivan",
   suv: "SUV",
   supercar: "Supercar",
   f1: "F1",
-};
-
-// Lowercase(-ish) form for mid-sentence use, plus the article that goes with
-// it - "minivan"/"supercar" downcase cleanly, but acronyms like "SUV" and
-// "F1" need to stay capitalized and paired with "an" to read correctly.
-const BODY_TYPE_MENTION: Record<BodyType, { article: string; noun: string }> = {
-  minivan: { article: "a", noun: "minivan" },
-  suv: { article: "an", noun: "SUV" },
-  supercar: { article: "a", noun: "supercar" },
-  f1: { article: "an", noun: "F1" },
 };
 
 const TYRE_TYPE_LABELS: Record<TyreType, string> = {
@@ -71,7 +70,7 @@ export default function ChassisForm({
         description="Pick a body, set the weight, and dial in the wheels and tyres."
       />
 
-      <SectionCard title="Body">
+      <SectionCard title="Body" tag="CHS-01">
         <div>
           <label className="text-sm font-medium text-zinc-300 block mb-3">
             Body Type
@@ -82,7 +81,7 @@ export default function ChassisForm({
                 key={bodyType}
                 type="button"
                 onClick={() => setBodyType(bodyType)}
-                className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors ${
+                className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors ${FOCUS_RING} ${
                   value.bodyType === bodyType
                     ? "bg-amber-500/10 border-amber-500 text-amber-400"
                     : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
@@ -99,24 +98,30 @@ export default function ChassisForm({
           <label className="text-sm font-medium text-zinc-300 block mb-3">
             Start From
           </label>
-          <div className="flex flex-wrap gap-2">
-            <OptionButton active={!realCar} onClick={() => onSelectRealCar(null)}>
-              Custom Build
-            </OptionButton>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            <button
+              type="button"
+              onClick={() => onSelectRealCar(null)}
+              className={`flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed p-3 text-center transition-colors ${FOCUS_RING} ${
+                !realCar
+                  ? "bg-amber-500/10 border-amber-500 text-amber-400"
+                  : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+              }`}
+            >
+              <span className="font-semibold">Custom Build</span>
+              <span className="text-[10px] text-zinc-500">Set everything yourself</span>
+            </button>
             {carsForBodyType.map((car) => (
-              <OptionButton
+              <RealCarPresetCard
                 key={car.id}
+                car={car}
                 active={realCar?.id === car.id}
                 onClick={() => onSelectRealCar(car)}
-              >
-                {car.make} {car.model}
-              </OptionButton>
+              />
             ))}
           </div>
           <p className="text-xs text-zinc-500 mt-2">
-            Picking a real car sets its engine, gearbox, weight, and wheels for
-            you. Tyre type, compound, pressure, and wheel spin stay yours to
-            tune here; traction control is set on the Test step.
+            Sets engine, gearbox, weight, and wheels. Tyres stay yours to tune.
           </p>
         </div>
 
@@ -130,32 +135,23 @@ export default function ChassisForm({
               Choose &ldquo;Custom Build&rdquo; above to set them yourself.
             </p>
           )}
-          <div>
-            <div className="flex items-baseline justify-between mb-1">
-              <label className="text-sm font-medium text-zinc-300">Weight</label>
-              <span className="text-lg font-mono text-amber-400">
-                {value.weightKg.toLocaleString()} kg
-              </span>
-            </div>
-            <input
-              type="range"
-              min={preset.weightMinKg}
-              max={preset.weightMaxKg}
-              step={10}
-              value={value.weightKg}
-              onChange={(e) => onChange({ ...value, weightKg: parseInt(e.target.value, 10) })}
-              className="w-full accent-amber-500"
-            />
-            <p className="text-xs text-zinc-500 mt-1">
-              Recommended: {preset.weightKg.toLocaleString()} kg for{" "}
-              {BODY_TYPE_MENTION[value.bodyType].article} {BODY_TYPE_MENTION[value.bodyType].noun}.
-              The engine and wheels you pick add mass on top of this.
-            </p>
-          </div>
+          <Slider
+            label="Weight"
+            value={value.weightKg}
+            valueLabel={formatUnitValue(value.weightKg, "kg")}
+            min={preset.weightMinKg}
+            max={preset.weightMaxKg}
+            step={10}
+            onChange={(v) => onChange({ ...value, weightKg: v })}
+            minLabel={formatUnitValue(preset.weightMinKg, "kg")}
+            maxLabel={formatUnitValue(preset.weightMaxKg, "kg")}
+            recommended={preset.weightKg}
+            helpText={`Recommended: ${formatUnitValue(preset.weightKg, "kg")}`}
+          />
         </fieldset>
       </SectionCard>
 
-      <SectionCard title="Wheels & Tyres">
+      <SectionCard title="Wheels & Tyres" tag="CHS-02">
         <fieldset
           disabled={!!realCar}
           className={realCar ? "opacity-50" : undefined}
@@ -172,46 +168,32 @@ export default function ChassisForm({
               Front Wheel
             </h3>
             <div className="space-y-4">
-              <div>
-                <div className="flex items-baseline justify-between mb-1">
-                  <label className="text-sm font-medium text-zinc-300">Diameter</label>
-                  <span className="text-lg font-mono text-amber-400">
-                    {value.frontWheelDiameterIn}&Prime;
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={10}
-                  max={25}
-                  step={1}
-                  value={value.frontWheelDiameterIn}
-                  onChange={(e) =>
-                    onChange({ ...value, frontWheelDiameterIn: parseInt(e.target.value, 10) })
-                  }
-                  className="w-full accent-amber-500"
-                />
-                <p className="text-xs text-zinc-500 mt-1">Recommended: 20&Prime;</p>
-              </div>
-              <div>
-                <div className="flex items-baseline justify-between mb-1">
-                  <label className="text-sm font-medium text-zinc-300">Width</label>
-                  <span className="text-lg font-mono text-amber-400">
-                    {value.frontWheelWidthMm}mm
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={155}
-                  max={355}
-                  step={5}
-                  value={value.frontWheelWidthMm}
-                  onChange={(e) =>
-                    onChange({ ...value, frontWheelWidthMm: parseInt(e.target.value, 10) })
-                  }
-                  className="w-full accent-amber-500"
-                />
-                <p className="text-xs text-zinc-500 mt-1">Recommended: 235mm</p>
-              </div>
+              <Slider
+                label="Diameter"
+                value={value.frontWheelDiameterIn}
+                valueLabel={formatUnitValue(value.frontWheelDiameterIn, "″")}
+                min={10}
+                max={25}
+                step={1}
+                onChange={(v) => onChange({ ...value, frontWheelDiameterIn: v })}
+                minLabel={formatUnitValue(10, "″")}
+                maxLabel={formatUnitValue(25, "″")}
+                recommended={20}
+                helpText={`Recommended: ${formatUnitValue(20, "″")}`}
+              />
+              <Slider
+                label="Width"
+                value={value.frontWheelWidthMm}
+                valueLabel={formatUnitValue(value.frontWheelWidthMm, "mm")}
+                min={155}
+                max={355}
+                step={5}
+                onChange={(v) => onChange({ ...value, frontWheelWidthMm: v })}
+                minLabel={formatUnitValue(155, "mm")}
+                maxLabel={formatUnitValue(355, "mm")}
+                recommended={235}
+                helpText={`Recommended: ${formatUnitValue(235, "mm")}`}
+              />
             </div>
           </div>
 
@@ -220,55 +202,36 @@ export default function ChassisForm({
               Rear Wheel
             </h3>
             <div className="space-y-4">
-              <div>
-                <div className="flex items-baseline justify-between mb-1">
-                  <label className="text-sm font-medium text-zinc-300">Diameter</label>
-                  <span className="text-lg font-mono text-amber-400">
-                    {value.rearWheelDiameterIn}&Prime;
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={10}
-                  max={25}
-                  step={1}
-                  value={value.rearWheelDiameterIn}
-                  onChange={(e) =>
-                    onChange({ ...value, rearWheelDiameterIn: parseInt(e.target.value, 10) })
-                  }
-                  className="w-full accent-amber-500"
-                />
-                <p className="text-xs text-zinc-500 mt-1">Recommended: 21&Prime;</p>
-              </div>
-              <div>
-                <div className="flex items-baseline justify-between mb-1">
-                  <label className="text-sm font-medium text-zinc-300">Width</label>
-                  <span className="text-lg font-mono text-amber-400">
-                    {value.rearWheelWidthMm}mm
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={155}
-                  max={355}
-                  step={5}
-                  value={value.rearWheelWidthMm}
-                  onChange={(e) =>
-                    onChange({ ...value, rearWheelWidthMm: parseInt(e.target.value, 10) })
-                  }
-                  className="w-full accent-amber-500"
-                />
-                <p className="text-xs text-zinc-500 mt-1">
-                  Recommended: 275mm - wider rear (drive) tires add grip.
-                </p>
-              </div>
+              <Slider
+                label="Diameter"
+                value={value.rearWheelDiameterIn}
+                valueLabel={formatUnitValue(value.rearWheelDiameterIn, "″")}
+                min={10}
+                max={25}
+                step={1}
+                onChange={(v) => onChange({ ...value, rearWheelDiameterIn: v })}
+                minLabel={formatUnitValue(10, "″")}
+                maxLabel={formatUnitValue(25, "″")}
+                recommended={21}
+                helpText={`Recommended: ${formatUnitValue(21, "″")}`}
+              />
+              <Slider
+                label="Width"
+                value={value.rearWheelWidthMm}
+                valueLabel={formatUnitValue(value.rearWheelWidthMm, "mm")}
+                min={155}
+                max={355}
+                step={5}
+                onChange={(v) => onChange({ ...value, rearWheelWidthMm: v })}
+                minLabel={formatUnitValue(155, "mm")}
+                maxLabel={formatUnitValue(355, "mm")}
+                recommended={275}
+                helpText={`Recommended: ${formatUnitValue(275, "mm")}`}
+              />
             </div>
           </div>
         </div>
         </fieldset>
-        <p className="text-xs text-zinc-500">
-          Bigger wheels overall add rotating mass, which costs a little acceleration.
-        </p>
 
         <div>
           <label className="text-sm font-medium text-zinc-300 block mb-2">Tyre Type</label>
@@ -283,11 +246,6 @@ export default function ChassisForm({
               </OptionButton>
             ))}
           </div>
-          <p className="text-xs text-zinc-500 mt-2">
-            Slicks (no tread, like an F1 dry tyre) grip harder in the dry but lose most of
-            that grip the moment the road is wet. Standard tyres are the steadier
-            all-weather choice.
-          </p>
         </div>
 
         <div>
@@ -305,59 +263,35 @@ export default function ChassisForm({
               </OptionButton>
             ))}
           </div>
-          <p className="text-xs text-zinc-500 mt-2">
-            Soft grips hardest but fades soonest in the wet; hard is the most
-            conservative dry compound. Intermediate and wet trade dry-weather grip for
-            the ability to clear water once conditions turn damp or soaked.
-          </p>
         </div>
 
-        <div>
-          <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium text-zinc-300">Tyre Pressure</label>
-            <span className="text-lg font-mono text-amber-400">
-              {value.tyrePressurePsi} psi
-            </span>
-          </div>
-          <input
-            type="range"
-            min={20}
-            max={50}
-            step={1}
-            value={value.tyrePressurePsi}
-            onChange={(e) =>
-              onChange({ ...value, tyrePressurePsi: parseInt(e.target.value, 10) })
-            }
-            className="w-full accent-amber-500"
-          />
-          <p className="text-xs text-zinc-500 mt-1">
-            Recommended: 32 psi - too low or too high both cost grip.
-          </p>
-        </div>
+        <Slider
+          label="Tyre Pressure"
+          value={value.tyrePressurePsi}
+          valueLabel={formatUnitValue(value.tyrePressurePsi, "psi")}
+          min={20}
+          max={50}
+          step={1}
+          onChange={(v) => onChange({ ...value, tyrePressurePsi: v })}
+          minLabel={formatUnitValue(20, "psi")}
+          maxLabel={formatUnitValue(50, "psi")}
+          recommended={32}
+          helpText={`Recommended: ${formatUnitValue(32, "psi")}`}
+        />
 
-        <div>
-          <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium text-zinc-300">Wheel Spin</label>
-            <span className="text-lg font-mono text-amber-400">
-              {value.wheelSpinPercent}%
-            </span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={value.wheelSpinPercent}
-            onChange={(e) =>
-              onChange({ ...value, wheelSpinPercent: parseInt(e.target.value, 10) })
-            }
-            className="w-full accent-amber-500"
-          />
-          <p className="text-xs text-zinc-500 mt-1">
-            Recommended: 10% - a little intentional slip uses the tire&apos;s peak
-            grip; too little or too much both waste it.
-          </p>
-        </div>
+        <Slider
+          label="Wheel Spin"
+          value={value.wheelSpinPercent}
+          valueLabel={formatUnitValue(value.wheelSpinPercent, "%")}
+          min={0}
+          max={100}
+          step={1}
+          onChange={(v) => onChange({ ...value, wheelSpinPercent: v })}
+          minLabel={formatUnitValue(0, "%")}
+          maxLabel={formatUnitValue(100, "%")}
+          recommended={10}
+          helpText={`Recommended: ${formatUnitValue(10, "%")}`}
+        />
       </SectionCard>
 
       <ContinueButton onClick={onContinue}>Continue to Engine &rarr;</ContinueButton>

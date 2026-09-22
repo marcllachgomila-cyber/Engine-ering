@@ -18,6 +18,7 @@ import {
   TestConfig,
 } from "@/lib/physics/types";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
+import { CornerMarks, FOCUS_RING, Panel, SectionTag } from "@/components/EngineBuilder/FormControls";
 import CircuitMap from "./CircuitMap";
 import { flyingLapLeadInFraction } from "./flyingLapLeadIn";
 import Gauges from "./Gauges";
@@ -294,73 +295,95 @@ export default function SimulationRunner({
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center gap-8">
-      <h2 className="text-2xl font-bold text-zinc-50">{headline}</h2>
-      {countdown !== null && (
-        <div className="text-8xl font-mono font-black text-amber-400 tabular-nums -mt-4">
-          {countdown === 0 ? countdownLabel : countdown}
-        </div>
-      )}
-      <div className="flex gap-2 -mt-2">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-zinc-50">{headline}</h2>
+        {countdown !== null && (
+          <div className="text-8xl font-mono font-black text-amber-400 tabular-nums mt-2 -mb-4">
+            {countdown === 0 ? countdownLabel : countdown}
+          </div>
+        )}
+      </div>
+      <div className="flex gap-2">
         <button
           type="button"
           onClick={handleTogglePause}
           disabled={phase !== "running"}
-          className="px-4 py-1.5 rounded-lg text-sm font-mono border border-zinc-700 text-zinc-300 bg-zinc-900/40 backdrop-blur-sm transition-colors hover:border-amber-500 hover:text-amber-400 disabled:opacity-40 disabled:pointer-events-none"
+          className={`px-4 py-1.5 rounded-lg text-sm font-mono border border-zinc-700 text-zinc-300 bg-zinc-900/40 backdrop-blur-sm transition-colors hover:border-amber-500 hover:text-amber-400 disabled:opacity-40 disabled:pointer-events-none ${FOCUS_RING}`}
         >
           {isPaused ? "Resume" : "Pause"}
         </button>
         <button
           type="button"
           onClick={onRestart}
-          className="rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-6 py-3 font-medium transition-colors"
+          className={`rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-6 py-3 font-medium transition-colors ${FOCUS_RING}`}
         >
           Start Another Test
         </button>
       </div>
-      <Gauges
-        rpm={displaySample?.rpm ?? 0}
-        redlineRpm={engine.redlineRpm}
-        speedKph={displaySample?.speedKph ?? 0}
-        maxSpeedKph={maxSpeedKph}
-        gear={displaySample?.gear}
-      />
-      {isHotLap && circuit && (
-        <CircuitMap
-          circuit={circuit}
-          progress={
-            phase === "leadIn" && leadInProgress !== null
-              ? leadInProgress
-              : (displaySample?.distanceM ?? 0) / circuit.lengthM
-          }
-        />
-      )}
-      <LiveStatsPanel telemetry={displaySample} useLapTimeFormat={isHotLap} />
-      <TimeSeriesGraph
-        telemetry={result.telemetry}
-        currentT={displaySample?.t ?? 0}
-        getValue={(s) => s.speedKph}
-        peakValue={referenceSpeedKph}
-        color="#22d3ee"
-        label="Speed (kph)"
-      />
-      <TimeSeriesGraph
-        telemetry={result.telemetry}
-        currentT={displaySample?.t ?? 0}
-        getValue={(s) => s.hp}
-        peakValue={result.peakHp}
-        color="#9085e9"
-        label="Power (hp)"
-      />
-      {hasBrakeTemp && (
-        <TimeSeriesGraph
-          telemetry={result.telemetry}
-          currentT={displaySample?.t ?? 0}
-          getValue={(s) => s.brakeTempC ?? 0}
-          peakValue={peakBrakeTempC}
-          color="#fb923c"
-          label="Brake Temp (°C)"
-        />
-      )}
+
+      <div className="relative w-full rounded-2xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md p-6 sm:p-8 space-y-6">
+        <CornerMarks className="border-amber-500/40" />
+        <div className="flex justify-center">
+          <Gauges
+            rpm={displaySample?.rpm ?? 0}
+            redlineRpm={engine.redlineRpm}
+            speedKph={displaySample?.speedKph ?? 0}
+            maxSpeedKph={maxSpeedKph}
+            gear={displaySample?.gear}
+          />
+        </div>
+        {isHotLap && circuit && (
+          <Panel>
+            <CircuitMap
+              circuit={circuit}
+              progress={
+                phase === "leadIn" && leadInProgress !== null
+                  ? leadInProgress
+                  : (displaySample?.distanceM ?? 0) / circuit.lengthM
+              }
+            />
+          </Panel>
+        )}
+        <LiveStatsPanel telemetry={displaySample} useLapTimeFormat={isHotLap} />
+
+        <div>
+          <SectionTag>Live Telemetry</SectionTag>
+          <div className="mt-3 space-y-3">
+            <Panel>
+              <TimeSeriesGraph
+                telemetry={result.telemetry}
+                currentT={displaySample?.t ?? 0}
+                getValue={(s) => s.speedKph}
+                peakValue={referenceSpeedKph}
+                color="#22d3ee"
+                label="Speed (kph)"
+              />
+            </Panel>
+            <Panel>
+              <TimeSeriesGraph
+                telemetry={result.telemetry}
+                currentT={displaySample?.t ?? 0}
+                getValue={(s) => s.hp}
+                peakValue={result.peakHp}
+                color="#9085e9"
+                label="Power (hp)"
+              />
+            </Panel>
+            {hasBrakeTemp && (
+              <Panel>
+                <TimeSeriesGraph
+                  telemetry={result.telemetry}
+                  currentT={displaySample?.t ?? 0}
+                  getValue={(s) => s.brakeTempC ?? 0}
+                  peakValue={peakBrakeTempC}
+                  color="#fb923c"
+                  label="Brake Temp (°C)"
+                />
+              </Panel>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

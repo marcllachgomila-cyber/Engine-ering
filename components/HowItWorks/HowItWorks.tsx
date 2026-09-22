@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { FOCUS_RING } from "@/components/EngineBuilder/FormControls";
 
 interface FormulaVar {
   // LaTeX source, exactly as it appears in the formula's own `tex` above -
@@ -1093,7 +1094,7 @@ export default function HowItWorks() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="How It Works"
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/90 px-4 py-2.5 text-sm font-medium text-zinc-200 shadow-lg backdrop-blur-md transition-colors hover:border-amber-500 hover:text-amber-400"
+        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/90 px-4 py-2.5 text-sm font-medium text-zinc-200 shadow-lg backdrop-blur-md transition-colors hover:border-amber-500 hover:text-amber-400 ${FOCUS_RING}`}
       >
         <span aria-hidden>&#128295;</span>
         <span className="hidden sm:inline">How It Works</span>
@@ -1110,8 +1111,11 @@ export default function HowItWorks() {
           >
             <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-5 py-4 sm:items-center sm:px-6">
               <div className="min-w-0">
-                <div className="text-xs uppercase tracking-wider text-amber-400">
-                  Technical Specification
+                <div className="flex items-center gap-2 mb-1">
+                  <span aria-hidden className="h-px w-4 bg-amber-400/60" />
+                  <span className="text-xs uppercase tracking-wider text-amber-400">
+                    Technical Specification
+                  </span>
                 </div>
                 <div className="font-mono text-sm font-bold text-zinc-100 sm:text-base">
                   Engine Builder — Simulation Model
@@ -1121,7 +1125,7 @@ export default function HowItWorks() {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close"
-                className="shrink-0 rounded-lg border border-zinc-700 px-2.5 py-1.5 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
+                className={`shrink-0 rounded-lg border border-zinc-700 px-2.5 py-1.5 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200 ${FOCUS_RING}`}
               >
                 &#10005;
               </button>
@@ -1135,7 +1139,7 @@ export default function HowItWorks() {
                       key={c.id}
                       type="button"
                       onClick={() => setActiveId(c.id)}
-                      className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors sm:shrink ${
+                      className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors sm:shrink ${FOCUS_RING} ${
                         c.id === activeId
                           ? "bg-amber-500 text-zinc-950 font-medium"
                           : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
@@ -1148,10 +1152,12 @@ export default function HowItWorks() {
                 </div>
               </nav>
 
-              <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-8">
+              <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-8 sm:py-8">
                 <div className="mx-auto max-w-3xl">
-                  <div className="mb-1 font-mono text-xs text-zinc-500">{active.num}</div>
-                  <h2 className="mb-5 text-xl font-bold text-zinc-100">{active.title}</h2>
+                  <div className="flex items-baseline gap-2 border-b border-zinc-800/70 pb-3 mb-5">
+                    <span className="font-mono text-xs text-amber-400/80">{active.num}</span>
+                    <h2 className="text-xl font-bold text-zinc-100 tracking-tight">{active.title}</h2>
+                  </div>
                   {active.render()}
                 </div>
               </div>

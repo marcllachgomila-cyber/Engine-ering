@@ -1,5 +1,6 @@
 import { Telemetry } from "@/lib/physics/types";
 import { formatLapTime } from "@/lib/testResultLabel";
+import { Panel } from "@/components/EngineBuilder/FormControls";
 
 interface LiveStatsPanelProps {
   telemetry: Telemetry | null;
@@ -16,7 +17,7 @@ function StatTile({
   unit?: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md px-4 py-3">
+    <Panel className="px-4 py-3">
       <div className="text-xs uppercase tracking-wider text-zinc-500">
         {label}
       </div>
@@ -24,7 +25,7 @@ function StatTile({
         {value}
         {unit && <span className="ml-1 text-sm text-zinc-400">{unit}</span>}
       </div>
-    </div>
+    </Panel>
   );
 }
 

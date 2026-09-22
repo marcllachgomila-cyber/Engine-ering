@@ -6,7 +6,14 @@ import { DIESEL_MAX_REDLINE_RPM } from "@/lib/physics/defaults";
 import { RealCarPreset } from "@/lib/physics/realCars";
 import { buildEngineCurves } from "@/lib/physics/engineModel";
 import CombustionFrictionGraph from "../Simulation/CombustionFrictionGraph";
-import { ContinueButton, OptionButton, SectionCard, StepHeader } from "./FormControls";
+import {
+  ContinueButton,
+  formatUnitValue,
+  OptionButton,
+  SectionCard,
+  Slider,
+  StepHeader,
+} from "./FormControls";
 
 const CYLINDER_OPTIONS = [3, 4, 5, 6, 8, 10, 12, 16];
 
@@ -81,7 +88,7 @@ export default function EngineForm({ value, onChange, onContinue, realCar }: Eng
         description="Configure the powerplant that goes under the hood."
       />
 
-      <SectionCard title="Engine">
+      <SectionCard title="Engine" tag="ENG-01">
         {realCar && (
           <p className="text-xs text-amber-400/90">
             Engine specs are locked to the {realCar.make} {realCar.model}. Go
@@ -123,69 +130,47 @@ export default function EngineForm({ value, onChange, onContinue, realCar }: Eng
           </div>
         </div>
 
-        <div>
-          <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm font-medium text-zinc-300">Displacement</label>
-            <span className="text-lg font-mono text-amber-400">
-              {value.displacementL.toFixed(1)} L
-            </span>
-          </div>
-          <input
-            type="range"
-            min={0.6}
-            max={8.5}
-            step={0.1}
-            value={value.displacementL}
-            onChange={(e) => onChange({ ...value, displacementL: parseFloat(e.target.value) })}
-            className="w-full accent-amber-500"
-          />
-        </div>
+        <Slider
+          label="Displacement"
+          value={value.displacementL}
+          valueLabel={formatUnitValue(value.displacementL, "L", 1)}
+          min={0.6}
+          max={8.5}
+          step={0.1}
+          onChange={(v) => onChange({ ...value, displacementL: v })}
+          minLabel={formatUnitValue(0.6, "L", 1)}
+          maxLabel={formatUnitValue(8.5, "L", 1)}
+        />
 
-        <div>
-          <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm font-medium text-zinc-300">Redline</label>
-            <span className="text-lg font-mono text-amber-400">
-              {value.redlineRpm.toLocaleString()} RPM
-            </span>
-          </div>
-          <input
-            type="range"
-            min={4500}
-            max={redlineMax}
-            step={100}
-            value={value.redlineRpm}
-            onChange={(e) => setRedline(parseInt(e.target.value, 10))}
-            className="w-full accent-amber-500"
-          />
-          {value.fuelType === "diesel" && (
-            <p className="text-xs text-zinc-500 mt-1">
-              Capped at {DIESEL_MAX_REDLINE_RPM.toLocaleString()} RPM - diesels
-              don&apos;t rev like petrol engines.
-            </p>
-          )}
-        </div>
+        <Slider
+          label="Redline"
+          value={value.redlineRpm}
+          valueLabel={formatUnitValue(value.redlineRpm, "RPM")}
+          min={4500}
+          max={redlineMax}
+          step={100}
+          onChange={setRedline}
+          minLabel={formatUnitValue(4500, "RPM")}
+          maxLabel={formatUnitValue(redlineMax, "RPM")}
+          helpText={
+            value.fuelType === "diesel"
+              ? `Capped at ${formatUnitValue(DIESEL_MAX_REDLINE_RPM, "RPM")} - diesels don't rev like petrol engines.`
+              : undefined
+          }
+        />
 
-        <div>
-          <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm font-medium text-zinc-300">Max Rev</label>
-            <span className="text-lg font-mono text-amber-400">
-              {value.maxRevRpm.toLocaleString()} RPM
-            </span>
-          </div>
-          <input
-            type="range"
-            min={value.redlineRpm}
-            max={value.redlineRpm + MAX_REV_OVER_REDLINE_CAP}
-            step={50}
-            value={value.maxRevRpm}
-            onChange={(e) => onChange({ ...value, maxRevRpm: parseInt(e.target.value, 10) })}
-            className="w-full accent-amber-500"
-          />
-          <p className="text-xs text-zinc-500 mt-1">
-            The hard limiter - how far past redline you can push before each
-            shift. Torque keeps tapering the further past redline you go.
-          </p>
-        </div>
+        <Slider
+          label="Max Rev"
+          value={value.maxRevRpm}
+          valueLabel={formatUnitValue(value.maxRevRpm, "RPM")}
+          min={value.redlineRpm}
+          max={value.redlineRpm + MAX_REV_OVER_REDLINE_CAP}
+          step={50}
+          onChange={(v) => onChange({ ...value, maxRevRpm: v })}
+          minLabel={formatUnitValue(value.redlineRpm, "RPM")}
+          maxLabel={formatUnitValue(value.redlineRpm + MAX_REV_OVER_REDLINE_CAP, "RPM")}
+          helpText="How far past redline you can push before each shift."
+        />
 
         <div>
           <label className="text-sm font-medium text-zinc-300 block mb-2">Fuel</label>

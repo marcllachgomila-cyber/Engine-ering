@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { SavedEngine } from "@/lib/favorites";
+import { OptionButton } from "@/components/EngineBuilder/FormControls";
 import FavoriteCard from "./FavoriteCard";
 
 type SortKey = "newest" | "finalSpeed" | "peakHp" | "theoreticalTopSpeed" | "peakTorque";
@@ -41,33 +42,29 @@ export default function FavoritesList({ favorites, onRemove }: FavoritesListProp
   const sorted = useMemo(() => sortFavorites(favorites, sortKey), [favorites, sortKey]);
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-zinc-50">Favorite Engines</h2>
-        <p className="text-zinc-400 mt-1 text-sm">{favorites.length} saved</p>
+    <div className="w-full max-w-3xl mx-auto space-y-8">
+      <div className="flex items-baseline justify-between gap-3 border-b border-zinc-800/70 pb-4">
+        <h2 className="text-2xl font-bold text-zinc-50 tracking-tight">Favorite Engines</h2>
+        <p className="text-zinc-500 text-sm font-mono shrink-0">{favorites.length} saved</p>
       </div>
 
       {favorites.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {SORT_OPTIONS.map((opt) => (
-            <button
+            <OptionButton
               key={opt.key}
-              type="button"
+              active={sortKey === opt.key}
               onClick={() => setSortKey(opt.key)}
-              className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                sortKey === opt.key
-                  ? "bg-amber-500 border-amber-500 text-zinc-950 font-semibold"
-                  : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
-              }`}
+              className="font-sans"
             >
               {opt.label}
-            </button>
+            </OptionButton>
           ))}
         </div>
       )}
 
       {favorites.length === 0 ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md p-8 text-center text-zinc-400">
+        <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/40 p-10 text-center text-zinc-400">
           No favorites saved yet. Build an engine, run it, and save it from the
           results screen.
         </div>
