@@ -1,3 +1,4 @@
+import { firingEventsPerRev, isRotary } from "../physics/engineLayout";
 import { EngineConfig, EngineLayout } from "../physics/types";
 
 function createNoiseBuffer(ctx: AudioContext): AudioBuffer {
@@ -23,9 +24,18 @@ function unevenFiringDepth(layout: EngineLayout): number {
     case "flat":
       return 0.18;
     case "inline":
+    case "rotary":
       return 0;
   }
 }
+
+// Rotaries fire evenly but at twice the rate of a same-count piston engine
+// and exhaust through open ports rather than valves, which gives them their
+// buzzy, rasping "brap" - modeled as a higher growl band and a deeper
+// firing pulse.
+const ROTARY_GROWL_SHIFT_HZ = 220;
+const ROTARY_FIRING_MOD_DEPTH = 0.32;
+const PISTON_FIRING_MOD_DEPTH = 0.22;
 
 export class EngineAudioEngine {
   private ctx: AudioContext;
@@ -53,12 +63,14 @@ export class EngineAudioEngine {
 
   private turboWhine: { osc: OscillatorNode; gain: GainNode } | null = null;
 
-  private cylinders: number;
+  private firingEventsPerRev: number;
+  private growlShiftHz: number;
   private started = false;
   private disposed = false;
 
   constructor(engine: EngineConfig) {
-    this.cylinders = engine.cylinders;
+    this.firingEventsPerRev = firingEventsPerRev(engine);
+    this.growlShiftHz = isRotary(engine) ? ROTARY_GROWL_SHIFT_HZ : 0;
 
     this.ctx = new AudioContext();
     this.master = this.ctx.createGain();
@@ -107,7 +119,9 @@ export class EngineAudioEngine {
     this.firingOsc = this.ctx.createOscillator();
     this.firingOsc.type = "sine";
     this.firingModDepth = this.ctx.createGain();
-    this.firingModDepth.gain.value = 0.22;
+    this.firingModDepth.gain.value = isRotary(engine)
+      ? ROTARY_FIRING_MOD_DEPTH
+      : PISTON_FIRING_MOD_DEPTH;
     this.firingOsc.connect(this.firingModDepth);
     this.firingModDepth.connect(this.noiseAmGain.gain);
 
@@ -163,11 +177,15 @@ export class EngineAudioEngine {
     this.toneFilter.frequency.setTargetAtTime(180 + rpmFraction * 420, now, 0.05);
 
     // Firing rate only modulates the growl's amplitude/texture, never a pitch.
-    const firingFreqHz = (rpm * this.cylinders) / 120;
+    const firingFreqHz = (rpm * this.firingEventsPerRev) / 60;
     this.firingOsc.frequency.setTargetAtTime(firingFreqHz, now, 0.03);
     this.unevenOsc?.frequency.setTargetAtTime(firingFreqHz / 2, now, 0.03);
 
-    this.noiseFilter.frequency.setTargetAtTime(260 + rpmFraction * 420, now, 0.05);
+    this.noiseFilter.frequency.setTargetAtTime(
+      260 + this.growlShiftHz + rpmFraction * 420,
+      now,
+      0.05,
+    );
     this.noiseAmGain.gain.setTargetAtTime(0.28 + rpmFraction * 0.22, now, 0.05);
 
     if (this.turboWhine) {

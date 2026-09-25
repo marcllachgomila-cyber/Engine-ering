@@ -2,7 +2,17 @@
 
 import { useMemo } from "react";
 import { EngineConfig, EngineLayout, FuelType } from "@/lib/physics/types";
-import { DIESEL_MAX_REDLINE_RPM } from "@/lib/physics/defaults";
+import {
+  DEFAULT_ENGINE,
+  DEFAULT_ROTARY_ENGINE,
+  DIESEL_MAX_REDLINE_RPM,
+} from "@/lib/physics/defaults";
+import {
+  isRotary,
+  ROTARY_MAX_L_PER_ROTOR,
+  ROTARY_MIN_L_PER_ROTOR,
+  ROTOR_OPTIONS,
+} from "@/lib/physics/engineLayout";
 import { RealCarPreset } from "@/lib/physics/realCars";
 import { buildEngineCurves } from "@/lib/physics/engineModel";
 import CombustionFrictionGraph from "../Simulation/CombustionFrictionGraph";
@@ -16,6 +26,9 @@ import {
 } from "./FormControls";
 
 const CYLINDER_OPTIONS = [3, 4, 5, 6, 8, 10, 12, 16];
+
+// Piston layouts only - "rotary" is chosen via the engine type toggle.
+const PISTON_LAYOUTS: EngineLayout[] = ["inline", "v", "flat", "w"];
 
 const VALID_LAYOUTS: Record<number, EngineLayout[]> = {
   3: ["inline"],
@@ -33,7 +46,26 @@ const LAYOUT_LABELS: Record<EngineLayout, string> = {
   v: "V",
   flat: "Flat / Boxer",
   w: "W",
+  rotary: "Rotary",
 };
+
+type EngineType = "piston" | "rotary";
+
+const ENGINE_TYPE_LABELS: Record<EngineType, string> = {
+  piston: "Piston",
+  rotary: "Rotary (Wankel)",
+};
+
+const PISTON_DISPLACEMENT_MIN_L = 0.6;
+const PISTON_DISPLACEMENT_MAX_L = 8.5;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function roundToTenth(value: number): number {
+  return Math.round(value * 10) / 10;
+}
 
 const ASPIRATION_LABELS: Record<EngineConfig["aspiration"], string> = {
   na: "Naturally Aspirated",
@@ -56,9 +88,45 @@ interface EngineFormProps {
 }
 
 export default function EngineForm({ value, onChange, onContinue, realCar }: EngineFormProps) {
+  const rotary = isRotary(value);
   const validLayouts = VALID_LAYOUTS[value.cylinders] ?? ["inline"];
   const redlineMax = value.fuelType === "diesel" ? DIESEL_MAX_REDLINE_RPM : 13500;
+  const displacementMin = rotary
+    ? roundToTenth(ROTARY_MIN_L_PER_ROTOR * value.cylinders)
+    : PISTON_DISPLACEMENT_MIN_L;
+  const displacementMax = rotary
+    ? roundToTenth(ROTARY_MAX_L_PER_ROTOR * value.cylinders)
+    : PISTON_DISPLACEMENT_MAX_L;
   const curves = useMemo(() => buildEngineCurves(value), [value]);
+
+  // Switching type swaps in that type's default architecture (count,
+  // layout, displacement, redline) but keeps aspiration - the rest of the
+  // piston/rotary ranges don't overlap well enough to carry over.
+  const setEngineType = (type: EngineType) => {
+    if (type === (rotary ? "rotary" : "piston")) return;
+    const base = type === "rotary" ? DEFAULT_ROTARY_ENGINE : DEFAULT_ENGINE;
+    onChange({
+      ...value,
+      cylinders: base.cylinders,
+      layout: base.layout,
+      displacementL: base.displacementL,
+      redlineRpm: base.redlineRpm,
+      maxRevRpm: base.maxRevRpm,
+      fuelType: "petrol",
+    });
+  };
+
+  // Keeps the per-rotor chamber size when adding/removing rotors, the way
+  // Mazda built its 2/3/4-rotor engines from the same 654cc rotor.
+  const setRotors = (rotors: number) => {
+    const perRotorL = value.displacementL / value.cylinders;
+    const displacementL = clamp(
+      roundToTenth(perRotorL * rotors),
+      roundToTenth(ROTARY_MIN_L_PER_ROTOR * rotors),
+      roundToTenth(ROTARY_MAX_L_PER_ROTOR * rotors),
+    );
+    onChange({ ...value, cylinders: rotors, displacementL });
+  };
 
   const setCylinders = (cylinders: number) => {
     const layouts = VALID_LAYOUTS[cylinders] ?? ["inline"];
@@ -101,45 +169,90 @@ export default function EngineForm({ value, onChange, onContinue, realCar }: Eng
           className={`space-y-8 ${realCar ? "opacity-50" : ""}`}
         >
         <div>
-          <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm font-medium text-zinc-300">Cylinders</label>
-            <span className="text-lg font-mono text-amber-400">{value.cylinders}</span>
-          </div>
+          <label className="text-sm font-medium text-zinc-300 block mb-2">Engine Type</label>
           <div className="flex flex-wrap gap-2">
-            {CYLINDER_OPTIONS.map((c) => (
-              <OptionButton key={c} active={value.cylinders === c} onClick={() => setCylinders(c)}>
-                {c}
+            {(Object.keys(ENGINE_TYPE_LABELS) as EngineType[]).map((type) => (
+              <OptionButton
+                key={type}
+                active={(rotary ? "rotary" : "piston") === type}
+                onClick={() => setEngineType(type)}
+              >
+                {ENGINE_TYPE_LABELS[type]}
               </OptionButton>
             ))}
           </div>
+          {rotary && (
+            <p className="text-xs text-zinc-500 mt-2">
+              Each rotor fires once per shaft turn, twice as often as a piston cylinder, so a
+              1.3L rotary pulls like a much bigger piston engine. It&rsquo;s also light and loves
+              to rev, but low-end torque is weak.
+            </p>
+          )}
         </div>
 
-        <div>
-          <label className="text-sm font-medium text-zinc-300 block mb-2">Layout</label>
-          <div className="flex flex-wrap gap-2">
-            {(["inline", "v", "flat", "w"] as EngineLayout[]).map((layout) => (
-              <OptionButton
-                key={layout}
-                active={value.layout === layout}
-                disabled={!validLayouts.includes(layout)}
-                onClick={() => onChange({ ...value, layout })}
-              >
-                {LAYOUT_LABELS[layout]}
-              </OptionButton>
-            ))}
+        {rotary ? (
+          <div>
+            <div className="flex items-baseline justify-between mb-2">
+              <label className="text-sm font-medium text-zinc-300">Rotors</label>
+              <span className="text-lg font-mono text-amber-400">{value.cylinders}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {ROTOR_OPTIONS.map((r) => (
+                <OptionButton key={r} active={value.cylinders === r} onClick={() => setRotors(r)}>
+                  {r}
+                </OptionButton>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div>
+              <div className="flex items-baseline justify-between mb-2">
+                <label className="text-sm font-medium text-zinc-300">Cylinders</label>
+                <span className="text-lg font-mono text-amber-400">{value.cylinders}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {CYLINDER_OPTIONS.map((c) => (
+                  <OptionButton key={c} active={value.cylinders === c} onClick={() => setCylinders(c)}>
+                    {c}
+                  </OptionButton>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-zinc-300 block mb-2">Layout</label>
+              <div className="flex flex-wrap gap-2">
+                {PISTON_LAYOUTS.map((layout) => (
+                  <OptionButton
+                    key={layout}
+                    active={value.layout === layout}
+                    disabled={!validLayouts.includes(layout)}
+                    onClick={() => onChange({ ...value, layout })}
+                  >
+                    {LAYOUT_LABELS[layout]}
+                  </OptionButton>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         <Slider
           label="Displacement"
           value={value.displacementL}
           valueLabel={formatUnitValue(value.displacementL, "L", 1)}
-          min={0.6}
-          max={8.5}
+          min={displacementMin}
+          max={displacementMax}
           step={0.1}
           onChange={(v) => onChange({ ...value, displacementL: v })}
-          minLabel={formatUnitValue(0.6, "L", 1)}
-          maxLabel={formatUnitValue(8.5, "L", 1)}
+          minLabel={formatUnitValue(displacementMin, "L", 1)}
+          maxLabel={formatUnitValue(displacementMax, "L", 1)}
+          helpText={
+            rotary
+              ? `${formatUnitValue(Math.round((value.displacementL / value.cylinders) * 1000), "cc")} per rotor. Mazda's 13B is 654cc.`
+              : undefined
+          }
         />
 
         <Slider
@@ -176,11 +289,22 @@ export default function EngineForm({ value, onChange, onContinue, realCar }: Eng
           <label className="text-sm font-medium text-zinc-300 block mb-2">Fuel</label>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(FUEL_TYPE_LABELS) as FuelType[]).map((f) => (
-              <OptionButton key={f} active={value.fuelType === f} onClick={() => setFuelType(f)}>
+              <OptionButton
+                key={f}
+                active={value.fuelType === f}
+                disabled={rotary && f === "diesel"}
+                onClick={() => setFuelType(f)}
+              >
                 {FUEL_TYPE_LABELS[f]}
               </OptionButton>
             ))}
           </div>
+          {rotary && (
+            <p className="text-xs text-zinc-500 mt-2">
+              Petrol only. A rotary&rsquo;s long, thin chamber can&rsquo;t reach the compression
+              a diesel needs to self-ignite.
+            </p>
+          )}
           {value.fuelType === "diesel" && (
             <p className="text-xs text-zinc-500 mt-2">
               More torque per liter than petrol, but redline is capped low.

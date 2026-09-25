@@ -15,6 +15,7 @@ import {
   DEFAULT_GEARBOX,
   DEFAULT_TEST_CONFIG,
 } from "@/lib/physics/defaults";
+import { engineSizeLabel } from "@/lib/physics/engineLayout";
 import { gearboxFromPreset, RealCarPreset } from "@/lib/physics/realCars";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import { findClosestCars } from "@/lib/matching/matchCars";
@@ -220,7 +221,7 @@ export default function EngineBuilderApp() {
                     Live Preview
                   </span>
                   <span className="text-xs text-zinc-500 uppercase tracking-wider truncate">
-                    {engine.cylinders}-cyl {engine.layout.toUpperCase()}
+                    {engineSizeLabel(engine)}
                   </span>
                 </div>
                 <div className="w-full h-[26rem] relative">

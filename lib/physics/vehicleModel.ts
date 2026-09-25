@@ -1,9 +1,15 @@
 import { BODY_TYPE_PRESETS } from "./defaults";
+import { isRotary } from "./engineLayout";
 import { recommendedGearRatios } from "./gearRatios";
 import { ChassisConfig, EngineConfig, EngineCurves, GearboxConfig, VehicleSpec } from "./types";
 
 const CYLINDER_MASS_KG = 12;
 const DISPLACEMENT_MASS_PER_L_KG = 40;
+// A rotor + housing section is lighter than a cylinder's worth of piston,
+// rod, head and valvetrain, and there's no crankshaft or cam drive at all -
+// a complete 13B weighs ~100-120kg against ~150kg+ for a comparable I4/V6.
+const ROTOR_MASS_KG = 10;
+const ROTARY_DISPLACEMENT_MASS_PER_L_KG = 25;
 const TURBO_HARDWARE_KG = 25;
 const SUPERCHARGER_HARDWARE_KG = 35;
 
@@ -70,10 +76,12 @@ export function deriveVehicle(
 ): VehicleSpec {
   const preset = BODY_TYPE_PRESETS[chassis.bodyType];
 
+  const rotary = isRotary(engine);
   let weightKg =
     chassis.weightKg +
-    engine.cylinders * CYLINDER_MASS_KG +
-    engine.displacementL * DISPLACEMENT_MASS_PER_L_KG;
+    engine.cylinders * (rotary ? ROTOR_MASS_KG : CYLINDER_MASS_KG) +
+    engine.displacementL *
+      (rotary ? ROTARY_DISPLACEMENT_MASS_PER_L_KG : DISPLACEMENT_MASS_PER_L_KG);
 
   if (engine.aspiration === "turbo") weightKg += TURBO_HARDWARE_KG;
   if (engine.aspiration === "supercharged") weightKg += SUPERCHARGER_HARDWARE_KG;

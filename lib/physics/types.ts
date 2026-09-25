@@ -1,4 +1,6 @@
-export type EngineLayout = "inline" | "v" | "flat" | "w";
+// "rotary" is a Wankel engine - for it, `cylinders` on EngineConfig/CarSpec
+// holds the rotor count (see engineLayout.ts for the helpers that interpret it).
+export type EngineLayout = "inline" | "v" | "flat" | "w" | "rotary";
 export type Aspiration = "na" | "turbo" | "supercharged";
 export type FuelType = "petrol" | "diesel";
 export type Drivetrain = "fwd" | "rwd" | "awd";

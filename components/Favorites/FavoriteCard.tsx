@@ -1,4 +1,5 @@
 import { SavedEngine } from "@/lib/favorites";
+import { engineSizeLabel } from "@/lib/physics/engineLayout";
 import { resultHeadline, TEST_TYPE_LABELS } from "@/lib/testResultLabel";
 import { CornerMarks, FOCUS_RING } from "@/components/EngineBuilder/FormControls";
 
@@ -38,7 +39,7 @@ export default function FavoriteCard({ favorite, onRemove }: FavoriteCardProps) 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="font-semibold text-zinc-50">
-            {engine.cylinders}-cyl {engine.layout.toUpperCase()},{" "}
+            {engineSizeLabel(engine)},{" "}
             {engine.displacementL.toFixed(1)}L {engine.aspiration}
           </div>
           <div className="text-xs text-zinc-500 mt-0.5">

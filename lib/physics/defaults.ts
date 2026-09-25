@@ -12,6 +12,18 @@ export const DEFAULT_ENGINE: EngineConfig = {
   fuelType: "petrol",
 };
 
+// Starting point when switching to a rotary - Mazda's 13B as fitted to the
+// RX-8 (two 654cc rotors, 9,000rpm redline). `cylinders` is the rotor count.
+export const DEFAULT_ROTARY_ENGINE: EngineConfig = {
+  cylinders: 2,
+  layout: "rotary",
+  displacementL: 1.3,
+  redlineRpm: 9000,
+  maxRevRpm: 9400,
+  aspiration: "na",
+  fuelType: "petrol",
+};
+
 export const DEFAULT_GEARBOX: GearboxConfig = {
   transmissionType: "manual",
   gearCount: 6,

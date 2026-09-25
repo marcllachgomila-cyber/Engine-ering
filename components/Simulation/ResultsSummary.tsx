@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { EngineConfig, SimulationResult } from "@/lib/physics/types";
 import { buildEngineCurves } from "@/lib/physics/engineModel";
+import { engineSizeLabel } from "@/lib/physics/engineLayout";
 import { getCircuit } from "@/lib/physics/circuits";
 import { resultHeadline } from "@/lib/testResultLabel";
 import { CornerMarks, formatUnitValue, Panel, SectionTag } from "@/components/EngineBuilder/FormControls";
@@ -103,7 +104,7 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
           />
           <Stat
             label="Configuration"
-            value={`${engine.cylinders}-cyl ${engine.layout}, ${engine.displacementL.toFixed(1)}L`}
+            value={`${engineSizeLabel(engine)},${engine.displacementL.toFixed(1)}L`}
           />
         </div>
       </div>

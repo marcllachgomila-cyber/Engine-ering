@@ -11,6 +11,7 @@ const LAYOUT_TAGS: Record<EngineLayout, string> = {
   v: "V",
   flat: "Flat-",
   w: "W",
+  rotary: "Rotary-",
 };
 
 const DRIVETRAIN_LABELS: Record<RealCarPreset["gearbox"]["drivetrain"], string> = {

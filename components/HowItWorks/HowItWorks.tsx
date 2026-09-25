@@ -280,6 +280,33 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
             { symbol: String.raw`T_{\text{fric}}(\text{rpm})`, desc: "internal friction torque being consumed at that RPM" },
           ]}
         />
+        <H3>Rotary (Wankel) engines</H3>
+        <P>
+          A rotary replaces pistons with triangular rotors turning inside an epitrochoid housing.
+          Each of a rotor&rsquo;s three faces completes a full intake-compression-power-exhaust
+          cycle per rotor revolution, and the rotor turns at a third of the eccentric (output)
+          shaft&rsquo;s speed — so every rotor delivers one power stroke per shaft revolution,
+          where a four-stroke cylinder delivers one every two. Rotary displacement is
+          conventionally quoted as a single chamber per rotor, which makes a &ldquo;1.3 L&rdquo;
+          twin-rotor behave more like a 2.6 L piston engine. The model reflects that with a
+          torque multiplier on the quoted displacement, set well short of 2× because the long,
+          thin combustion chamber loses much of its heat to the housing and burns incompletely:
+        </P>
+        <Formula
+          tex={String.raw`T_{\text{peak}}^{\text{rotary}} = D \cdot k_{\text{tpl}}(\text{aspiration}) \cdot f(2 n_{\text{rotor}}) \cdot k_{\text{rotary}}`}
+          vars={[
+            { symbol: String.raw`D`, desc: "quoted rotary displacement (one chamber per rotor)" },
+            { symbol: String.raw`n_{\text{rotor}}`, desc: "rotor count — each rotor fires as often as two four-stroke cylinders, so the smoothness factor sees 2·n_rotor" },
+            { symbol: String.raw`k_{\text{rotary}}`, desc: "rotary torque multiplier (≈1.6), calibrated against the Mazda RX-8 and RX-7" },
+          ]}
+        />
+        <P>
+          With no valvetrain to limit breathing, a rotary&rsquo;s torque peak sits later in the rev
+          range and falls away more gently above it, and because every moving part simply spins
+          — nothing reciprocates — its friction rises only linearly with RPM. Rotaries are also
+          much lighter per unit of output, which feeds into the vehicle mass, and they are petrol
+          only: the chamber shape can&rsquo;t reach the compression ratio a diesel needs.
+        </P>
         <H3>Locating the true peaks</H3>
         <P>
           Because the analytic curve shape is combined with RPM-dependent scaling to get power,

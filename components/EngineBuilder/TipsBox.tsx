@@ -17,6 +17,7 @@ const TIPS: Record<Topic, string[]> = {
     "Push the redline higher. Peak power lands around 80–90% of redline, so raising it moves both when and how much power peaks.",
     "Grow the displacement. Power scales roughly with displacement × aspiration multiplier.",
     "More cylinders help a little at the top end, but it's a small effect next to displacement and aspiration.",
+    "Consider a rotary. It makes about 1.6× the torque per quoted liter and peaks late, so it rewards a high redline.",
   ],
   torque: [
     "Grow the displacement first. Peak torque scales almost directly with it.",
@@ -35,6 +36,7 @@ const TIPS: Record<Topic, string[]> = {
     "Mind the traction limit. Wheel force is capped by tire grip, so beyond a point extra torque just spins the tires off the line instead of adding acceleration.",
     "Go turbo. Its torque plateau kicks in earlier and holds through more of the rev range than a peaky NA curve, keeping wheel force high through every gear.",
     "Test in dry conditions. Wet and rain cut tire grip substantially, capping how much force you can put down.",
+    "Try a turbo rotary. Each rotor fires twice as often as a piston cylinder and the engine weighs far less, so a boosted 2–3 rotor makes big power for very little mass.",
   ],
 };
 
