@@ -56,7 +56,7 @@ export default function StepNav({ current, onNavigate }: StepNavProps) {
             return (
               <li
                 key={step.key}
-                className="relative flex flex-1 flex-col items-center gap-2 last:flex-none"
+                className="relative flex flex-1 flex-col items-center gap-2"
               >
                 <button
                   type="button"
