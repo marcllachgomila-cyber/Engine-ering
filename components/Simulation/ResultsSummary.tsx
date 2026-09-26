@@ -106,6 +106,10 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
     () => Math.max(0.1, ...result.telemetry.map((s) => Math.abs(s.lateralGForce ?? 0))),
     [result.telemetry],
   );
+  const peakGear = useMemo(
+    () => Math.max(1, ...result.telemetry.map((s) => s.gear)),
+    [result.telemetry],
+  );
   const peakSpeedKph = useMemo(
     () => Math.max(1, ...result.telemetry.map((s) => s.speedKph)),
     [result.telemetry],
@@ -259,6 +263,44 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
         <div>
           <SectionTag>Hot Lap Telemetry</SectionTag>
           <div className="mt-3 space-y-3">
+            <Panel>
+              <TimeSeriesGraph
+                telemetry={result.telemetry}
+                currentT={finalT}
+                getValue={(s) => s.gear}
+                peakValue={peakGear}
+                color="#2dd4bf"
+                label="Gear vs Time"
+                hoverT={hoverT}
+                onHoverTChange={setHoverT}
+              />
+            </Panel>
+            <Panel>
+              <TimeSeriesGraph
+                telemetry={result.telemetry}
+                currentT={finalT}
+                getValue={(s) => (s.throttle ?? 0) * 100}
+                peakValue={100}
+                color="#4ade80"
+                label="Throttle (%) vs Time"
+                formatValue={(v) => `${Math.round(v)}%`}
+                hoverT={hoverT}
+                onHoverTChange={setHoverT}
+              />
+            </Panel>
+            <Panel>
+              <TimeSeriesGraph
+                telemetry={result.telemetry}
+                currentT={finalT}
+                getValue={(s) => (s.brakeInput ?? 0) * 100}
+                peakValue={100}
+                color="#ef4444"
+                label="Brake (%) vs Time"
+                formatValue={(v) => `${Math.round(v)}%`}
+                hoverT={hoverT}
+                onHoverTChange={setHoverT}
+              />
+            </Panel>
             <Panel>
               <TimeSeriesGraph
                 telemetry={result.telemetry}
