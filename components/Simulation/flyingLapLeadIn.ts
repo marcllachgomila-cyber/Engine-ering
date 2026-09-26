@@ -19,7 +19,7 @@ const MAX_LEAD_IN_FRACTION = 0.22;
 // speed through it and onto the approach straight before crossing the line,
 // rather than simply appearing on the line already at speed.
 export function flyingLapLeadInFraction(circuit: Circuit): number {
-  const { points, lengthM } = circuit;
+  const { points, racingLineLengthM: lengthM } = circuit;
   const n = points.length;
   if (n < 3 || lengthM <= 0) return 0.9;
 

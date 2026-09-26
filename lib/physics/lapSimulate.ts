@@ -194,7 +194,7 @@ export function simulateHotLap(
     initialSpeedKph: profile[0]?.speedMs !== undefined ? profile[0].speedMs * 3.6 : 0,
     elapsedS: t,
     finalSpeedKph: last?.speedKph ?? 0,
-    finalDistanceM: circuit.lengthM,
+    finalDistanceM: circuit.racingLineLengthM,
     reachedHundredAtS: null,
     timedOut: false,
     peakHp: curves.peakPowerHp,

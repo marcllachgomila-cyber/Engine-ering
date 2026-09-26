@@ -339,7 +339,7 @@ export default function SimulationRunner({
               progress={
                 phase === "leadIn" && leadInProgress !== null
                   ? leadInProgress
-                  : (displaySample?.distanceM ?? 0) / circuit.lengthM
+                  : (displaySample?.distanceM ?? 0) / circuit.racingLineLengthM
               }
             />
           </Panel>

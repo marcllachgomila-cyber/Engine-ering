@@ -105,6 +105,14 @@ export default function EngineForm({ value, onChange, onContinue, realCar }: Eng
     ? roundToTenth(ROTARY_MAX_L_PER_ROTOR * value.cylinders)
     : PISTON_DISPLACEMENT_MAX_L;
   const curves = useMemo(() => buildEngineCurves(value), [value]);
+  // Normally up to MAX_REV_OVER_REDLINE_CAP past redline, but never short
+  // of what a real-car preset (e.g. an F1 power unit's 15,000rpm limit) or
+  // the current value already asks for - otherwise the slider can't show it.
+  const maxRevMax = Math.max(
+    value.redlineRpm + MAX_REV_OVER_REDLINE_CAP,
+    realCar?.engine.maxRevRpm ?? 0,
+    value.maxRevRpm,
+  );
 
   // Switching type swaps in that type's default architecture (count,
   // layout, displacement, redline) but keeps aspiration - the rest of the
@@ -284,11 +292,11 @@ export default function EngineForm({ value, onChange, onContinue, realCar }: Eng
           value={value.maxRevRpm}
           valueLabel={formatUnitValue(value.maxRevRpm, "RPM")}
           min={value.redlineRpm}
-          max={value.redlineRpm + MAX_REV_OVER_REDLINE_CAP}
+          max={maxRevMax}
           step={50}
           onChange={(v) => onChange({ ...value, maxRevRpm: v })}
           minLabel={formatUnitValue(value.redlineRpm, "RPM")}
-          maxLabel={formatUnitValue(value.redlineRpm + MAX_REV_OVER_REDLINE_CAP, "RPM")}
+          maxLabel={formatUnitValue(maxRevMax, "RPM")}
           helpText="How far past redline you can push before each shift."
         />
 

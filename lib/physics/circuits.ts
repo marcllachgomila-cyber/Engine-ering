@@ -64,14 +64,16 @@ function defineCircuit(data: CircuitData): Circuit {
     trackWidthM: TRACK_WIDTH_M,
     // The physics line is the minimum-curvature racing line through the
     // full track width (see computeRacingLine in circuitGeometry.ts) rather
-    // than the raw centerline. officialLengthM keeps the result's distance
-    // bookkeeping matching lengthM above, since the racing line itself
-    // comes out very slightly shorter than the centerline. Built on first
-    // use (tens of milliseconds per circuit) - only a hot lap needs it, so
-    // there's no reason to pay for all 24 when the module loads.
+    // than the raw centerline. Built on first use (tens of milliseconds per
+    // circuit) - only a hot lap needs it, so there's no reason to pay for
+    // all 24 when the module loads.
     get points() {
-      points ??= buildCircuitGeometry(data.coordinates, data.id, undefined, TRACK_WIDTH_M, lengthM);
+      points ??= buildCircuitGeometry(data.coordinates, data.id, undefined, TRACK_WIDTH_M);
       return points;
+    },
+    get racingLineLengthM() {
+      const p = this.points;
+      return p.length > 1 ? p[p.length - 1].distanceM + (p[1].distanceM - p[0].distanceM) : lengthM;
     },
   };
 }

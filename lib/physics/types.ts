@@ -270,4 +270,8 @@ export interface Circuit {
   // per-point measurement.
   trackWidthM: number;
   points: CircuitPoint[];
+  // Length of the racing line `points` trace - a little shorter than
+  // lengthM (the surveyed centerline), since it cuts the corners. Lap
+  // progress along `points` is measured against this.
+  racingLineLengthM: number;
 }

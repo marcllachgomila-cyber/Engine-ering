@@ -873,7 +873,6 @@ export function buildCircuitGeometry(
   circuitId?: string,
   targetStepM = DEFAULT_STEP_M,
   trackWidthM = 12,
-  officialLengthM?: number,
 ): CircuitPoint[] {
   const surveyed = filletReversals(
     removeOutAndBackSpurs(dropDuplicatePoints(projectToLocalMeters(coordinates, circuitId)), trackWidthM / 2),
@@ -888,18 +887,16 @@ export function buildCircuitGeometry(
 
   // The racing-line points each moved only sideways, so they're no longer
   // evenly spaced along the new line - carry them on their own spline and
-  // resample that at even arc length, then rescale distanceM so the
-  // geometry's own bookkeeping matches the circuit's official length (a
-  // racing line is typically ~1-2% shorter than the centerline, from
-  // cutting corners) - otherwise a lap-progress fraction computed as
-  // distanceM / circuit.lengthM elsewhere would never quite reach 1.
+  // resample that at even arc length. distanceM is the true distance along
+  // the racing line, which is ~1-2% shorter than the centerline (and so
+  // than circuit.lengthM) from cutting corners: the car covers exactly the
+  // path whose curvature it's cornering on. Lap progress is measured
+  // against the line's own length (circuit.racingLineLengthM).
   const lineSpline = fitPeriodicSpline(racingLine, RACING_LINE_SMOOTHING_LENGTH_M);
   const line = sampleByArcLength(lineSpline, targetStepM);
-  const targetLengthM = officialLengthM ?? line.totalLengthM;
-  const scale = targetLengthM / line.totalLengthM;
 
   return line.samples.map((p, i) => ({
-    distanceM: i * line.stepM * scale,
+    distanceM: i * line.stepM,
     x: p.x,
     y: p.y,
     headingRad: p.headingRad,
