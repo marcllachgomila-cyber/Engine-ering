@@ -987,21 +987,26 @@ topSpeed = lastValidSpeed`}</Pseudocode>
         </P>
         <H3>Circuit geometry: curvature from the track shape, not a lookup table</H3>
         <P>
-          Every circuit is stored as a closed loop of waypoints tracing that track&rsquo;s real corner
-          sequence. Each waypoint is rounded off with a circular-arc fillet whose radius falls
-          straight out of its own turn angle and the straight length available on either side — a
-          sharp direction change between short straights becomes a tight radius (a hairpin); a
-          gentle kink between long straights becomes a large radius (a fast sweeper) — the same
-          relationship real corners have, derived geometrically rather than picked by hand for each
-          corner. Sampling that filleted path at fixed intervals gives every point on the lap a
-          distance, heading and signed curvature (1 / radius) purely from the shape of the track:
+          Every circuit is stored as its real centerline, surveyed from OpenStreetMap: a closed loop
+          of GPS points, a metre apart through some corners and hundreds of metres apart down some
+          straights. Measuring curvature straight off those points would turn every angle between
+          two straight pieces into a fake hairpin, so a smooth closed curve (a periodic cubic
+          smoothing spline) is fitted through them instead — its 5&nbsp;m smoothing length absorbs
+          survey jitter but is far too short to round a real corner off. A hairpin traced as a
+          single sharp point becomes the tightest arc a track can have: half its width.
+        </P>
+        <P>
+          The car doesn&rsquo;t drive the centerline, though. Within the track width around it, the
+          racing line is the path with the least total squared curvature — the one that straightens
+          every corner and links every chicane as far as the kerbs allow — found by solving a small
+          quadratic programme. Every 2&nbsp;m along that line, its heading and signed curvature
+          (1 / radius) come straight from the curve&rsquo;s own derivatives:
         </P>
         <Formula
-          tex={String.raw`t = R\tan\!\left(\frac{\alpha}{2}\right) \quad\Longrightarrow\quad R = \frac{t}{\tan(\alpha/2)}`}
+          tex={String.raw`\kappa = \frac{x'y'' - y'x''}{\left(x'^2 + y'^2\right)^{3/2}}`}
           vars={[
-            { symbol: String.raw`\alpha`, desc: "the waypoint's deflection angle (0 = straight through, \\pi = a full hairpin reversal)" },
-            { symbol: String.raw`t`, desc: "tangent length claimed on each adjacent straight, capped so neighboring fillets never overlap" },
-            { symbol: String.raw`R`, desc: "the resulting corner radius at that waypoint" },
+            { symbol: String.raw`x(t),\ y(t)`, desc: "the smooth racing line's coordinates along the lap; primes are derivatives along it" },
+            { symbol: String.raw`\kappa`, desc: "signed curvature (positive = turning left); 1/\\kappa is the corner radius" },
           ]}
         />
         <H3>Cornering speed limit: the friction ellipse, not a fixed apex speed</H3>

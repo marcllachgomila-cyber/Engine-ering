@@ -1,5 +1,5 @@
 import { buildCircuitGeometry, buildViewBoxAndOutline, computeLengthM } from "./circuitGeometry";
-import { Circuit } from "./types";
+import { Circuit, CircuitPoint } from "./types";
 
 import albertPark from "./circuitData/albert-park.json";
 import shanghai from "./circuitData/shanghai.json";
@@ -52,6 +52,7 @@ interface CircuitData {
 function defineCircuit(data: CircuitData): Circuit {
   const { viewBox, outlinePath } = buildViewBoxAndOutline(data.coordinates, data.id);
   const lengthM = computeLengthM(data.coordinates);
+  let points: CircuitPoint[] | undefined;
   return {
     id: data.id,
     name: data.name,
@@ -61,13 +62,17 @@ function defineCircuit(data: CircuitData): Circuit {
     viewBox,
     outlinePath,
     trackWidthM: TRACK_WIDTH_M,
-    // The physics centerline is relaxed into a racing line that uses the
+    // The physics line is the minimum-curvature racing line through the
     // full track width (see computeRacingLine in circuitGeometry.ts) rather
-    // than tracing the raw centerline - TRACK_WIDTH_M finally gets used for
-    // its stated purpose here. officialLengthM keeps the result's distance
+    // than the raw centerline. officialLengthM keeps the result's distance
     // bookkeeping matching lengthM above, since the racing line itself
-    // comes out very slightly shorter than the centerline.
-    points: buildCircuitGeometry(data.coordinates, data.id, undefined, TRACK_WIDTH_M, lengthM),
+    // comes out very slightly shorter than the centerline. Built on first
+    // use (tens of milliseconds per circuit) - only a hot lap needs it, so
+    // there's no reason to pay for all 24 when the module loads.
+    get points() {
+      points ??= buildCircuitGeometry(data.coordinates, data.id, undefined, TRACK_WIDTH_M, lengthM);
+      return points;
+    },
   };
 }
 
