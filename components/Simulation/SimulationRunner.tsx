@@ -357,6 +357,8 @@ export default function SimulationRunner({
                 peakValue={referenceSpeedKph}
                 color="#22d3ee"
                 label="Speed (kph)"
+                shadeWhen={(s) => s.aeroMode === "straight"}
+                shadeLabel="Straight-mode aero"
               />
             </Panel>
             <Panel>

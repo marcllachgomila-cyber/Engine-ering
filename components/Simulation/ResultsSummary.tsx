@@ -114,6 +114,15 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
     () => Math.max(1, ...result.telemetry.map((s) => s.speedKph)),
     [result.telemetry],
   );
+  const hasBattery = result.telemetry.some((s) => s.batterySocMJ !== undefined);
+  const peakSocMJ = useMemo(
+    () => Math.max(0.1, ...result.telemetry.map((s) => s.batterySocMJ ?? 0)),
+    [result.telemetry],
+  );
+  const peakMguKKw = useMemo(
+    () => Math.max(1, ...result.telemetry.map((s) => Math.abs(s.mguKPowerKw ?? 0))),
+    [result.telemetry],
+  );
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
@@ -201,6 +210,8 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
               peakValue={peakSpeedKph}
               color="#22d3ee"
               label="Speed (kph) vs Time"
+              shadeWhen={(s) => s.aeroMode === "straight"}
+              shadeLabel="Straight-mode aero"
               hoverT={hoverT}
               onHoverTChange={setHoverT}
             />
@@ -288,6 +299,36 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
                 onHoverTChange={setHoverT}
               />
             </Panel>
+            {hasBattery && (
+              <>
+                <Panel>
+                  <TimeSeriesGraph
+                    telemetry={result.telemetry}
+                    currentT={finalT}
+                    getValue={(s) => s.mguKPowerKw ?? 0}
+                    peakValue={peakMguKKw}
+                    troughValue={-peakMguKKw}
+                    color="#facc15"
+                    label="MGU-K Power (kW, + deploy / − harvest) vs Time"
+                    hoverT={hoverT}
+                    onHoverTChange={setHoverT}
+                  />
+                </Panel>
+                <Panel>
+                  <TimeSeriesGraph
+                    telemetry={result.telemetry}
+                    currentT={finalT}
+                    getValue={(s) => s.batterySocMJ ?? 0}
+                    peakValue={peakSocMJ}
+                    color="#60a5fa"
+                    label="Battery State of Charge (MJ) vs Time"
+                    formatValue={(v) => v.toFixed(2)}
+                    hoverT={hoverT}
+                    onHoverTChange={setHoverT}
+                  />
+                </Panel>
+              </>
+            )}
             <Panel>
               <TimeSeriesGraph
                 telemetry={result.telemetry}

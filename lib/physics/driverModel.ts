@@ -1,7 +1,7 @@
 import { downforceN, dragForceN } from "./aeroModel";
 import { computeDrive, LongitudinalModel, SpeedProfilePoint, tyreUtilizationAt } from "./speedProfile";
 import { effectiveDriveForceN, wheelSpinPercent } from "./traction";
-import { EngineCurves, VehicleSpec } from "./types";
+import { AeroMode, EngineCurves, VehicleSpec } from "./types";
 import { rotatingInertiaFactor } from "./vehicleDynamics";
 
 // A deterministic virtual driver's per-point control inputs, derived from
@@ -20,8 +20,10 @@ export interface DriverInputPoint {
   gear: number;
   rpm: number;
   torqueNm: number;
-  // Electric power actually being deployed here (W).
+  // Power the electric motor draws here (W), and what it would draw if the
+  // battery could feed all of it.
   electricPowerW: number;
+  electricDemandW: number;
   throttle: number;
   brakeInput: number;
   brakeForceN: number;
@@ -37,15 +39,20 @@ export function deriveDriverInputs(
   vehicle: VehicleSpec,
   curves: EngineCurves,
   model: LongitudinalModel,
+  aeroModes?: AeroMode[],
+  electricAvailability?: number[],
 ): DriverInputPoint[] {
   const n = profile.length;
   const ds = n > 1 ? profile[1].distanceM - profile[0].distanceM : 0;
 
   return profile.map((point, i) => {
     const next = profile[(i + 1) % n];
-    const drive = computeDrive(point.speedMs, vehicle, curves, model.electricCutoffMs);
-    const drag = dragForceN(point.speedMs + model.headwindMs, vehicle);
-    const downforce = downforceN(point.speedMs, vehicle);
+    const availability = electricAvailability?.[i] ?? 1;
+    const drive = computeDrive(point.speedMs, vehicle, curves, model.electricFactor(point.speedMs, availability));
+    const aeroMode = aeroModes?.[i] ?? "corner";
+    const aero = model.aeroVehicle(aeroMode);
+    const drag = dragForceN(point.speedMs + model.headwindMs, aero);
+    const downforce = downforceN(point.speedMs, aero);
 
     const actualAccelMs2 =
       ds > 0 ? (next.speedMs * next.speedMs - point.speedMs * point.speedMs) / (2 * ds) : 0;
@@ -56,11 +63,30 @@ export function deriveDriverInputs(
     let brakeForceN = 0;
     let tyreForceForUtilN = 0;
     let wheelSpin = 0;
+    let electricForceN = 0;
+    let electricDemandForceN = 0;
 
-    if (netForceN >= 0) {
+    // Super-clipping (negative availability) can leave the car flat out yet
+    // slowing down, with the motor taking more than drag leaves - still
+    // throttle, not a coast, as long as it's driving the wheels at all.
+    const superClipping = availability < 0 && netForceN + drag + model.rollingForceN >= 0;
+    if (netForceN >= 0 || superClipping) {
       const driveForceUsedN = netForceN + drag + model.rollingForceN;
-      const driveForceAvailN = model.availableDriveForceN(point.speedMs, point.curvature);
+      const driveForceAvailN = model.availableDriveForceN(point.speedMs, point.curvature, aeroMode, availability);
       throttle = Math.min(1, Math.max(0, driveForceUsedN / Math.max(1, driveForceAvailN)));
+      // The motor only covers whatever drive force the combustion engine
+      // can't: no energy is spent on part throttle the ICE could manage
+      // alone, or on torque the tyres couldn't put down anyway. Flat out,
+      // it would use everything it had if the battery allowed.
+      const iceOnlyAvailN = model.availableDriveForceN(point.speedMs, point.curvature, aeroMode, 0);
+      electricForceN = Math.min(
+        Math.max(0, driveForceAvailN - iceOnlyAvailN),
+        Math.max(0, driveForceUsedN - iceOnlyAvailN),
+      );
+      electricDemandForceN =
+        throttle >= 0.999
+          ? Math.max(0, model.availableDriveForceN(point.speedMs, point.curvature, aeroMode, 1) - iceOnlyAvailN)
+          : electricForceN;
       tyreForceForUtilN = Math.max(0, driveForceUsedN);
       // Flat out, the wheels see everything the engine sends them, even the
       // part the tyres can't use; part throttle only asks for what's used.
@@ -72,7 +98,7 @@ export function deriveDriverInputs(
       const demandN = throttle >= 0.999 ? fullThrottleDemandN : Math.max(0, driveForceUsedN);
       wheelSpin = wheelSpinPercent(
         demandN,
-        model.driveTractionLimitN(point.speedMs, point.curvature),
+        model.driveTractionLimitN(point.speedMs, point.curvature, aeroMode),
         model.tractionControl,
       );
     } else {
@@ -93,7 +119,7 @@ export function deriveDriverInputs(
       point.speedMs,
       point.curvature,
       tyreForceForUtilN,
-      vehicle,
+      aero,
       model.muLong,
       model.muLat,
     );
@@ -102,8 +128,9 @@ export function deriveDriverInputs(
       gear: drive.gear,
       rpm: drive.rpm,
       torqueNm: drive.torqueNm,
-      // The motor delivers its share of whatever the throttle asks for.
-      electricPowerW: throttle * drive.electricTorqueNm * drive.rpm * ((2 * Math.PI) / 60),
+      // Motor output, back through the drivetrain from the wheels.
+      electricPowerW: (electricForceN * point.speedMs) / vehicle.drivetrainEfficiency,
+      electricDemandW: (electricDemandForceN * point.speedMs) / vehicle.drivetrainEfficiency,
       throttle,
       brakeInput,
       brakeForceN,

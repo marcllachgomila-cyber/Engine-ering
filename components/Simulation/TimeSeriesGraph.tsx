@@ -7,6 +7,7 @@ const SURFACE_COLOR = "#14171d";
 const GRID_COLOR = "#2c2f36";
 const AXIS_TEXT_COLOR = "#898781";
 const HOVER_LINE_COLOR = "#e2e8f0";
+const SHADE_COLOR = "#34d399";
 
 const WIDTH = 400;
 const HEIGHT = 150;
@@ -32,9 +33,14 @@ interface TimeSeriesGraphProps {
   currentT: number;
   getValue: (sample: Telemetry) => number;
   peakValue: number;
+  /** Most negative value to make room for (e.g. motor power while harvesting). Omit for a zero-based axis. */
+  troughValue?: number;
   color: string;
   label: string;
   formatValue?: (value: number) => string;
+  /** Shades the background wherever this is true (e.g. active aero in straight mode), labelled in a legend. */
+  shadeWhen?: (sample: Telemetry) => boolean;
+  shadeLabel?: string;
   /** Controlled hover position (seconds), shared across multiple graphs. Omit for standalone use. */
   hoverT?: number | null;
   onHoverTChange?: (t: number | null) => void;
@@ -45,9 +51,12 @@ export default function TimeSeriesGraph({
   currentT,
   getValue,
   peakValue,
+  troughValue = 0,
   color,
   label,
   formatValue = (v) => Math.round(v).toString(),
+  shadeWhen,
+  shadeLabel,
   hoverT: controlledHoverT,
   onHoverTChange,
 }: TimeSeriesGraphProps) {
@@ -59,12 +68,13 @@ export default function TimeSeriesGraph({
 
   const totalDuration = telemetry[telemetry.length - 1].t;
   const maxValue = niceMax(peakValue * 1.08);
+  const minValue = troughValue < 0 ? -niceMax(-troughValue * 1.08) : 0;
   const plotWidth = WIDTH - PAD_LEFT - PAD_RIGHT;
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM;
 
   const xFor = (t: number) => PAD_LEFT + (t / totalDuration) * plotWidth;
   const yFor = (value: number) =>
-    PAD_TOP + plotHeight - (Math.max(0, value) / maxValue) * plotHeight;
+    PAD_TOP + plotHeight - ((Math.max(minValue, value) - minValue) / (maxValue - minValue)) * plotHeight;
 
   const handlePointerMove = (e: PointerEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -87,15 +97,36 @@ export default function TimeSeriesGraph({
     .join(" ");
 
   const baseline = PAD_TOP + plotHeight;
-  const areaPath = `${linePath} L ${xFor(points[points.length - 1].t).toFixed(1)} ${baseline} L ${xFor(points[0].t).toFixed(1)} ${baseline} Z`;
+  const zeroY = yFor(0);
+  const areaPath = `${linePath} L ${xFor(points[points.length - 1].t).toFixed(1)} ${zeroY} L ${xFor(points[0].t).toFixed(1)} ${zeroY} Z`;
 
   const last = points[points.length - 1];
   const gridFractions = [0, 0.5, 1];
 
+  // Each sample covers the time since the one before it; merge consecutive
+  // shaded samples into [start, end] bands.
+  const shadeBands: [number, number][] = [];
+  if (shadeWhen) {
+    points.forEach((s, i) => {
+      if (!shadeWhen(s)) return;
+      const start = i > 0 ? points[i - 1].t : 0;
+      const band = shadeBands[shadeBands.length - 1];
+      if (band && band[1] === start) band[1] = s.t;
+      else shadeBands.push([start, s.t]);
+    });
+  }
+  const showShadeLegend = !!shadeWhen && !!shadeLabel && telemetry.some(shadeWhen);
+
   return (
     <div className="w-full">
-      <div className="text-xs uppercase tracking-wider text-zinc-500 mb-1">
-        {label}
+      <div className="flex items-center justify-between gap-2 text-xs uppercase tracking-wider text-zinc-500 mb-1">
+        <span>{label}</span>
+        {showShadeLegend && (
+          <span className="flex items-center gap-1.5 normal-case tracking-normal">
+            <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: SHADE_COLOR, opacity: 0.35 }} />
+            {shadeLabel}
+          </span>
+        )}
       </div>
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -118,12 +149,31 @@ export default function TimeSeriesGraph({
             />
           );
         })}
+        {shadeBands.map(([start, end]) => (
+          <rect
+            key={start}
+            x={xFor(start)}
+            y={PAD_TOP}
+            width={Math.max(0.5, xFor(end) - xFor(start))}
+            height={plotHeight}
+            fill={SHADE_COLOR}
+            opacity={0.14}
+          />
+        ))}
         <text x={2} y={PAD_TOP + 8} fontSize={10} fill={AXIS_TEXT_COLOR}>
           {formatValue(maxValue)}
         </text>
         <text x={2} y={baseline + 4} fontSize={10} fill={AXIS_TEXT_COLOR}>
-          0
+          {minValue < 0 ? formatValue(minValue) : 0}
         </text>
+        {minValue < 0 && (
+          <>
+            <line x1={PAD_LEFT} x2={WIDTH - PAD_RIGHT} y1={zeroY} y2={zeroY} stroke={AXIS_TEXT_COLOR} strokeWidth={1} />
+            <text x={2} y={zeroY + 4} fontSize={10} fill={AXIS_TEXT_COLOR}>
+              0
+            </text>
+          </>
+        )}
 
         <path d={areaPath} fill={color} opacity={0.1} />
         <path

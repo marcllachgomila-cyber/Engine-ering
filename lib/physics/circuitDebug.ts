@@ -41,7 +41,7 @@ export function debugCircuitCorners(circuitId: string, carId = "f1-2025"): Corne
   };
   const gearbox = gearboxFromPreset(car);
   const test: TestConfig = { ...DEFAULT_TEST_CONFIG, testType: "hotLap", circuitId: circuit.id };
-  const { profile, electricCutoffMs, electricDeployedMj } = solveHotLap(car.engine, chassis, gearbox, test, circuit);
+  const { profile, battery, iterations } = solveHotLap(car.engine, chassis, gearbox, test, circuit);
 
   const corners: CornerReport[] = [];
   const inCorner = (i: number) => Math.abs(profile[i].curvature) > 1 / CORNER_RADIUS_THRESHOLD_M;
@@ -87,9 +87,11 @@ export function debugCircuitCorners(circuitId: string, carId = "f1-2025"): Corne
   console.log(
     `lap ${formatLapTime(lapTimeS)}, min radius ${minRadiusM.toFixed(1)} m, ${circuit.points.length} points`,
   );
-  if (car.engine.hybridBoostKw) {
-    const cutoff = Number.isFinite(electricCutoffMs) ? `above ${(electricCutoffMs * 3.6).toFixed(0)} km/h` : "never";
-    console.log(`electric: ${electricDeployedMj.toFixed(2)} MJ deployed, clipped ${cutoff}`);
+  if (battery) {
+    console.log(
+      `battery: ${(battery.deployedJ / 1e6).toFixed(2)} MJ deployed, ${(battery.harvestedJ / 1e6).toFixed(2)} MJ harvested, ` +
+        `starts/ends at ${(battery.startSocJ / 1e6).toFixed(2)} MJ (${iterations} solves)`,
+    );
   }
   console.log("  #  dir   start m   apex m  min radius m  apex km/h");
   corners.forEach((c, k) => {

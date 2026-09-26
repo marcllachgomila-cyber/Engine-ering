@@ -31,10 +31,31 @@ export interface EngineConfig {
   // least realistic (screaming near the limiter).
   hybridBoostKw?: number;
   hybridMaxTorqueNm?: number;
-  // Electrical energy the motor may deploy over one lap, in MJ - a hot-lap
-  // limit only (see lapSimulate.ts). Undefined = unlimited, which is close
-  // enough for any single straight-line test.
-  hybridDeployMjPerLap?: number;
+  // The energy store behind the motor, for a hot lap only (see
+  // lapSimulate.ts). Undefined = unlimited energy, which is close enough
+  // for any single straight-line test.
+  ers?: ErsConfig;
+}
+
+// A hybrid's battery ("energy store") and the rules on how it's charged and
+// spent over a lap.
+export interface ErsConfig {
+  // Most electrical energy the motor may deploy / harvest over one lap.
+  maxDeployPerLapMJ: number;
+  maxHarvestPerLapMJ: number;
+  // Usable state-of-charge window.
+  batteryCapacityMJ: number;
+  // Most power the motor can recover while braking.
+  harvestPowerKw: number;
+  // Most power it may recover while the driver is still flat out
+  // ("super-clipping"): the motor loads the engine and takes that power
+  // away from the wheels. Where on the lap it does so is chosen by the lap
+  // solver (see lapSimulate.ts); 0 turns it off.
+  superClipPowerKw: number;
+  // The motor's deployment power limit ramps linearly from full at
+  // deployTaperStartKph down to nothing at deployTaperEndKph.
+  deployTaperStartKph: number;
+  deployTaperEndKph: number;
 }
 
 export type TransmissionType = "manual" | "auto";
@@ -67,6 +88,7 @@ export interface RealCarPreset {
     | "rearWheelDiameterIn"
     | "frontWheelWidthMm"
     | "rearWheelWidthMm"
+    | "activeAero"
   >;
   // Car-specific rationale for a modeling choice that doesn't fit the
   // general disclaimers in realCars.ts (e.g. why a particular season's
@@ -76,6 +98,35 @@ export interface RealCarPreset {
 }
 
 export type BodyType = "minivan" | "suv" | "supercar" | "f1";
+
+// Movable-wing aero (the 2026 F1 rules' replacement for DRS): the car runs
+// its normal high-downforce "corner mode" (the body type's
+// dragCoefficient/liftCoefficient, see defaults.ts) except on straights,
+// where the wings open into a low-drag, low-downforce "straight mode".
+// Hot-lap only (see lapSimulate.ts) - undefined for every car without it.
+export type AeroMode = "corner" | "straight";
+
+export interface ActiveAeroConfig {
+  // Straight-mode aero coefficients, same conventions and frontal area as
+  // the corner-mode ones.
+  dragCoefficientStraight: number;
+  liftCoefficientStraight: number;
+  // Straight mode opens only where the corner radius is at least
+  // straightModeMinRadiusM (and the car is flat out and off the brakes),
+  // and once open stays open until the radius drops below the smaller
+  // straightModeExitRadiusM - a hysteresis band, so a radius hovering
+  // around the threshold doesn't flick the wings open and shut.
+  straightModeMinRadiusM: number;
+  straightModeExitRadiusM: number;
+  // Throttle (0-1) that counts as "flat out" for straight mode.
+  straightModeMinThrottle: number;
+  // Straight-mode stretches shorter than this are skipped - the wings stay
+  // shut rather than blip open for a few metres before a corner. Like the
+  // real cars' pre-defined activation zones, this is decided for the whole
+  // lap up front. It never keeps them open longer: closing on braking or a
+  // lift is always immediate.
+  straightModeMinZoneM: number;
+}
 export type TyreType = "slick" | "standard";
 export type TyreCompound = "soft" | "medium" | "hard" | "intermediate" | "wet";
 
@@ -90,6 +141,8 @@ export interface ChassisConfig {
   rearWheelWidthMm: number;
   tyreType: TyreType;
   tyreCompound: TyreCompound;
+  // Only set by a real-car preset that has it (F1 2026).
+  activeAero?: ActiveAeroConfig;
 }
 
 export type TestType = "zeroToHundred" | "tenSecond" | "drag500m" | "braking" | "hotLap";
@@ -153,6 +206,7 @@ export interface VehicleSpec {
   shiftRpm: number;
   // Seconds with no drive force during each upshift.
   shiftTimeS: number;
+  activeAero?: ActiveAeroConfig;
 }
 
 export interface Telemetry {
@@ -179,6 +233,12 @@ export interface Telemetry {
   downforceN?: number;
   dragN?: number;
   curvature?: number;
+  // Only on cars with active aero.
+  aeroMode?: AeroMode;
+  // Only on cars with an energy store (engine.ers): battery state of charge,
+  // and motor power - positive deploying, negative harvesting.
+  batterySocMJ?: number;
+  mguKPowerKw?: number;
 }
 
 export interface SimulationResult {

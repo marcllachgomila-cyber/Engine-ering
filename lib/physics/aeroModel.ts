@@ -1,5 +1,20 @@
-import { VehicleSpec } from "./types";
+import { AeroMode, VehicleSpec } from "./types";
 import { AIR_DENSITY_KG_M3 } from "./vehicleDynamics";
+
+// The car as it is aerodynamically in the given active-aero mode: straight
+// mode swaps in the preset's low-drag coefficients, everything else is
+// untouched. Every drag/downforce/normal-load function below reads the
+// coefficients off the vehicle it's handed, so passing this one is all it
+// takes for the mode to reach drag, traction, cornering and braking alike.
+// Cars without active aero are always in corner mode.
+export function aeroModeVehicle(vehicle: VehicleSpec, mode: AeroMode): VehicleSpec {
+  if (mode === "corner" || !vehicle.activeAero) return vehicle;
+  return {
+    ...vehicle,
+    dragCoefficient: vehicle.activeAero.dragCoefficientStraight,
+    liftCoefficient: vehicle.activeAero.liftCoefficientStraight,
+  };
+}
 
 // Standard quadratic aerodynamic drag: grows with the square of relative
 // airspeed, dominates resistance only as a car approaches top speed.

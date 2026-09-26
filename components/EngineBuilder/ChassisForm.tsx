@@ -59,6 +59,7 @@ export default function ChassisForm({
       ...value,
       bodyType,
       weightKg: BODY_TYPE_PRESETS[bodyType].weightKg,
+      activeAero: undefined,
       ...defaultTyresFor(bodyType),
     });
   };

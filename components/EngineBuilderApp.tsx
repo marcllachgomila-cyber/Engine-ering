@@ -76,7 +76,12 @@ export default function EngineBuilderApp() {
   const handleSelectRealCar = useCallback(
     (car: RealCarPreset | null) => {
       setRealCar(car);
-      if (!car) return;
+      // Active aero belongs to the preset that has it - drop it as soon as
+      // that preset is deselected, so a custom build never inherits it.
+      if (!car) {
+        setChassis((prev) => ({ ...prev, activeAero: undefined }));
+        return;
+      }
       setChassis((prev) => ({
         ...prev,
         bodyType: car.category,
@@ -85,6 +90,7 @@ export default function EngineBuilderApp() {
         rearWheelDiameterIn: car.chassis.rearWheelDiameterIn,
         frontWheelWidthMm: car.chassis.frontWheelWidthMm,
         rearWheelWidthMm: car.chassis.rearWheelWidthMm,
+        activeAero: car.chassis.activeAero,
         ...defaultTyresFor(car.category),
       }));
       setEngine(car.engine);

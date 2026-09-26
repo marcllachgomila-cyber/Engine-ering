@@ -13,7 +13,16 @@
     "fuelType": "petrol",
     "boostBar": 1.7,
     "hybridBoostKw": 350,
-    "hybridMaxTorqueNm": 500
+    "hybridMaxTorqueNm": 500,
+    "ers": {
+      "maxDeployPerLapMJ": 8.5,
+      "maxHarvestPerLapMJ": 8.5,
+      "batteryCapacityMJ": 4,
+      "harvestPowerKw": 350,
+      "superClipPowerKw": 250,
+      "deployTaperStartKph": 290,
+      "deployTaperEndKph": 355
+    }
   },
   "gearbox": {
     "transmissionType": "auto",
@@ -27,7 +36,15 @@
     "frontWheelDiameterIn": 18,
     "rearWheelDiameterIn": 18,
     "frontWheelWidthMm": 305,
-    "rearWheelWidthMm": 355
+    "rearWheelWidthMm": 355,
+    "activeAero": {
+      "dragCoefficientStraight": 0.48,
+      "liftCoefficientStraight": 1.8,
+      "straightModeMinRadiusM": 300,
+      "straightModeExitRadiusM": 250,
+      "straightModeMinThrottle": 0.99,
+      "straightModeMinZoneM": 50
+    }
   },
-  "notes": "New-generation power unit: roughly 50/50 electric/combustion split and no MGU-H, but the ICE stays a 1.6L V6 turbo - modeled here with a redline slightly higher than the frozen 2022-2025 spec (see f1-2022.json onward). The 2026 rules cut the ICE fuel energy flow so it makes only ~400kW; boostBar 1.7 stands in for that cap (it lands the ICE at ~400kW), not a regulated boost figure. The MGU-K output nearly triples (120kW -> 350kW) to carry the heavier electric share, with a 500Nm mechanical torque limit, for ~750kW (~1,000hp) combined. The real MGU-K can only deploy what it harvests over a lap (8.5MJ under the 2026 rules), and engine.hybridDeployMjPerLap can model that (see lapSimulate.ts) - but it is deliberately left unset here: real 2026 cars pair it with active aero that cuts straight-line drag, which this simulator does not model, and without that the ~400kW ICE alone tops out near 270km/h, so enforcing the limit would make every lap far slower than the real cars. New-generation cars are also mandated smaller and lighter than the 2022-2025 ground-effect era, reflected in the lower chassis weight here. maxRevRpm stays at the same 15,000rpm FIA hard limit that is applied across every season here (see realCars.ts)."
+  "notes": "New-generation power unit: roughly 50/50 electric/combustion split and no MGU-H, but the ICE stays a 1.6L V6 turbo - modeled here with a redline slightly higher than the frozen 2022-2025 spec (see f1-2022.json onward). The 2026 rules cut the ICE fuel energy flow so it makes only ~400kW; boostBar 1.7 stands in for that cap (it lands the ICE at ~400kW), not a regulated boost figure. The MGU-K output nearly triples (120kW -> 350kW) to carry the heavier electric share, with a 500Nm mechanical torque limit, for ~750kW (~1,000hp) combined. engine.ers (hot lap only, see lapSimulate.ts): batteryCapacityMJ 4 is the regulated usable state-of-charge window, maxHarvestPerLapMJ 8.5 the baseline per-lap recovery limit (the FIA can set it lower per track - 5-9MJ in qualifying since the May 2026 refinement), harvestPowerKw 350 the MGU-K limit also applied to recovery, superClipPowerKw 250 the reported on-throttle (super-clipping) harvest rate, and the deployment taper from full power at 290km/h to none at 355km/h is the rule without overtake mode (formula1.com, raceteq.com, ESPN). maxDeployPerLapMJ 8.5 is an estimate: no separate per-lap deployment cap could be confirmed, so it is set to the harvest limit, which a balanced lap can never exceed anyway. Harvest comes from braking and from super-clipping at the ends of the straights, where the lap solver picks the speed to start it at for the fastest lap; lift-and-coast and part-throttle harvest are not modeled. Active aero (chassis.activeAero) replaces DRS: the car runs the F1 body type high-downforce corner-mode coefficients (defaults.ts) through corners and under braking, and opens its wings into straight mode when flat out, off the brakes and on a curve gentler than straightModeMinRadiusM. The FIA has not published per-mode Cd/Cl: liftCoefficientStraight is an estimate (-40% against corner mode), and dragCoefficientStraight was tuned so the finish-line speed matches Russell pole lap at the 2026 Australian GP (301.3km/h at the finish line, 297.9km/h speed trap, FIA qualifying maximum speeds). New-generation cars are also mandated smaller and lighter than the 2022-2025 ground-effect era, reflected in the lower chassis weight here. maxRevRpm stays at the same 15,000rpm FIA hard limit that is applied across every season here (see realCars.ts)."
 }

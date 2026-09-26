@@ -1,8 +1,17 @@
 import { BRAKE_MATERIALS, ABS_OFF_PENALTY } from "./brakeModel";
-import { downforceN, dragForceN, normalLoadN } from "./aeroModel";
+import { aeroModeVehicle, downforceN, dragForceN, normalLoadN } from "./aeroModel";
 import { deliveredDriveForceN, effectiveDriveForceN, tractionLimitN } from "./traction";
 import { brakingMuLong, combinedLongCapacityN, computeTyreLimits } from "./tyreModel";
-import { ChassisConfig, CircuitPoint, EngineCurves, LapStartMode, TestConfig, VehicleSpec } from "./types";
+import {
+  AeroMode,
+  ChassisConfig,
+  CircuitPoint,
+  EngineCurves,
+  ErsConfig,
+  LapStartMode,
+  TestConfig,
+  VehicleSpec,
+} from "./types";
 import {
   AIR_DENSITY_KG_M3,
   G,
@@ -39,13 +48,14 @@ export interface DriveState {
   engineForceN: number;
 }
 
-// `electricCutoffMs`: above this speed the electric motor isn't deployed
-// (see the per-lap energy limit in lapSimulate.ts).
+// `electricFactor` (0-1): how much of the electric motor's torque is being
+// deployed - less than all of it when the battery is running dry or the
+// rules taper it off at high speed (see lapSimulate.ts).
 export function computeDrive(
   speedMs: number,
   vehicle: VehicleSpec,
   curves: EngineCurves,
-  electricCutoffMs = Infinity,
+  electricFactor = 1,
 ): DriveState {
   const gear = gearForAcceleration(speedMs, vehicle);
   const gearRatio = vehicle.gearRatios[gear - 1];
@@ -53,7 +63,7 @@ export function computeDrive(
     Math.max(rpmFromSpeed(speedMs, gearRatio, vehicle), curves.idleRpm),
     curves.maxRevRpm,
   );
-  const electricTorqueNm = speedMs > electricCutoffMs ? 0 : curves.electricTorqueAt(rpm);
+  const electricTorqueNm = curves.electricTorqueAt(rpm) * electricFactor;
   const torqueNm = curves.torqueAt(rpm) - curves.electricTorqueAt(rpm) + electricTorqueNm;
   const engineForceN = wheelForceN(torqueNm, gearRatio, vehicle);
   return { gear, rpm, torqueNm, electricTorqueNm, engineForceN };
@@ -65,12 +75,25 @@ export interface LongitudinalModel {
   headwindMs: number;
   rollingForceN: number;
   tractionControl: boolean;
-  electricCutoffMs: number;
+  // The motor torque factor for computeDrive at this speed, given how much
+  // of the motor the battery can feed (0-1, cut back further by the
+  // rules' high-speed deployment taper, see ErsConfig) - or, when negative,
+  // how hard the motor is harvesting on throttle instead (not tapered).
+  electricFactor: (speedMs: number, electricAvailability: number) => number;
+  // The car in each active-aero mode (the same object for both when it
+  // has none) - see aeroModeVehicle.
+  aeroVehicle: (mode: AeroMode) => VehicleSpec;
   lateralDemandN: (speedMs: number, curvature: number) => number;
-  driveTractionLimitN: (speedMs: number, curvature: number) => number;
-  availableDriveForceN: (speedMs: number, curvature: number) => number;
+  driveTractionLimitN: (speedMs: number, curvature: number, mode?: AeroMode) => number;
+  // `electricAvailability` (-1 to 1): see electricFactor.
+  availableDriveForceN: (
+    speedMs: number,
+    curvature: number,
+    mode?: AeroMode,
+    electricAvailability?: number,
+  ) => number;
   availableBrakeForceN: (speedMs: number, curvature: number) => number;
-  maxAccelMs2: (speedMs: number, curvature: number) => number;
+  maxAccelMs2: (speedMs: number, curvature: number, mode?: AeroMode, electricAvailability?: number) => number;
   maxBrakeDecelMs2: (speedMs: number, curvature: number) => number;
 }
 
@@ -79,16 +102,34 @@ export interface LongitudinalModel {
 // speed-profile solver and the telemetry/driver-input pass afterward, so
 // both stages agree exactly on what the car is capable of at any given
 // point.
+//
+// Acceleration and cornering take the point's active-aero mode. Braking
+// doesn't: the wings snap back to corner mode the moment the driver brakes
+// (see lapSimulate.ts), so every braking force here is corner-mode by
+// definition - the backward pass never has to know which mode a point was
+// in before the braking zone began.
 export function buildLongitudinalModel(
   vehicle: VehicleSpec,
   chassis: ChassisConfig,
   curves: EngineCurves,
   test: TestConfig,
-  electricCutoffMs = Infinity,
+  ers?: ErsConfig,
 ): LongitudinalModel {
   const { muLong, muLat } = computeTyreLimits(vehicle, chassis, test.condition);
   const headwindMs = conditionHeadwindMs(test.condition);
   const rollingForceN = vehicle.rollingResistanceCoefficient * vehicle.weightKg * G;
+  const straightVehicle = aeroModeVehicle(vehicle, "straight");
+  const aeroVehicle = (mode: AeroMode): VehicleSpec => (mode === "straight" ? straightVehicle : vehicle);
+
+  const electricTaper = (speedMs: number): number => {
+    if (!ers) return 1;
+    const kph = speedMs * 3.6;
+    const span = ers.deployTaperEndKph - ers.deployTaperStartKph;
+    if (span <= 0) return kph < ers.deployTaperEndKph ? 1 : 0;
+    return Math.min(1, Math.max(0, (ers.deployTaperEndKph - kph) / span));
+  };
+  const electricFactor = (speedMs: number, electricAvailability: number): number =>
+    electricAvailability < 0 ? electricAvailability : electricAvailability * electricTaper(speedMs);
 
   // Brake effectiveness is evaluated once, at the configured starting brake
   // temperature, and held fixed for the purpose of finding the
@@ -109,22 +150,28 @@ export function buildLongitudinalModel(
   // The driven axle's traction limit (with weight transfer), after the
   // friction ellipse claims whatever the current cornering demand needs
   // first.
-  const driveTractionLimitN = (speedMs: number, curvature: number): number => {
-    const normalLoad = normalLoadN(speedMs, vehicle, G);
+  const driveTractionLimitN = (speedMs: number, curvature: number, mode: AeroMode = "corner"): number => {
+    const aero = aeroVehicle(mode);
+    const normalLoad = normalLoadN(speedMs, aero, G);
     const fyMax = muLat * normalLoad;
-    const resistanceN = dragForceN(speedMs + headwindMs, vehicle) + rollingForceN;
-    const fxMaxTyre = tractionLimitN(speedMs, vehicle, muLong, resistanceN);
+    const resistanceN = dragForceN(speedMs + headwindMs, aero) + rollingForceN;
+    const fxMaxTyre = tractionLimitN(speedMs, aero, muLong, resistanceN);
     return combinedLongCapacityN(lateralDemandN(speedMs, curvature), fyMax, fxMaxTyre);
   };
 
   // Longitudinal tyre force actually deliverable at this speed, net of
   // spinning up the drivetrain's rotating inertia (see traction.ts).
-  const availableDriveForceN = (speedMs: number, curvature: number): number => {
-    const drive = computeDrive(speedMs, vehicle, curves, electricCutoffMs);
-    const resistanceN = dragForceN(speedMs + headwindMs, vehicle) + rollingForceN;
+  const availableDriveForceN = (
+    speedMs: number,
+    curvature: number,
+    mode: AeroMode = "corner",
+    electricAvailability = 1,
+  ): number => {
+    const drive = computeDrive(speedMs, vehicle, curves, electricFactor(speedMs, electricAvailability));
+    const resistanceN = dragForceN(speedMs + headwindMs, aeroVehicle(mode)) + rollingForceN;
     return deliveredDriveForceN(
       effectiveDriveForceN(drive.engineForceN, resistanceN, rotatingInertiaFactor(vehicle, drive.gear)),
-      driveTractionLimitN(speedMs, curvature),
+      driveTractionLimitN(speedMs, curvature, mode),
       chassis.tractionControl,
     );
   };
@@ -139,9 +186,17 @@ export function buildLongitudinalModel(
     return combinedLongCapacityN(lateralDemandN(speedMs, curvature), fyMax, fxMaxBrake);
   };
 
-  const maxAccelMs2 = (speedMs: number, curvature: number): number => {
-    const drag = dragForceN(speedMs + headwindMs, vehicle);
-    return (availableDriveForceN(speedMs, curvature) - drag - rollingForceN) / vehicle.weightKg;
+  const maxAccelMs2 = (
+    speedMs: number,
+    curvature: number,
+    mode: AeroMode = "corner",
+    electricAvailability = 1,
+  ): number => {
+    const drag = dragForceN(speedMs + headwindMs, aeroVehicle(mode));
+    return (
+      (availableDriveForceN(speedMs, curvature, mode, electricAvailability) - drag - rollingForceN) /
+      vehicle.weightKg
+    );
   };
 
   const maxBrakeDecelMs2 = (speedMs: number, curvature: number): number => {
@@ -162,7 +217,8 @@ export function buildLongitudinalModel(
     headwindMs,
     rollingForceN,
     tractionControl: chassis.tractionControl,
-    electricCutoffMs,
+    electricFactor,
+    aeroVehicle,
     lateralDemandN,
     driveTractionLimitN,
     availableDriveForceN,
@@ -196,18 +252,27 @@ export function cornerSpeedLimitMs(curvature: number, muLat: number, vehicle: Ve
 // ever demands a speed the car couldn't actually have reached or couldn't
 // still shed in time for what's ahead. This *is* the look-ahead driver - the
 // backward sweep is what forces braking to start before a corner rather
-// than at its entrance.
+// than the corner entrance whenever one pass isn't enough distance.
+//
+// `aeroModes` (one per point, all corner mode if omitted) sets each
+// point's active-aero mode for its cornering limit and the forward sweep;
+// the backward sweep is braking, which is always corner mode.
+// `electricAvailability` (one per point, all 1 if omitted) is how much of
+// the electric motor the battery can feed there, for the forward sweep.
 export function computeSpeedProfile(
   points: CircuitPoint[],
   vehicle: VehicleSpec,
   model: LongitudinalModel,
   startMode: LapStartMode = "flying",
+  aeroModes?: AeroMode[],
+  electricAvailability?: number[],
 ): SpeedProfilePoint[] {
   const n = points.length;
   const ds = n > 1 ? points[1].distanceM - points[0].distanceM : 0;
   const standingStart = startMode === "standing";
 
-  const speedMs = points.map((p) => cornerSpeedLimitMs(p.curvature, model.muLat, vehicle));
+  const modeAt = (i: number): AeroMode => aeroModes?.[i] ?? "corner";
+  const speedMs = points.map((p, i) => cornerSpeedLimitMs(p.curvature, model.muLat, model.aeroVehicle(modeAt(i))));
   // A standing start begins from a dead stop on the line rather than
   // whatever speed the corner before it would otherwise allow.
   if (standingStart) speedMs[0] = 0;
@@ -217,7 +282,7 @@ export function computeSpeedProfile(
     // it was going ds behind and the most it could have accelerated since?
     for (let i = 0; i < n; i++) {
       const next = (i + 1) % n;
-      const a = model.maxAccelMs2(speedMs[i], points[i].curvature);
+      const a = model.maxAccelMs2(speedMs[i], points[i].curvature, modeAt(i), electricAvailability?.[i] ?? 1);
       const reachable = Math.sqrt(Math.max(0, speedMs[i] * speedMs[i] + 2 * a * ds));
       speedMs[next] = Math.min(speedMs[next], reachable);
     }

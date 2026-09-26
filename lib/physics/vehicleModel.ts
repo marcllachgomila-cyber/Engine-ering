@@ -314,5 +314,6 @@ export function deriveVehicle(
     finalDrive,
     shiftRpm: computeShiftRpm(curves, gearbox),
     shiftTimeS: shiftTimeS(gearbox),
+    activeAero: chassis.activeAero,
   };
 }
