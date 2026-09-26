@@ -1,6 +1,6 @@
 "use client";
 
-import { BODY_TYPE_PRESETS } from "@/lib/physics/defaults";
+import { BODY_TYPE_PRESETS, defaultTyresFor } from "@/lib/physics/defaults";
 import { REAL_CAR_PRESETS, RealCarPreset } from "@/lib/physics/realCars";
 import { BodyType, ChassisConfig, TyreCompound, TyreType } from "@/lib/physics/types";
 import BodyTypeIcon from "./BodyTypeIcon";
@@ -59,6 +59,7 @@ export default function ChassisForm({
       ...value,
       bodyType,
       weightKg: BODY_TYPE_PRESETS[bodyType].weightKg,
+      ...defaultTyresFor(bodyType),
     });
   };
 
@@ -275,8 +276,8 @@ export default function ChassisForm({
           onChange={(v) => onChange({ ...value, tyrePressurePsi: v })}
           minLabel={formatUnitValue(20, "psi")}
           maxLabel={formatUnitValue(50, "psi")}
-          recommended={32}
-          helpText={`Recommended: ${formatUnitValue(32, "psi")}`}
+          recommended={preset.optimalTyrePressurePsi}
+          helpText={`Recommended: ${formatUnitValue(preset.optimalTyrePressurePsi, "psi")}`}
         />
       </SectionCard>
 

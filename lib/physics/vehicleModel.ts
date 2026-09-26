@@ -44,8 +44,8 @@ const GRIP_PER_MM = 0.003;
 const ROAD_TYRE_MU = 1.15;
 
 // A little under-inflation or over-inflation is fine; further from the
-// recommended pressure steadily costs grip in either direction.
-const OPTIMAL_TYRE_PRESSURE_PSI = 32;
+// recommended pressure (per body type, see defaults.ts) steadily costs
+// grip in either direction.
 const GRIP_LOSS_PER_PSI = 0.012;
 
 // Drivetrain efficiency: ~10% lost through gearbox and differential, more
@@ -281,7 +281,7 @@ export function deriveVehicle(
   );
   const pressureGripMultiplier = Math.max(
     0.7,
-    1 - Math.abs(chassis.tyrePressurePsi - OPTIMAL_TYRE_PRESSURE_PSI) * GRIP_LOSS_PER_PSI,
+    1 - Math.abs(chassis.tyrePressurePsi - preset.optimalTyrePressurePsi) * GRIP_LOSS_PER_PSI,
   );
 
   const drivetrainEfficiency = isAwd ? AWD_DRIVETRAIN_EFFICIENCY : DRIVETRAIN_EFFICIENCY;

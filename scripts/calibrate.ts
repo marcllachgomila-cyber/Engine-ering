@@ -3,7 +3,7 @@
 // cars' published figures. Run with: npx tsx scripts/calibrate.ts
 import { findRealCarPreset, gearboxFromPreset } from "../lib/physics/realCars";
 import { simulate } from "../lib/physics/simulate";
-import { DEFAULT_CHASSIS, DEFAULT_TEST_CONFIG } from "../lib/physics/defaults";
+import { DEFAULT_CHASSIS, DEFAULT_TEST_CONFIG, defaultTyresFor } from "../lib/physics/defaults";
 import { buildEngineCurves } from "../lib/physics/engineModel";
 import { deriveVehicle } from "../lib/physics/vehicleModel";
 import { ChassisConfig } from "../lib/physics/types";
@@ -34,8 +34,7 @@ for (const ref of REFERENCE) {
     ...DEFAULT_CHASSIS,
     ...car.chassis,
     bodyType: car.category,
-    tyreType: car.category === "f1" ? "slick" : "standard",
-    tyreCompound: car.category === "f1" ? "soft" : "medium",
+    ...defaultTyresFor(car.category),
   };
   const gearbox = gearboxFromPreset(car);
   const result = simulate(car.engine, chassis, gearbox, { ...DEFAULT_TEST_CONFIG, testType: "zeroToHundred" });

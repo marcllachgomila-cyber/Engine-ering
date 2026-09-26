@@ -14,6 +14,7 @@ import {
   DEFAULT_ENGINE,
   DEFAULT_GEARBOX,
   DEFAULT_TEST_CONFIG,
+  defaultTyresFor,
 } from "@/lib/physics/defaults";
 import { engineSizeLabel } from "@/lib/physics/engineLayout";
 import { gearboxFromPreset, RealCarPreset } from "@/lib/physics/realCars";
@@ -84,6 +85,7 @@ export default function EngineBuilderApp() {
         rearWheelDiameterIn: car.chassis.rearWheelDiameterIn,
         frontWheelWidthMm: car.chassis.frontWheelWidthMm,
         rearWheelWidthMm: car.chassis.rearWheelWidthMm,
+        ...defaultTyresFor(car.category),
       }));
       setEngine(car.engine);
       setGearbox(gearboxFromPreset(car));

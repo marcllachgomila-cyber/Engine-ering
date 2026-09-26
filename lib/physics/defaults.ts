@@ -57,6 +57,10 @@ export interface BodyTypePreset {
   // Tyre sidewall height as a fraction of tread width (the "35" in
   // 285/35 R20). Rolling radius = rim radius + sidewall.
   tyreAspectRatio: number;
+  // Cold pressure the tyres are happiest at - grip falls away either side
+  // of it (vehicleModel.ts). Road tyres run in the low-to-mid 30s, heavier
+  // bodies a little higher; F1's big low-profile slicks run far lower.
+  optimalTyrePressurePsi: number;
 }
 
 export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
@@ -72,6 +76,7 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     rearWeightFraction: 0.43,
     cgHeightM: 0.65,
     tyreAspectRatio: 0.6,
+    optimalTyrePressurePsi: 36,
   },
   suv: {
     weightKg: 2100,
@@ -84,6 +89,7 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     rearWeightFraction: 0.47,
     cgHeightM: 0.7,
     tyreAspectRatio: 0.5,
+    optimalTyrePressurePsi: 34,
   },
   supercar: {
     weightKg: 1500,
@@ -97,6 +103,7 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     rearWeightFraction: 0.59,
     cgHeightM: 0.43,
     tyreAspectRatio: 0.3,
+    optimalTyrePressurePsi: 32,
   },
   f1: {
     weightKg: 798,
@@ -114,6 +121,7 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     // Unused - F1 tyres are specified by outer diameter (see
     // vehicleModel.ts), not aspect ratio.
     tyreAspectRatio: 0.45,
+    optimalTyrePressurePsi: 22,
   },
 };
 
@@ -129,6 +137,18 @@ export const DEFAULT_CHASSIS: ChassisConfig = {
   tyreType: "standard",
   tyreCompound: "medium",
 };
+
+// The tyres a body type rolls out on: F1 cars run soft slicks at their low
+// F1 pressure, everything else standard mediums at its own pressure.
+export function defaultTyresFor(
+  bodyType: BodyType,
+): Pick<ChassisConfig, "tyreType" | "tyreCompound" | "tyrePressurePsi"> {
+  return {
+    tyreType: bodyType === "f1" ? "slick" : "standard",
+    tyreCompound: bodyType === "f1" ? "soft" : "medium",
+    tyrePressurePsi: BODY_TYPE_PRESETS[bodyType].optimalTyrePressurePsi,
+  };
+}
 
 export const DEFAULT_TEST_CONFIG: TestConfig = {
   testType: "tenSecond",
