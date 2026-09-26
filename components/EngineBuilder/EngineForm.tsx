@@ -14,7 +14,14 @@ import {
   ROTOR_OPTIONS,
 } from "@/lib/physics/engineLayout";
 import { RealCarPreset } from "@/lib/physics/realCars";
-import { buildEngineCurves } from "@/lib/physics/engineModel";
+import {
+  buildEngineCurves,
+  DEFAULT_BOOST_BAR,
+  effectiveBoostBar,
+  MAX_BOOST_BAR,
+  MIN_BOOST_BAR,
+  peakBmepBar,
+} from "@/lib/physics/engineModel";
 import CombustionFrictionGraph from "../Simulation/CombustionFrictionGraph";
 import {
   ContinueButton,
@@ -307,7 +314,8 @@ export default function EngineForm({ value, onChange, onContinue, realCar }: Eng
           )}
           {value.fuelType === "diesel" && (
             <p className="text-xs text-zinc-500 mt-2">
-              More torque per liter than petrol, but redline is capped low.
+              With no knock limit, a diesel turns boost into more torque than petrol can, but
+              redline is capped low. Unboosted, it makes less.
             </p>
           )}
         </div>
@@ -326,6 +334,22 @@ export default function EngineForm({ value, onChange, onContinue, realCar }: Eng
             ))}
           </div>
         </div>
+
+        {value.aspiration !== "na" && (
+          <Slider
+            label="Boost"
+            value={effectiveBoostBar(value)}
+            valueLabel={formatUnitValue(effectiveBoostBar(value), "bar", 2)}
+            min={MIN_BOOST_BAR}
+            max={MAX_BOOST_BAR}
+            step={0.05}
+            onChange={(v) => onChange({ ...value, boostBar: v })}
+            minLabel={formatUnitValue(MIN_BOOST_BAR, "bar", 1)}
+            maxLabel={formatUnitValue(MAX_BOOST_BAR, "bar", 1)}
+            recommended={DEFAULT_BOOST_BAR[value.aspiration]}
+            helpText={`Peak BMEP ${peakBmepBar(value).toFixed(1)} bar. Boost raises cylinder pressure, and torque rises with it.`}
+          />
+        )}
         </fieldset>
 
         <div className="pt-2 border-t border-zinc-800">

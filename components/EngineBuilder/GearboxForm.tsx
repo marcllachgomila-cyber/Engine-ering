@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { recommendedGearRatios, MAX_GEAR_RATIO, MIN_GEAR_RATIO } from "@/lib/physics/gearRatios";
 import { buildEngineCurves } from "@/lib/physics/engineModel";
-import { deriveVehicle } from "@/lib/physics/vehicleModel";
+import { deriveVehicle, MAX_FINAL_DRIVE, MIN_FINAL_DRIVE } from "@/lib/physics/vehicleModel";
 import { computeTractiveForceData } from "@/lib/physics/tractiveForce";
 import {
   AutoShiftStrategy,
@@ -69,11 +69,19 @@ export default function GearboxForm({
 }: GearboxFormProps) {
   const recommended = recommendedGearRatios(value.gearCount);
 
-  const tractiveData = useMemo(() => {
+  const { tractiveData, recommendedFinalDrive } = useMemo(() => {
     const curves = buildEngineCurves(engine);
     const vehicle = deriveVehicle(engine, curves, chassis, value);
-    return computeTractiveForceData(curves, vehicle);
+    const recommendedVehicle = deriveVehicle(engine, curves, chassis, {
+      ...value,
+      finalDrive: undefined,
+    });
+    return {
+      tractiveData: computeTractiveForceData(curves, vehicle),
+      recommendedFinalDrive: recommendedVehicle.finalDrive,
+    };
   }, [engine, chassis, value]);
+  const finalDrive = value.finalDrive ?? recommendedFinalDrive;
 
   const setGearCount = (gearCount: number) => {
     onChange({ ...value, gearCount, gearRatios: recommendedGearRatios(gearCount) });
@@ -208,12 +216,38 @@ export default function GearboxForm({
             ))}
           </div>
           <p className="text-xs text-zinc-500 mt-2">
-            AWD grips best but costs some drivetrain efficiency.
+            AWD puts the whole car&rsquo;s weight on driven wheels but loses more to
+            the drivetrain (85% vs 90% efficient). RWD gains grip as weight shifts back
+            under acceleration; FWD loses it.
           </p>
         </div>
       </SectionCard>
 
       <SectionCard title="Gear Ratios" tag="GBX-03">
+        <div>
+          <Slider
+            label="Final Drive"
+            value={finalDrive}
+            valueLabel={`${formatUnitValue(finalDrive, "", 2)}${value.finalDrive === undefined ? " (auto)" : ""}`}
+            min={MIN_FINAL_DRIVE}
+            max={MAX_FINAL_DRIVE}
+            step={0.01}
+            onChange={(v) => onChange({ ...value, finalDrive: v })}
+            minLabel={formatUnitValue(MIN_FINAL_DRIVE, "", 2)}
+            maxLabel={formatUnitValue(MAX_FINAL_DRIVE, "", 2)}
+            recommended={recommendedFinalDrive}
+            helpText={`Recommended: ${formatUnitValue(recommendedFinalDrive, "", 2)}. Multiplies every gear. Recommended gears top gear to reach peak power right at the drag-limited top speed.`}
+          />
+          {value.finalDrive !== undefined && (
+            <button
+              type="button"
+              onClick={() => onChange({ ...value, finalDrive: undefined })}
+              className={`mt-2 rounded text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors ${FOCUS_RING}`}
+            >
+              Use Recommended Final Drive
+            </button>
+          )}
+        </div>
         <div className="flex items-baseline justify-between">
           <p className="text-xs text-zinc-500">
             Lower = taller (top speed); higher = shorter (acceleration).

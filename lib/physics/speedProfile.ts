@@ -1,5 +1,6 @@
 import { BRAKE_MATERIALS, ABS_OFF_PENALTY } from "./brakeModel";
 import { downforceN, dragForceN, normalLoadN } from "./aeroModel";
+import { deliveredDriveForceN, effectiveDriveForceN, tractionLimitN } from "./traction";
 import { brakingMuLong, combinedLongCapacityN, computeTyreLimits } from "./tyreModel";
 import { ChassisConfig, CircuitPoint, EngineCurves, LapStartMode, TestConfig, VehicleSpec } from "./types";
 import {
@@ -7,20 +8,17 @@ import {
   G,
   conditionHeadwindMs,
   gearForAcceleration,
+  rotatingInertiaFactor,
   rpmFromSpeed,
+  wheelForceN,
 } from "./vehicleDynamics";
-
-// Same kinetic-friction-vs-static-peak idea used for the straight-line
-// tests: without traction control, once a driven tyre breaks loose under
-// power it only realizes a fraction of the traction-limited force.
-const UNCONTROLLED_SLIP_PENALTY = 0.75;
 
 // A generous ceiling on any single corner's speed limit, used only when a
 // point's curvature is close enough to zero that the corner-speed formula
 // would otherwise blow up toward infinity (i.e. "this point does not
 // meaningfully constrain speed" - the car's real limit there is drag/power,
 // enforced separately by the accel/brake passes).
-const UNCONSTRAINED_SPEED_MS = 130;
+const UNCONSTRAINED_SPEED_MS = 170;
 
 // How many forward+backward sweeps to run before treating the profile as
 // converged. The initial guess (each point's own corner-speed limit) is
@@ -47,8 +45,7 @@ export function computeDrive(speedMs: number, vehicle: VehicleSpec, curves: Engi
     curves.maxRevRpm,
   );
   const torqueNm = curves.torqueAt(rpm);
-  const engineForceN =
-    (torqueNm * gearRatio * vehicle.finalDrive * vehicle.drivetrainEfficiency) / vehicle.wheelRadiusM;
+  const engineForceN = wheelForceN(torqueNm, gearRatio, vehicle);
   return { gear, rpm, torqueNm, engineForceN };
 }
 
@@ -57,7 +54,9 @@ export interface LongitudinalModel {
   muLat: number;
   headwindMs: number;
   rollingForceN: number;
+  tractionControl: boolean;
   lateralDemandN: (speedMs: number, curvature: number) => number;
+  driveTractionLimitN: (speedMs: number, curvature: number) => number;
   availableDriveForceN: (speedMs: number, curvature: number) => number;
   availableBrakeForceN: (speedMs: number, curvature: number) => number;
   maxAccelMs2: (speedMs: number, curvature: number) => number;
@@ -95,17 +94,27 @@ export function buildLongitudinalModel(
   const lateralDemandN = (speedMs: number, curvature: number): number =>
     vehicle.weightKg * speedMs * speedMs * Math.abs(curvature);
 
-  // Engine force actually deliverable at this speed, after the friction
-  // ellipse claims whatever the current cornering demand needs first.
-  const availableDriveForceN = (speedMs: number, curvature: number): number => {
+  // The driven axle's traction limit (with weight transfer), after the
+  // friction ellipse claims whatever the current cornering demand needs
+  // first.
+  const driveTractionLimitN = (speedMs: number, curvature: number): number => {
     const normalLoad = normalLoadN(speedMs, vehicle, G);
     const fyMax = muLat * normalLoad;
-    const fxMaxTyre = muLong * normalLoad;
-    const fxAvail = combinedLongCapacityN(lateralDemandN(speedMs, curvature), fyMax, fxMaxTyre);
+    const resistanceN = dragForceN(speedMs + headwindMs, vehicle) + rollingForceN;
+    const fxMaxTyre = tractionLimitN(speedMs, vehicle, muLong, resistanceN);
+    return combinedLongCapacityN(lateralDemandN(speedMs, curvature), fyMax, fxMaxTyre);
+  };
 
+  // Longitudinal tyre force actually deliverable at this speed, net of
+  // spinning up the drivetrain's rotating inertia (see traction.ts).
+  const availableDriveForceN = (speedMs: number, curvature: number): number => {
     const drive = computeDrive(speedMs, vehicle, curves);
-    if (drive.engineForceN <= fxAvail) return drive.engineForceN;
-    return chassis.tractionControl ? fxAvail : fxAvail * UNCONTROLLED_SLIP_PENALTY;
+    const resistanceN = dragForceN(speedMs + headwindMs, vehicle) + rollingForceN;
+    return deliveredDriveForceN(
+      effectiveDriveForceN(drive.engineForceN, resistanceN, rotatingInertiaFactor(vehicle, drive.gear)),
+      driveTractionLimitN(speedMs, curvature),
+      chassis.tractionControl,
+    );
   };
 
   // Combined tyre+brake force deliverable at this speed, same friction-
@@ -140,7 +149,9 @@ export function buildLongitudinalModel(
     muLat,
     headwindMs,
     rollingForceN,
+    tractionControl: chassis.tractionControl,
     lateralDemandN,
+    driveTractionLimitN,
     availableDriveForceN,
     availableBrakeForceN,
     maxAccelMs2,

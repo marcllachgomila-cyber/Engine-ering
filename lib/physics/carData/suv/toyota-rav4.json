@@ -17,10 +17,10 @@
     "gearCount": 8,
     "drivetrain": "fwd",
     "dualClutch": false,
-    "autoShiftStrategy": "maxTorque"
+    "autoShiftStrategy": "maxPower"
   },
   "chassis": {
-    "weightKg": 1700,
+    "weightKg": 1600,
     "frontWheelDiameterIn": 18,
     "rearWheelDiameterIn": 18,
     "frontWheelWidthMm": 225,

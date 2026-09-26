@@ -10,7 +10,8 @@
     "redlineRpm": 8100,
     "maxRevRpm": 8300,
     "aspiration": "turbo",
-    "fuelType": "petrol"
+    "fuelType": "petrol",
+    "boostBar": 1.05
   },
   "gearbox": {
     "transmissionType": "auto",

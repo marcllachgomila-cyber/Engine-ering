@@ -10,14 +10,15 @@
     "redlineRpm": 6000,
     "maxRevRpm": 6300,
     "aspiration": "turbo",
-    "fuelType": "petrol"
+    "fuelType": "petrol",
+    "boostBar": 0.95
   },
   "gearbox": {
     "transmissionType": "auto",
     "gearCount": 8,
     "drivetrain": "rwd",
     "dualClutch": false,
-    "autoShiftStrategy": "maxTorque"
+    "autoShiftStrategy": "maxPower"
   },
   "chassis": {
     "weightKg": 2050,

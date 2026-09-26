@@ -3,7 +3,7 @@ import { EngineCurves, ForcePoint, GearForceCurve, TractiveForceData, VehicleSpe
 const AIR_DENSITY_KG_M3 = 1.225;
 const G = 9.81;
 const STEP_MS = 0.5;
-const MAX_SEARCH_SPEED_MS = 130;
+const MAX_SEARCH_SPEED_MS = 170;
 
 function rpmFromSpeedMs(speedMs: number, gearRatio: number, vehicle: VehicleSpec): number {
   return (

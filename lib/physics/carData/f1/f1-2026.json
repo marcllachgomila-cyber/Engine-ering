@@ -11,6 +11,7 @@
     "maxRevRpm": 15000,
     "aspiration": "turbo",
     "fuelType": "petrol",
+    "boostBar": 2.8,
     "hybridBoostKw": 350,
     "hybridMaxTorqueNm": 500
   },
@@ -18,7 +19,7 @@
     "transmissionType": "auto",
     "gearCount": 8,
     "drivetrain": "rwd",
-    "dualClutch": false,
+    "dualClutch": true,
     "autoShiftStrategy": "maxPower"
   },
   "chassis": {

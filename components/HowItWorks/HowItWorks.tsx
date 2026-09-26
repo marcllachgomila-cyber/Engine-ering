@@ -171,60 +171,82 @@ x(t+\Delta t) &= x(t) + v(t+\Delta t)\,\Delta t
         <P>
           The engine is not simulated cylinder-by-cylinder; instead it is represented as a
           continuous torque curve <code>T(rpm)</code> shaped from the configuration you choose
-          (displacement, cylinder count, aspiration, fuel type, redline and rev limit), from which
-          power is derived directly.
+          (displacement, aspiration, boost, fuel type, redline and rev limit), from which power is
+          derived directly.
         </P>
-        <H3>Peak torque</H3>
+        <H3>Peak torque from BMEP</H3>
         <P>
-          A theoretical peak torque is estimated from displacement, scaled by a torque-per-litre
-          figure that depends on induction type (naturally aspirated, turbocharged, or
-          supercharged — forced induction raises cylinder pressure and therefore torque-per-litre)
-          and on fuel type (diesel&rsquo;s higher compression ratio and long-stroke design earn a
-          multiplier over petrol), and finally adjusted by a mild cylinder-count factor that
-          rewards smoother multi-cylinder combustion but tapers off at very high cylinder counts
-          where per-cylinder friction starts eating the gain:
+          Rather than inventing a torque figure, peak torque is worked out from displacement and
+          brake mean effective pressure (BMEP) — the average cylinder pressure that ends up as
+          useful work at the crankshaft. A four-stroke cylinder makes one power stroke every two
+          revolutions, which gives:
         </P>
         <Formula
-          tex={String.raw`T_{\text{peak}} = D \cdot k_{\text{tpl}}(\text{aspiration}, \text{fuel}) \cdot f(n_{\text{cyl}})`}
+          tex={String.raw`T_{\text{peak}} = \frac{\text{BMEP} \cdot V_d}{4\pi}`}
           vars={[
-            { symbol: String.raw`T_{\text{peak}}`, desc: "theoretical peak crankshaft torque" },
-            { symbol: String.raw`D`, desc: "engine displacement" },
-            { symbol: String.raw`k_{\text{tpl}}`, desc: "torque-per-litre figure, set by aspiration and fuel type" },
-            { symbol: String.raw`n_{\text{cyl}}`, desc: "cylinder count" },
-            { symbol: String.raw`f(n_{\text{cyl}})`, desc: "cylinder-count factor rewarding smoother combustion, tapering off at very high counts" },
+            { symbol: String.raw`T_{\text{peak}}`, desc: "peak crankshaft torque, in N·m" },
+            { symbol: String.raw`\text{BMEP}`, desc: "peak brake mean effective pressure, in Pa (1 bar = 10⁵ Pa)" },
+            { symbol: String.raw`V_d`, desc: "swept volume (displacement), in m³" },
           ]}
         />
+        <P>
+          A naturally aspirated petrol engine manages about 12.5 bar. Boost raises the intake
+          pressure from 1 bar to <code>1 + p_boost</code> bar absolute, and cylinder pressure scales
+          with it, a little less than proportionally for petrol (charge heating and knock
+          margin) and a little more for diesel, which has no knock limit:
+        </P>
+        <Formula
+          tex={String.raw`\text{BMEP} = \text{BMEP}_{\text{NA}} \cdot (1 + p_{\text{boost}}) \cdot \eta_{\text{boost}}`}
+          vars={[
+            { symbol: String.raw`\text{BMEP}_{\text{NA}}`, desc: "unboosted BMEP: ≈12.5 bar petrol, ≈9 bar diesel" },
+            { symbol: String.raw`p_{\text{boost}}`, desc: "boost pressure above atmospheric, in bar (0 for naturally aspirated)" },
+            { symbol: String.raw`\eta_{\text{boost}}`, desc: "how well boost turns into cylinder pressure: 0.95 petrol, 1.15 diesel" },
+          ]}
+        />
+        <P>
+          That lands turbo petrol engines at 18–25 bar and turbo diesels at 20–25 bar, the ranges
+          real engines run at. As a check, a Bugatti Chiron&rsquo;s 8.0 L at about 25 bar gives
+          2.5×10⁶ × 0.008 / 4π ≈ 1,600 N·m, what the real car makes. Cylinder count doesn&rsquo;t
+          appear at all: at the same BMEP and displacement, more cylinders make the same torque.
+        </P>
         <H3>Curve shape</H3>
         <P>
-          The torque curve across the rev range is modeled as an asymmetric bell curve (a
-          Gaussian) centred on a peak-torque RPM, expressed as a fraction of redline. Where that
-          fraction sits depends on aspiration and fuel — turbocharged and supercharged engines
-          build peak cylinder pressure earlier in the rev range than naturally aspirated ones, and
-          diesels peak earlier still and don&rsquo;t rev out:
+          The torque curve across the rev range is a normalised shape <code>s(x)</code>, where 1
+          means peak torque, as a function of RPM as a fraction of redline:
         </P>
         <Formula
           tex={String.raw`\begin{aligned}
-x &= \frac{\text{rpm}}{\text{rpm}_{\text{redline}}} \\
-T(\text{rpm}) &= T_{\text{peak}}\, \exp\!\left(-\frac{(x - x_{\text{peak}})^2}{2\sigma^2}\right)
+x &= \frac{\text{rpm}}{\text{rpm}_{\text{redline}}} \
+T(\text{rpm}) &= T_{\text{peak}}\, s(x)
 \end{aligned}`}
           vars={[
             { symbol: String.raw`x`, desc: "current RPM as a fraction of redline" },
             { symbol: String.raw`T(\text{rpm})`, desc: "torque output at a given RPM" },
-            { symbol: String.raw`T_{\text{peak}}`, desc: "theoretical peak torque" },
-            { symbol: String.raw`x_{\text{peak}}`, desc: "fraction of redline where peak torque occurs, set by aspiration and fuel" },
-            { symbol: String.raw`\sigma`, desc: "spread of the bell curve (asymmetric: one value below the peak, a wider one above it)" },
+            { symbol: String.raw`s(x)`, desc: "normalised curve shape, set by aspiration and fuel" },
           ]}
         />
+        <Ul>
+          <Li>
+            <b>Naturally aspirated</b> engines have one broad hump that peaks high in the band
+            (about 72% of redline) and still makes about 90% of peak at redline, which is why NA
+            power peaks right up near the limiter.
+          </Li>
+          <Li>
+            <b>Turbocharged</b> engines make roughly their unboosted torque off boost. The turbo
+            then spools up to a flat plateau from about a third of redline, and the plateau fades
+            to about 85% by redline as the turbo runs out of flow.
+          </Li>
+          <Li>
+            <b>Supercharged</b> engines are belt-driven, so their plateau starts much earlier.
+          </Li>
+          <Li>
+            <b>Diesels</b> spool early and fade harder toward their low redline.
+          </Li>
+        </Ul>
         <P>
-          The spread <code>σ</code> is not symmetric: one value governs how sharply torque rises
-          below the peak, a different (wider) value governs how gently it falls away above the
-          peak, since real dyno curves build quickly to their peak and then decay more gradually.
-          Forced-induction engines use a narrower, peakier shape than naturally aspirated ones. A
-          small floor value keeps torque from ever computing to exactly zero far from the peak, so
-          idle and near-limiter RPM still produce usable, if weak, torque. Torque is only evaluated
-          between idle RPM and the hard rev limit — a car can be pushed past its tuned redline, up
-          to the rev limit, with torque simply continuing to taper along the same falling curve
-          into that over-rev zone.
+          Torque is only evaluated between idle RPM and the hard rev limit. A car can be pushed
+          past its tuned redline, up to the rev limit, but torque falls away quickly enough there
+          that power drops toward the limiter.
         </P>
         <H3>Power</H3>
         <P>
@@ -287,24 +309,23 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
           cycle per rotor revolution, and the rotor turns at a third of the eccentric (output)
           shaft&rsquo;s speed — so every rotor delivers one power stroke per shaft revolution,
           where a four-stroke cylinder delivers one every two. Rotary displacement is
-          conventionally quoted as a single chamber per rotor, which makes a &ldquo;1.3 L&rdquo;
-          twin-rotor behave more like a 2.6 L piston engine. The model reflects that with a
-          torque multiplier on the quoted displacement, set well short of 2× because the long,
-          thin combustion chamber loses much of its heat to the housing and burns incompletely:
+          conventionally quoted as a single chamber per rotor, so the swept volume that goes into
+          the BMEP formula is twice the quoted figure: a &ldquo;1.3 L&rdquo; twin-rotor sweeps
+          2.6 L per two revolutions. Its long, thin combustion chamber loses much of its heat to
+          the housing and burns incompletely, which shows up as a lower BMEP:
         </P>
         <Formula
-          tex={String.raw`T_{\text{peak}}^{\text{rotary}} = D \cdot k_{\text{tpl}}(\text{aspiration}) \cdot f(2 n_{\text{rotor}}) \cdot k_{\text{rotary}}`}
+          tex={String.raw`T_{\text{peak}}^{\text{rotary}} = \frac{k_{\text{rotary}}\, \text{BMEP} \cdot 2 D}{4\pi}`}
           vars={[
             { symbol: String.raw`D`, desc: "quoted rotary displacement (one chamber per rotor)" },
-            { symbol: String.raw`n_{\text{rotor}}`, desc: "rotor count — each rotor fires as often as two four-stroke cylinders, so the smoothness factor sees 2·n_rotor" },
-            { symbol: String.raw`k_{\text{rotary}}`, desc: "rotary torque multiplier (≈1.6), calibrated against the Mazda RX-8 and RX-7" },
+            { symbol: String.raw`k_{\text{rotary}}`, desc: "rotary BMEP factor (≈0.82), calibrated against the Mazda RX-8's 211 N·m" },
           ]}
         />
         <P>
           With no valvetrain to limit breathing, a rotary&rsquo;s torque peak sits later in the rev
           range and falls away more gently above it, and because every moving part simply spins
           — nothing reciprocates — its friction rises only linearly with RPM. Rotaries are also
-          much lighter per unit of output, which feeds into the vehicle mass, and they are petrol
+          much lighter per unit of output (see the weight breakdown), and they are petrol
           only: the chamber shape can&rsquo;t reach the compression ratio a diesel needs.
         </P>
         <H3>Locating the true peaks</H3>
@@ -336,42 +357,74 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
         <H3>The traction limit</H3>
         <P>
           The classic Coulomb friction model says the maximum force before a surface slips is the
-          normal load times a friction coefficient. Applied to a car sitting on its tyres, the
-          normal load is (approximately) its own weight, so:
+          normal load times a friction coefficient. Only the driven wheels can push the car, so
+          the load that counts is the load on the driven axle:
         </P>
         <Formula
-          tex={String.raw`F_{\text{traction}} = \mu_{\text{eff}}\, m\, g`}
+          tex={String.raw`F_{\max} = \mu_{\text{eff}}\, N_{\text{driven}}`}
           vars={[
-            { symbol: String.raw`F_{\text{traction}}`, desc: "maximum horizontal force the driven tyres can transmit before slipping" },
-            { symbol: String.raw`\mu_{\text{eff}}`, desc: "effective grip coefficient, built up below from tyre, condition and layout factors" },
-            { symbol: String.raw`m`, desc: "vehicle mass" },
-            { symbol: String.raw`g`, desc: "gravitational acceleration" },
+            { symbol: String.raw`F_{\max}`, desc: "maximum horizontal force the driven tyres can transmit before slipping" },
+            { symbol: String.raw`\mu_{\text{eff}}`, desc: "effective grip coefficient, built up below from tyre and condition factors" },
+            { symbol: String.raw`N_{\text{driven}}`, desc: "normal load on the driven axle (the whole car for all-wheel drive)" },
           ]}
         />
         <P>
-          where <code>m</code> is vehicle mass, <code>g</code> is gravitational acceleration, and{" "}
-          <code>μ_eff</code> is an effective grip coefficient built up from every factor that
-          changes how much rubber is actually gripping the road (below). Whenever the drivetrain
-          tries to push more force through the driven wheels than this limit allows, the excess is
-          simply unavailable — the wheels spin instead of the car accelerating any faster.
+          This is the number that decides 0–100 times. The load on each axle isn&rsquo;t fixed:
+          under acceleration, weight transfers toward the rear:
         </P>
+        <Formula
+          tex={String.raw`\begin{aligned}
+N_{\text{rear}} &= m g \frac{b}{L} + m a \frac{h}{L} \\
+N_{\text{front}} &= m g \frac{L - b}{L} - m a \frac{h}{L}
+\end{aligned}`}
+          vars={[
+            { symbol: String.raw`L`, desc: "wheelbase" },
+            { symbol: String.raw`b`, desc: "distance from the centre of gravity to the front axle, so b/L is the static rear weight share" },
+            { symbol: String.raw`h`, desc: "centre-of-gravity height" },
+            { symbol: String.raw`a`, desc: "longitudinal acceleration" },
+          ]}
+        />
+        <P>
+          So rear-wheel drive gains grip as it accelerates, front-wheel drive loses it, and
+          all-wheel drive uses the whole car&rsquo;s weight either way. Wheelbase, weight split
+          and CG height are representative figures per body type: a mid-engined supercar carries
+          59% of its weight over the rear axle, a front-driven minivan only 43%. At the traction
+          limit the acceleration is set by the traction force itself,{" "}
+          <code>a = (F − R) / m</code> with <code>R</code> the drag and rolling resistance, so the
+          limit is solved in closed form:
+        </P>
+        <Formula
+          tex={String.raw`\begin{aligned}
+F_{\max}^{\text{RWD}} &= \frac{\mu \left(N_{\text{rear},0} - R\,h/L\right)}{1 - \mu h / L} \\[4pt]
+F_{\max}^{\text{FWD}} &= \frac{\mu \left(N_{\text{front},0} + R\,h/L\right)}{1 + \mu h / L}
+\end{aligned}`}
+          vars={[
+            { symbol: String.raw`N_{\text{rear},0},\ N_{\text{front},0}`, desc: "static axle loads, including any aero downforce or lift" },
+            { symbol: String.raw`R`, desc: "drag plus rolling resistance" },
+          ]}
+        />
         <H3>Building the effective grip coefficient</H3>
         <P>μ_eff is assembled by multiplying together every factor that scales grip up or down:</P>
         <Formula
           tex={String.raw`\begin{aligned}
-\mu_{\text{eff}} = \ & \mu_{\text{base}}(\text{width}, \text{pressure}, \text{layout}) \\
+\mu_{\text{eff}} = \ & \mu_{\text{base}}(\text{width}, \text{pressure}) \\
 & \times\, k_{\text{cond}}(\text{condition}) \\
 & \times\, k_{\text{type}}(\text{condition}) \\
 & \times\, k_{\text{compound}}(\text{condition})
 \end{aligned}`}
           vars={[
             { symbol: String.raw`\mu_{\text{eff}}`, desc: "the final effective grip coefficient" },
-            { symbol: String.raw`\mu_{\text{base}}`, desc: "base coefficient from tyre width, pressure, and drivetrain layout" },
+            { symbol: String.raw`\mu_{\text{base}}`, desc: "base coefficient of a road tyre (≈1.15), adjusted for tyre width and pressure" },
             { symbol: String.raw`k_{\text{cond}}`, desc: "multiplier for road condition (dry, wet, rain, headwind)" },
             { symbol: String.raw`k_{\text{type}}`, desc: "multiplier for tyre type (slick vs. treaded) under that condition" },
             { symbol: String.raw`k_{\text{compound}}`, desc: "multiplier for tyre compound (soft/medium/hard/intermediate/wet) under that condition" },
           ]}
         />
+        <P>
+          The results sit where real tyres do: about 1.1–1.15 for a road tyre, about 1.2–1.3 for
+          a wide performance tyre, about 1.5 or more for a slick, and about 0.6–0.7 for a road
+          tyre on a wet road.
+        </P>
         <Ul>
           <Li>
             <b>Tyre width</b> on the driven axle — wider tyres put a larger contact patch on the
@@ -381,12 +434,6 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
             <b>Tyre pressure</b> — grip peaks near a recommended pressure and falls off roughly in
             proportion to how far pressure deviates from it in either direction (over- or
             under-inflated both cost grip).
-          </Li>
-          <Li>
-            <b>Drivetrain layout</b> — see the weight-transfer note in the Vehicle Mass chapter:
-            rear-wheel drive gets a boost under acceleration, front-wheel drive a penalty, and
-            all-wheel drive the biggest boost of the three since power is split across every tyre
-            instead of riding on weight transfer alone.
           </Li>
           <Li>
             <b>Road condition</b> — a baseline multiplier for dry, wet, rain, or a headwind
@@ -405,25 +452,15 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
             is damp or soaked).
           </Li>
         </Ul>
-        <H3>Wheel slip and the optimal slip window</H3>
+        <H3>Wheel spin</H3>
         <P>
-          Real tyres don&rsquo;t produce their maximum longitudinal force at zero slip or at full
-          spinning — they peak somewhere in between, where the contact patch is deforming just
-          enough to grip hard without breaking fully loose. This is modeled as an efficiency
-          function of commanded wheel-spin percentage, peaking at a small optimal slip value and
-          falling off — floored at a minimum — the further the chosen slip is from that optimum in
-          either direction:
+          Wheel spin is an output of the simulation, not a setting. A tyre needs some slip to make
+          any force at all: slip rises roughly in proportion to how much of the grip is in use, up
+          to the tyre&rsquo;s peak at about 10% slip. If the drivetrain asks for more than{" "}
+          <code>F_max</code>, traction control holds the tyre at that 10% optimum. Without it, the
+          extra torque just spins the wheels up, and at twice the available grip they&rsquo;re
+          spinning freely. The results show the wheel-spin trace and its peak.
         </P>
-        <Formula
-          tex={String.raw`\eta_{\text{slip}}(s) = \max\!\left(\eta_{\min},\ 1 - \frac{|s - s_{\text{opt}}|}{100}\right)`}
-          vars={[
-            { symbol: String.raw`\eta_{\text{slip}}(s)`, desc: "traction efficiency at a given commanded wheel-spin percentage" },
-            { symbol: String.raw`s`, desc: "commanded wheel-spin percentage" },
-            { symbol: String.raw`s_{\text{opt}}`, desc: "optimal slip percentage where efficiency peaks" },
-            { symbol: String.raw`\eta_{\min}`, desc: "floor efficiency, the minimum value this factor can fall to" },
-          ]}
-        />
-        <P>This factor multiplies directly into the traction limit used for launches and hard acceleration.</P>
         <H3>Uncontrolled wheelspin</H3>
         <P>
           When the drivetrain&rsquo;s demanded force exceeds the traction limit, a car with traction
@@ -435,15 +472,15 @@ P_{\text{hp}} &= \frac{P(\text{rpm})}{745.7}
         <Formula
           tex={String.raw`F_{\text{drive}} =
 \begin{cases}
-F_{\text{wheel}}, & F_{\text{wheel}} \le F_{\text{traction}} \\[2pt]
-F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} \text{ and traction control on} \\[2pt]
-k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} \text{ and traction control off}
+F_{\text{wheel}}, & F_{\text{wheel}} \le F_{\max} \\[2pt]
+F_{\max}, & F_{\text{wheel}} > F_{\max} \text{ and traction control on} \\[2pt]
+k_{\text{slip}}\, F_{\max}, & F_{\text{wheel}} > F_{\max} \text{ and traction control off}
 \end{cases}
 \quad (k_{\text{slip}} < 1)`}
           vars={[
             { symbol: String.raw`F_{\text{drive}}`, desc: "the force actually realized at the driven wheels" },
             { symbol: String.raw`F_{\text{wheel}}`, desc: "force demanded by the drivetrain, from the Gearbox chapter" },
-            { symbol: String.raw`F_{\text{traction}}`, desc: "the traction limit from above" },
+            { symbol: String.raw`F_{\max}`, desc: "the traction limit from above" },
             { symbol: String.raw`k_{\text{slip}}`, desc: "kinetic-friction fraction realized once a tyre breaks loose without traction control" },
           ]}
         />
@@ -464,7 +501,7 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
           ]}
         />
         <P>
-          where <code>C_rr</code> is a rolling-resistance coefficient. This force opposes motion in
+          where <code>C_rr</code> is a rolling-resistance coefficient (0.012). This force opposes motion in
           every test — acceleration, braking, and lap simulation alike — the same way it does on a
           real road.
         </P>
@@ -565,8 +602,29 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
       <>
         <P>
           The gearbox sits between the engine&rsquo;s torque curve and the wheels, multiplying torque up
-          (at the cost of road speed per RPM) through each gear&rsquo;s ratio and a fixed final-drive
+          (at the cost of road speed per RPM) through each gear&rsquo;s ratio and a final-drive
           ratio.
+        </P>
+        <H3>Tyre rolling radius</H3>
+        <P>
+          The wheel rolls on its tyre, not its rim, so the rolling radius is the rim radius plus
+          the tyre&rsquo;s sidewall. The sidewall is the tread width times the aspect ratio (the
+          &ldquo;35&rdquo; in 285/35 R20), which is set per body type: about 30% for a supercar and
+          50–60% for an SUV or minivan. F1 tyres are specified by outer diameter instead: 670 mm on
+          13&Prime; rims, 720 mm on 18&Prime;.
+        </P>
+        <Formula
+          tex={String.raw`r_w = \frac{d_{\text{rim}}}{2} + w_{\text{tyre}} \cdot \text{AR}`}
+          vars={[
+            { symbol: String.raw`r_w`, desc: "rolling radius of the driven wheel" },
+            { symbol: String.raw`d_{\text{rim}}`, desc: "rim diameter" },
+            { symbol: String.raw`w_{\text{tyre}}`, desc: "tyre tread width" },
+            { symbol: String.raw`\text{AR}`, desc: "tyre aspect ratio (sidewall height / width)" },
+          ]}
+        />
+        <P>
+          The sidewall matters a lot: a 21&Prime; rim alone has a 267 mm radius, but with a 355/25
+          tyre on it the wheel rolls on about 356 mm, a third more road per revolution.
         </P>
         <H3>RPM from road speed</H3>
         <P>
@@ -589,6 +647,27 @@ k_{\text{slip}}\, F_{\text{traction}}, & F_{\text{wheel}} > F_{\text{traction}} 
           Inverting this relationship is how the model always knows what RPM the engine is turning
           at for any given speed and gear, without needing to separately track engine speed as its
           own simulated state.
+        </P>
+        <H3>Final drive</H3>
+        <P>
+          The final drive (differential) ratio <code>i_0</code> multiplies every gear. By default
+          it&rsquo;s the ratio a manufacturer would pick: in top gear, the engine reaches its power
+          peak exactly at the drag-limited top speed (see Straight-Line Simulation). Any shorter,
+          and the car hits the rev limiter before it runs out of power. Any taller, and it never
+          gets up onto its power peak. You can also set it yourself in the Gearbox step.
+        </P>
+        <Formula
+          tex={String.raw`i_0 = \frac{\text{rpm}_{P_{\max}} \cdot 2\pi\, r_w}{60 \cdot v_{\text{drag}} \cdot i_N}`}
+          vars={[
+            { symbol: String.raw`\text{rpm}_{P_{\max}}`, desc: "RPM of peak power" },
+            { symbol: String.raw`v_{\text{drag}}`, desc: "drag-limited top speed" },
+            { symbol: String.raw`i_N`, desc: "top-gear ratio" },
+          ]}
+        />
+        <P>
+          Because the gear spread below is fixed, the final drive also absorbs what a real car
+          would do with its individual ratios, so it ranges from about 2.5 (Chiron) to 6 (an
+          8-speed family car), wider than the 3–4 typical of real cars.
         </P>
         <H3>Gear ratio spread</H3>
         <P>
@@ -615,21 +694,26 @@ k &= 1, 2, \dots, N
           what lets adding gears meaningfully raise a car&rsquo;s theoretical top speed rather than just
           adding closer-spaced ratios in between the same two endpoints.
         </P>
-        <H3>Shift point</H3>
+        <H3>Shift point and shift time</H3>
         <P>
           Manual gearboxes (and one automatic strategy) always shift right before the hard rev
           limiter, on the assumption of a driver who uses every available RPM in every gear. Two
-          other automatic strategies short-shift instead: one shifts at the RPM where torque peaks,
-          the other at the RPM where power peaks — trading outright acceleration in the current
-          gear for picking up the next gear&rsquo;s pull sooner.
+          other automatic strategies short-shift instead: one shifts at the top of the torque
+          band (the highest RPM still making nearly all of peak torque), the other at the RPM where
+          power peaks.
+        </P>
+        <P>
+          Each upshift cuts drive to the wheels for a moment: 0.05 s for a dual-clutch box, which
+          has the next gear pre-selected, 0.15 s for a torque-converter automatic, and 0.3 s for a
+          manual, which needs a clutch and a lever throw.
         </P>
         <H3>Wheel force</H3>
         <P>
           Torque at the engine is converted into a forward force at the contact patch by
           multiplying through the full driveline ratio and dividing by the driven wheel&rsquo;s rolling
-          radius, with a flat drivetrain efficiency factor <code>η_t</code> applied to represent
-          everything lost to friction between the crank and the road (clutch, gears,
-          differential):
+          radius, with a drivetrain efficiency <code>η_t</code> for everything lost to friction
+          between the crank and the road: about 0.90 for rear- or front-wheel drive, and 0.85 for
+          all-wheel drive with its extra transfer case, front differential and propshaft:
         </P>
         <Formula
           tex={String.raw`F_{\text{wheel}} = \frac{T(\text{rpm}) \, i_g \, i_0 \, \eta_t}{r_w}`}
@@ -638,7 +722,7 @@ k &= 1, 2, \dots, N
             { symbol: String.raw`T(\text{rpm})`, desc: "engine torque at the current RPM" },
             { symbol: String.raw`i_g`, desc: "current gear ratio" },
             { symbol: String.raw`i_0`, desc: "final-drive ratio" },
-            { symbol: String.raw`\eta_t`, desc: "flat drivetrain efficiency (clutch, gears, differential losses)" },
+            { symbol: String.raw`\eta_t`, desc: "drivetrain efficiency: 0.90 (RWD/FWD), 0.85 (AWD)" },
             { symbol: String.raw`r_w`, desc: "driven wheel's rolling radius" },
           ]}
         />
@@ -745,73 +829,52 @@ T &\leftarrow T + \Delta T
     render: () => (
       <>
         <P>
-          Total vehicle mass is not a single input — it is built up from the chassis and every
-          component choice that adds real physical weight, since a bigger engine or bigger wheels
-          are not free in a real car either.
+          The Weight setting is the car&rsquo;s total weight — engine, wheels, fuel and everything
+          else included. Nothing is added on top of it, so a real car&rsquo;s published kerb
+          weight can go straight in.
         </P>
-        <H3>Mass build-up</H3>
+        <H3>Weight breakdown</H3>
+        <P>
+          The results screen splits that total into an estimate of where it sits. The engine is
+          sized from its cylinder count and displacement, forced induction adds its hardware, and
+          the wheels and tyres are sized from their diameter and width. The drivetrain,
+          suspension and brakes, interior and electrics, and fuel and fluids each take a typical
+          share for the body type, and the body and chassis structure is whatever remains. It
+          never drops below 10% of the total: a huge engine in a light car makes the other
+          estimates shrink to fit.
+        </P>
         <Formula
-          tex={String.raw`\begin{aligned}
-m = \ & m_{\text{chassis}}(\text{bodyType}) \\
-& + \, n_{\text{cyl}}\, k_{\text{cyl}} \;+\; D\, k_D \\
-& + \bigl(\text{turbo or supercharger} \;?\; m_{\text{fi}} : 0\bigr) \\
-& + \sum_{\text{axles}} \Delta(\text{diameter})\, k_{\text{dia}} \;+\; \Delta(\text{width})\, k_{\text{width}}
-\end{aligned}`}
+          tex={String.raw`m_{\text{body}} = m - m_{\text{engine}} - m_{\text{fi}} - m_{\text{wheels}} - \sum_{\text{systems}} s_i\, m`}
           vars={[
-            { symbol: String.raw`m`, desc: "total vehicle mass" },
-            { symbol: String.raw`m_{\text{chassis}}`, desc: "base chassis mass, set by body type (minivan, SUV, supercar, F1)" },
-            { symbol: String.raw`n_{\text{cyl}}`, desc: "cylinder count" },
-            { symbol: String.raw`k_{\text{cyl}}`, desc: "mass added per cylinder" },
-            { symbol: String.raw`D`, desc: "engine displacement" },
-            { symbol: String.raw`k_D`, desc: "mass added per unit of displacement" },
-            { symbol: String.raw`m_{\text{fi}}`, desc: "fixed hardware mass added when turbocharged or supercharged" },
-            { symbol: String.raw`\Delta(\text{diameter})`, desc: "wheel diameter delta from the reference dimension, per axle" },
-            { symbol: String.raw`\Delta(\text{width})`, desc: "tyre width delta from the reference dimension, per axle" },
-            { symbol: String.raw`k_{\text{dia}},\ k_{\text{width}}`, desc: "mass added per unit of diameter/width delta" },
+            { symbol: String.raw`m`, desc: "total weight, as set" },
+            { symbol: String.raw`m_{\text{engine}}`, desc: "engine mass, from cylinder (or rotor) count and displacement" },
+            { symbol: String.raw`m_{\text{fi}}`, desc: "turbocharger or supercharger hardware" },
+            { symbol: String.raw`m_{\text{wheels}}`, desc: "wheel and tyre set, from diameter and width" },
+            { symbol: String.raw`s_i`, desc: "typical share of the total for each remaining system, per body type" },
           ]}
         />
-        <P>
-          Base chassis mass comes from the chosen body type (minivan, SUV, supercar, or F1, each
-          with its own realistic mass range). Engine mass grows with both cylinder count and
-          displacement — more metal, more reciprocating parts. Forced induction adds fixed hardware
-          mass for the turbocharger or supercharger and its plumbing. Wheel and tyre mass is
-          expressed as a delta from reference wheel dimensions: larger diameter or width than the
-          reference adds mass (and smaller removes it), on both axles independently.
-        </P>
         <H3>Rotating mass</H3>
         <P>
-          Wheel and tyre mass is treated as behaving like extra <em>effective</em>{" "}
-          mass under acceleration, beyond just adding to the car&rsquo;s static weight — spinning up a heavier wheel
-          and tyre assembly takes additional energy on top of simply moving its mass down the
-          road, which the model approximates by folding a per-inch/per-mm mass penalty directly
-          into the same total mass used everywhere else (acceleration, braking, cornering).
+          Everything that spins with the wheels — engine, flywheel, gearbox, driveshafts, wheels —
+          has to be spun up along with the car, which acts like extra mass. That&rsquo;s the
+          rotating-inertia factor <code>k</code>, used in the Straight-Line Simulation chapter.
+          Engine-side inertia seen at the wheels grows with the square of the gear ratio, so{" "}
+          <code>k</code> is about 1.3 in first gear and about 1.05 in top:
         </P>
-        <H3>Weight transfer and drivetrain layout</H3>
+        <Formula
+          tex={String.raw`k = 1.05 + 0.25\,\frac{i_g^2 - i_N^2}{i_1^2 - i_N^2}`}
+          vars={[
+            { symbol: String.raw`k`, desc: "rotating-inertia factor for the current gear" },
+            { symbol: String.raw`i_g,\ i_1,\ i_N`, desc: "current, first and top gear ratios" },
+          ]}
+        />
+        <H3>Weight transfer</H3>
         <P>
-          Under hard acceleration, weight dynamically shifts toward the rear axle — this model
-          doesn&rsquo;t simulate that transfer as a continuous pitch/weight calculation, but applies its
-          net effect directly to grip depending on which axle is actually driven:
+          Under acceleration, weight shifts from the front axle to the rear, which is what makes
+          rear-wheel drive grip harder and front-wheel drive lose grip exactly when they&rsquo;re
+          asked to put the most force down. The full calculation is in the Friction &amp; Traction
+          chapter.
         </P>
-        <Ul>
-          <Li>
-            <b>Rear-wheel drive</b> — the driven wheels are the ones weight shifts <em>onto</em>{" "}
-            under acceleration, so RWD carries no penalty (grip is highest exactly when
-            accelerating hardest).
-          </Li>
-          <Li>
-            <b>Front-wheel drive</b> — the driven wheels are the ones weight shifts{" "}
-            <em>away from</em> under acceleration, so FWD carries a flat traction penalty applied
-            to its grip coefficient, reflecting that the drive wheels are lightest exactly when
-            asked to put down the most force.
-          </Li>
-          <Li>
-            <b>All-wheel drive</b> — power reaches every contact patch instead of just one axle,
-            so AWD isn&rsquo;t relying on weight transfer at all and carries the biggest traction
-            bonus of the three; that comes at the cost of a lower drivetrain efficiency
-            <code> η_t</code>, since the extra transfer case and front differential eat into the
-            power that actually reaches the road.
-          </Li>
-        </Ul>
       </>
     ),
   },
@@ -828,37 +891,41 @@ m = \ & m_{\text{chassis}}(\text{bodyType}) \\
         </P>
         <H3>Per-step sequence</H3>
         <Ul>
-          <Li>Determine the current gear, shifting up a gear if RPM has crossed the shift point derived in the Gearbox chapter.</Li>
+          <Li>Determine the current gear, shifting up a gear if RPM has crossed the shift point derived in the Gearbox chapter. For the shift time that follows, no drive reaches the wheels.</Li>
           <Li>Look up torque at the current RPM from the Engine model.</Li>
           <Li>Convert torque to wheel force through the gear ratio, final drive, and drivetrain efficiency.</Li>
-          <Li>Compare that force against the traction limit from the Friction chapter, producing the drive force <code>F_drive</code> from the piecewise rule in that chapter.</Li>
-          <Li>Subtract aerodynamic drag (Aerodynamics chapter) and rolling resistance (Friction chapter) to get net force.</Li>
-          <Li>Divide by mass for net acceleration, then integrate into velocity and distance as in the Overview.</Li>
+          <Li>Work out the traction limit of the driven wheels, with weight transfer (Friction chapter).</Li>
+          <Li>Take the smaller of the engine-limited and traction-limited acceleration, then integrate into velocity and distance as in the Overview.</Li>
         </Ul>
         <Formula
-          tex={String.raw`a = \frac{F_{\text{drive}} - F_{\text{drag}} - F_{\text{roll}}}{m}`}
+          tex={String.raw`a = \min\!\left(\frac{F_{\text{wheel}} - R}{m\,k},\ \frac{F_{\max} - R}{m}\right), \qquad R = F_{\text{drag}} + F_{\text{roll}}`}
           vars={[
             { symbol: String.raw`a`, desc: "net acceleration for this time step" },
-            { symbol: String.raw`F_{\text{drive}}`, desc: "drive force realized at the wheels (Friction chapter)" },
+            { symbol: String.raw`F_{\text{wheel}}`, desc: "engine force at the wheels (Gearbox chapter)" },
+            { symbol: String.raw`F_{\max}`, desc: "traction limit of the driven wheels (Friction chapter)" },
             { symbol: String.raw`F_{\text{drag}}`, desc: "aerodynamic drag (Aerodynamics chapter)" },
             { symbol: String.raw`F_{\text{roll}}`, desc: "rolling resistance (Friction chapter)" },
             { symbol: String.raw`m`, desc: "vehicle mass" },
+            { symbol: String.raw`k`, desc: "rotating-inertia factor for the current gear (Vehicle Mass chapter)" },
           ]}
         />
-        <H3>Clutch-dump launches</H3>
         <P>
-          On a standing-start acceleration or drag run, the Clutch-Dump Launch option changes
-          only the first step above: instead of reading rpm off road speed (which starts at
-          idle), the engine is held at its peak-torque rpm in first gear, as if the driver revved
-          it up and slipped the clutch to get there. That is strictly a torque-lookup change —
-          the resulting wheel force still runs through the exact same traction-limit check as
-          every other step, so it only pays off once road speed has caught up enough that the
-          held rpm would otherwise have been engine-force-limited rather than traction-limited;
-          with traction control off, it also makes the uncontrolled-slip penalty (Friction
-          chapter) far more likely to bite in that opening moment. Once road speed&rsquo;s own rpm
-          catches up to the held rpm, the clutch is treated as locked and the step sequence
-          continues exactly as it would without a dumped clutch - that handoff only ever lets rpm
-          be overtaken by the road-speed value, never snapped back down to it.
+          The rotating-inertia factor <code>k</code> only slows the car when the engine is the
+          limit. When the tyres are the limit, the engine has torque to spare and spends it
+          spinning up its own rotating parts, so the car accelerates at the full traction-limited
+          rate.
+        </P>
+        <H3>Launches</H3>
+        <P>
+          A standing start never pulls away from idle. The driver feeds the clutch in (or the
+          torque converter slips) with the engine held at 75% of its peak-torque RPM. With the
+          Clutch-Dump Launch option, the engine is held at the full peak-torque RPM, as if the
+          driver revved it up and dropped the clutch. Either way it&rsquo;s strictly a
+          torque-lookup change. The resulting wheel force still runs through the same
+          traction-limit check as every other step, and with traction control off, a dumped
+          clutch makes the uncontrolled-slip penalty (Friction chapter) far more likely to bite in
+          that opening moment. Once road speed&rsquo;s own RPM catches up to the held RPM, the
+          clutch is treated as locked, and from then on RPM only ever follows road speed.
         </P>
         <H3>Stopping conditions</H3>
         <P>
@@ -868,18 +935,30 @@ m = \ & m_{\text{chassis}}(\text{bodyType}) \\
           reach its target still terminates rather than looping indefinitely.
         </P>
         <H3>Theoretical top speed</H3>
+        <P>Top speed is whichever of two limits comes first:</P>
+        <Formula
+          tex={String.raw`\begin{aligned}
+\text{drag-limited:}&\quad P_{\text{wheel}} = (F_{\text{drag}} + F_{\text{roll}})\, v \\
+\text{gear-limited:}&\quad v = \frac{\text{rpm}_{\max} \cdot 2\pi\, r_w}{60 \cdot i_g \, i_0}
+\end{aligned}`}
+          vars={[
+            { symbol: String.raw`P_{\text{wheel}}`, desc: "power at the wheels, after drivetrain losses" },
+            { symbol: String.raw`\text{rpm}_{\max}`, desc: "hard rev limit" },
+          ]}
+        />
         <P>
-          Top speed is not read off the accel loop — it needs its own search, because torque isn&rsquo;t
-          monotonic across the rev range: in a tall top gear, the drive-force-minus-resistance
-          margin can dip negative at one speed (a weak point in the torque curve) and then recover
-          at a higher speed once RPM climbs back into a stronger part of the band. The model
-          instead scans the full speed range in the top gear and keeps the highest speed at which
-          drive force still exceeds resistance, stopping only once the rev limiter itself becomes
-          the true limiter:
+          As a check, a Chiron with about 970 kW at the wheels and a drag area of 0.75 m² solves to
+          roughly 128 m/s, about 460 km/h: the right range for a car that&rsquo;s electronically
+          limited to 420 km/h. The model finds both limits at once by scanning the speed range in
+          every gear and keeping the highest speed where some gear still has more drive force than
+          resistance without passing the rev limit. It checks every gear because a tall overdrive
+          top gear can pull less speed than the gear below it, and because torque isn&rsquo;t
+          monotonic, the margin can dip negative at one speed and recover at a higher one.
         </P>
         <Pseudocode>{`for v in 0 … v_max_search:
-    if rpm(v, topGear) > maxRevRpm: stop
-    if F_wheel(v) > F_drag(v) + F_roll: lastValidSpeed = v
+    for each gear g:
+        if rpm(v, g) > maxRevRpm: skip
+        if F_wheel(v, g) > F_drag(v) + F_roll: lastValidSpeed = v
 topSpeed = lastValidSpeed`}</Pseudocode>
       </>
     ),

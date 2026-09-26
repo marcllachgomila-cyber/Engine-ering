@@ -1,5 +1,5 @@
 import { ChassisConfig, RoadCondition, VehicleSpec } from "./types";
-import { tyreGripMultiplier, wheelSpinEfficiency } from "./vehicleDynamics";
+import { tyreGripMultiplier } from "./vehicleDynamics";
 
 // A simplified (non-Pacejka) tyre model: longitudinal and lateral grip are
 // tracked as two separate coefficients rather than one scalar "grip" value,
@@ -9,9 +9,8 @@ import { tyreGripMultiplier, wheelSpinEfficiency } from "./vehicleDynamics";
 // vehicleModel.ts/vehicleDynamics.ts from tyre width, pressure, compound,
 // type and road condition - because no per-axis (long vs. lateral) tyre
 // test data exists for these synthetic tyres to justify giving them
-// different peaks. Longitudinal grip is additionally scaled by the
-// commanded slip-ratio (wheel-spin%) efficiency; lateral grip is not, since
-// that efficiency term is specifically about driven-wheel launch slip.
+// different peaks. How much of the longitudinal grip the *driven* wheels
+// can use also depends on weight transfer - see traction.ts.
 export interface TyreLimits {
   muLong: number;
   muLat: number;
@@ -25,14 +24,14 @@ export function computeTyreLimits(
   const muBase =
     vehicle.tireGripMu * tyreGripMultiplier(chassis.tyreType, chassis.tyreCompound, condition);
   return {
-    muLong: muBase * wheelSpinEfficiency(chassis.wheelSpinPercent),
+    muLong: muBase,
     muLat: muBase,
   };
 }
 
 // Braking is modeled as an idealized max-effort ABS stop (see
-// brakeModel.ts), which doesn't inherit the launch wheel-spin tuning above -
-// it uses the tyre's raw peak longitudinal coefficient instead.
+// brakeModel.ts) on all four tyres, using the raw peak longitudinal
+// coefficient.
 export function brakingMuLong(vehicle: VehicleSpec, chassis: ChassisConfig, condition: RoadCondition): number {
   return vehicle.tireGripMu * tyreGripMultiplier(chassis.tyreType, chassis.tyreCompound, condition);
 }

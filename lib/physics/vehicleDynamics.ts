@@ -3,19 +3,10 @@ import { EngineCurves, RoadCondition, TyreCompound, TyreType, VehicleSpec } from
 export const AIR_DENSITY_KG_M3 = 1.225;
 export const G = 9.81;
 
-// Wheel spin is modeled as a slip window: a little intentional slip (around
-// the recommended 10%) actually uses the tire's peak grip, while too little
-// or too much both waste it - launching too clean under-uses the tire, and
-// spinning too much just burns rubber instead of moving the car.
-export function wheelSpinEfficiency(wheelSpinPercent: number): number {
-  const optimal = 10;
-  const distance = Math.abs(wheelSpinPercent - optimal);
-  return Math.max(0.55, 1 - distance / 100);
-}
-
 // Reference road-condition grip, as if riding on a "standard" tyre in the
 // "medium" compound - every other tyre type/compound combination scales
-// this baseline up or down below.
+// this baseline up or down below. A road tyre's dry mu is ~1.0-1.1 (see
+// ROAD_TYRE_MU in vehicleModel.ts); on a wet road it's ~0.6.
 export function conditionGripMultiplier(condition: RoadCondition): number {
   switch (condition) {
     case "dry":
@@ -23,18 +14,19 @@ export function conditionGripMultiplier(condition: RoadCondition): number {
     case "wind":
       return 1.0;
     case "wet":
-      return 0.75;
+      return 0.6;
     case "rain":
-      return 0.55;
+      return 0.5;
   }
 }
 
 // Slicks (no tread, like an F1 dry tyre) put more rubber on tarmac and grip
-// harder in the dry, but with nowhere for water to escape they're treacherous
-// as soon as the road is wet. Standard (treaded/road) tyres are the more
-// even, all-weather choice this baseline is built around.
+// harder in the dry - mu ~1.5 against a road tyre's ~1.15 - but with nowhere
+// for water to escape they're treacherous as soon as the road is wet.
+// Standard (treaded/road) tyres are the more even, all-weather choice this
+// baseline is built around.
 export const TYRE_TYPE_GRIP_FACTOR: Record<TyreType, Record<RoadCondition, number>> = {
-  slick: { dry: 1.1, wind: 1.1, wet: 0.55, rain: 0.45 },
+  slick: { dry: 1.3, wind: 1.3, wet: 0.55, rain: 0.45 },
   standard: { dry: 1.0, wind: 1.0, wet: 1.0, rain: 1.0 },
 };
 
@@ -114,44 +106,89 @@ export function gearForAcceleration(speedMs: number, vehicle: VehicleSpec): numb
   return vehicle.gearRatios.length;
 }
 
+// Force at the driven wheels: F = T * gear * final drive * eta / r_tyre.
+export function wheelForceN(torqueNm: number, gearRatio: number, vehicle: VehicleSpec): number {
+  return (torqueNm * gearRatio * vehicle.finalDrive * vehicle.drivetrainEfficiency) / vehicle.wheelRadiusM;
+}
+
+// Everything that spins with the wheels (engine, flywheel, gearbox,
+// driveshafts, wheels) has to be spun up along with the car, which acts
+// like extra mass: a = F / (m * k). Engine-side inertia seen at the wheels
+// grows with the square of the gear ratio, so k is largest in first (~1.3)
+// and smallest in top (~1.05).
+const ROTATING_INERTIA_TOP_GEAR = 1.05;
+const ROTATING_INERTIA_FIRST_GEAR = 1.3;
+
+export function rotatingInertiaFactor(vehicle: VehicleSpec, gear: number): number {
+  const ratios = vehicle.gearRatios;
+  const first = ratios[0];
+  const top = ratios[ratios.length - 1];
+  const ratio = ratios[Math.min(Math.max(gear, 1), ratios.length) - 1];
+  const t = first > top ? (ratio * ratio - top * top) / (first * first - top * top) : 0;
+  return (
+    ROTATING_INERTIA_TOP_GEAR +
+    (ROTATING_INERTIA_FIRST_GEAR - ROTATING_INERTIA_TOP_GEAR) * Math.min(1, Math.max(0, t))
+  );
+}
+
+// Top speed is whichever limit comes first:
+//   drag-limited - where wheel power only just covers drag + rolling
+//                  resistance, P_wheel = (F_drag + F_roll) * v
+//   gear-limited - where the engine hits its rev limit in the tallest gear,
+//                  v = rpm_max * 2pi * r / (60 * gear * final drive)
+// Every gear is checked, since a tall overdrive top gear can have too
+// little force to pull the speed the gear below it reaches. Torque vs RPM
+// isn't monotonic either, so the whole range is scanned for the highest
+// speed that still balances rather than stopping at the first shortfall.
 export function estimateTopSpeedKph(
   curves: EngineCurves,
   vehicle: VehicleSpec,
   headwindMs: number,
 ): number {
-  const topGearRatio = vehicle.gearRatios[vehicle.gearRatios.length - 1];
   const rollingForce = vehicle.rollingResistanceCoefficient * vehicle.weightKg * G;
 
-  // Torque vs RPM isn't monotonic (it rises, peaks, then tapers), so in a
-  // fixed, tall top gear the drive-force-minus-resistance margin can dip
-  // negative at a low speed (weak low-RPM torque) and then recover once RPM
-  // climbs into the engine's strong torque band. Breaking on the first
-  // negative margin would understate top speed by stopping at that early
-  // dip - scan the full range and keep the highest speed that ever balances,
-  // only stopping once the redline itself becomes the limiter.
   let lastValidSpeedMs = 0;
   const stepMs = 0.2;
-  for (let speedMs = stepMs; speedMs < 130; speedMs += stepMs) {
-    const rpm = rpmFromSpeed(speedMs, topGearRatio, vehicle);
-    if (rpm > curves.maxRevRpm) break;
-
-    const torqueNm = curves.torqueAt(rpm);
-    const driveForce =
-      (torqueNm * topGearRatio * vehicle.finalDrive * vehicle.drivetrainEfficiency) /
-      vehicle.wheelRadiusM;
+  for (let speedMs = stepMs; speedMs < 170; speedMs += stepMs) {
     const relativeSpeedMs = speedMs + headwindMs;
-    const dragForce =
+    const resistance =
       0.5 *
-      AIR_DENSITY_KG_M3 *
-      vehicle.dragCoefficient *
-      vehicle.frontalAreaM2 *
-      relativeSpeedMs *
-      relativeSpeedMs;
+        AIR_DENSITY_KG_M3 *
+        vehicle.dragCoefficient *
+        vehicle.frontalAreaM2 *
+        relativeSpeedMs *
+        relativeSpeedMs +
+      rollingForce;
 
-    if (driveForce > dragForce + rollingForce) {
-      lastValidSpeedMs = speedMs;
+    let bestDriveForce = 0;
+    for (const ratio of vehicle.gearRatios) {
+      const rpm = rpmFromSpeed(speedMs, ratio, vehicle);
+      if (rpm > curves.maxRevRpm || rpm < curves.idleRpm) continue;
+      bestDriveForce = Math.max(bestDriveForce, wheelForceN(curves.torqueAt(rpm), ratio, vehicle));
     }
+
+    if (bestDriveForce > resistance) lastValidSpeedMs = speedMs;
   }
 
   return lastValidSpeedMs * 3.6;
+}
+
+// Drag-limited top speed from peak wheel power alone, ignoring gearing -
+// solves P_wheel = (F_drag + F_roll) * v by bisection. Used to pick a
+// final drive that lets the car actually reach it.
+export function dragLimitedTopSpeedMs(
+  peakWheelPowerW: number,
+  dragAreaM2: number,
+  rollingForceN: number,
+): number {
+  const resistancePower = (v: number) =>
+    (0.5 * AIR_DENSITY_KG_M3 * dragAreaM2 * v * v + rollingForceN) * v;
+  let lo = 0;
+  let hi = 200;
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2;
+    if (resistancePower(mid) < peakWheelPowerW) lo = mid;
+    else hi = mid;
+  }
+  return lo;
 }

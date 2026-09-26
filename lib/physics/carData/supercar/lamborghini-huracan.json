@@ -10,12 +10,13 @@
     "redlineRpm": 8500,
     "maxRevRpm": 8700,
     "aspiration": "na",
-    "fuelType": "petrol"
+    "fuelType": "petrol",
+    "baseBmepBar": 13.5
   },
   "gearbox": {
     "transmissionType": "auto",
     "gearCount": 7,
-    "drivetrain": "rwd",
+    "drivetrain": "awd",
     "dualClutch": true,
     "autoShiftStrategy": "maxPower"
   },

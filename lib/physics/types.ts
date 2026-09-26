@@ -13,6 +13,14 @@ export interface EngineConfig {
   maxRevRpm: number;
   aspiration: Aspiration;
   fuelType: FuelType;
+  // Boost pressure above atmospheric, in bar - only meaningful for turbo/
+  // supercharged engines. Undefined falls back to a per-aspiration default
+  // (see engineModel.ts). It scales peak BMEP, and so peak torque.
+  boostBar?: number;
+  // Optional override for the naturally aspirated peak BMEP (bar) that
+  // boost then multiplies. Only real-car presets set it, for engines well
+  // off the typical figure (e.g. a race-bred, high-revving NA V10).
+  baseBmepBar?: number;
   // Electric motor contribution (e.g. an F1 power unit's MGU-K) layered on
   // top of the combustion curve below - undefined/0 for every non-hybrid
   // engine. Modeled as available from idle up to redline, torque-capped at
@@ -35,6 +43,10 @@ export interface GearboxConfig {
   drivetrain: Drivetrain;
   dualClutch: boolean;
   autoShiftStrategy: AutoShiftStrategy;
+  // Final drive (differential) ratio. Undefined means "recommended": geared
+  // so top gear reaches the engine's power peak right at the drag-limited
+  // top speed (see vehicleModel.ts).
+  finalDrive?: number;
 }
 
 export interface RealCarPreset {
@@ -67,7 +79,6 @@ export interface ChassisConfig {
   bodyType: BodyType;
   weightKg: number;
   tyrePressurePsi: number;
-  wheelSpinPercent: number;
   tractionControl: boolean;
   frontWheelDiameterIn: number;
   rearWheelDiameterIn: number;
@@ -116,6 +127,13 @@ export interface EngineCurves {
 
 export interface VehicleSpec {
   weightKg: number;
+  drivetrain: Drivetrain;
+  // Axle geometry for longitudinal weight transfer: wheelbase L, the share
+  // of static weight on the rear axle (b/L, where b is the CG-to-front-axle
+  // distance) and the centre-of-gravity height h.
+  wheelbaseM: number;
+  rearWeightFraction: number;
+  cgHeightM: number;
   dragCoefficient: number;
   frontalAreaM2: number;
   liftCoefficient: number;
@@ -127,6 +145,8 @@ export interface VehicleSpec {
   gearRatios: number[];
   finalDrive: number;
   shiftRpm: number;
+  // Seconds with no drive force during each upshift.
+  shiftTimeS: number;
 }
 
 export interface Telemetry {
@@ -138,6 +158,9 @@ export interface Telemetry {
   torqueNm: number;
   gForce: number;
   distanceM: number;
+  // How much faster the driven wheels are turning than the road (slip
+  // ratio, %) - an output of the traction model, not an input.
+  wheelSpinPercent?: number;
   brakeTempC?: number;
   brakeForceN?: number;
   // Hot-lap-only channels: how much of the tyre's friction circle is being
@@ -166,9 +189,18 @@ export interface SimulationResult {
   peakTorqueNm: number;
   peakTorqueRpm: number;
   weightKg: number;
+  // Estimated split of weightKg into major components; sums to weightKg.
+  weightBreakdown: WeightComponent[];
   powerToWeightHpPerTonne: number;
   theoreticalTopSpeedKph: number;
+  // Highest driven-wheel slip seen during the run (%).
+  peakWheelSpinPercent: number;
   circuitId?: string;
+}
+
+export interface WeightComponent {
+  label: string;
+  kg: number;
 }
 
 export interface CarSpec {

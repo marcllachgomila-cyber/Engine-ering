@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { EngineConfig, SimulationResult } from "@/lib/physics/types";
+import { EngineConfig, SimulationResult, WeightComponent } from "@/lib/physics/types";
 import { buildEngineCurves } from "@/lib/physics/engineModel";
 import { engineSizeLabel } from "@/lib/physics/engineLayout";
 import { getCircuit } from "@/lib/physics/circuits";
 import { resultHeadline } from "@/lib/testResultLabel";
-import { CornerMarks, formatUnitValue, Panel, SectionTag } from "@/components/EngineBuilder/FormControls";
+import { CornerMarks, FOCUS_RING, formatUnitValue, Panel, SectionTag } from "@/components/EngineBuilder/FormControls";
 import CircuitMap from "./CircuitMap";
 import TimeSeriesGraph from "./TimeSeriesGraph";
 import CombustionFrictionGraph from "./CombustionFrictionGraph";
@@ -29,8 +29,57 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function WeightBreakdownPanel({
+  components,
+  totalKg,
+}: {
+  components: WeightComponent[];
+  totalKg: number;
+}) {
+  const sorted = [...components].sort((a, b) => b.kg - a.kg);
+  return (
+    <Panel>
+      <div className="flex items-baseline justify-between text-xs uppercase tracking-wider text-zinc-500">
+        <span>Weight Breakdown</span>
+        <span className="normal-case tracking-normal">estimated</span>
+      </div>
+      <ul className="mt-3 space-y-2.5">
+        {sorted.map((c) => {
+          const pct = totalKg > 0 ? (c.kg / totalKg) * 100 : 0;
+          return (
+            <li key={c.label}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="text-zinc-300">{c.label}</span>
+                <span className="font-mono tabular-nums text-zinc-50">
+                  {formatUnitValue(Math.round(c.kg), "kg")}
+                  <span className="ml-2 inline-block w-12 text-right text-zinc-500">
+                    {pct.toFixed(1)}%
+                  </span>
+                </span>
+              </div>
+              <div className="mt-1 h-1 rounded-full bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-amber-500/70"
+                  style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-3 flex justify-between border-t border-zinc-800 pt-2 text-sm">
+        <span className="text-zinc-400">Total</span>
+        <span className="font-mono font-bold tabular-nums text-zinc-50">
+          {formatUnitValue(Math.round(totalKg), "kg")}
+        </span>
+      </div>
+    </Panel>
+  );
+}
+
 export default function ResultsSummary({ engine, result }: ResultsSummaryProps) {
   const [hoverT, setHoverT] = useState<number | null>(null);
+  const [weightOpen, setWeightOpen] = useState(false);
   const headline = resultHeadline(result);
 
   let subtext = headline.sub;
@@ -94,10 +143,31 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
             label="Power / Weight"
             value={formatUnitValue(Math.round(result.powerToWeightHpPerTonne), "hp/t")}
           />
-          <Stat
-            label="Est. Weight"
-            value={formatUnitValue(Math.round(result.weightKg), "kg")}
-          />
+          <button
+            type="button"
+            onClick={() => setWeightOpen((open) => !open)}
+            aria-expanded={weightOpen}
+            aria-controls="weight-breakdown"
+            className={`text-left rounded-xl ${FOCUS_RING}`}
+          >
+            <Panel
+              className={`h-full transition-colors hover:border-zinc-600 ${weightOpen ? "ring-1 ring-amber-500/50" : ""}`}
+            >
+              <div className="flex items-center justify-between gap-2 text-xs uppercase tracking-wider text-zinc-500">
+                <span>Est. Weight</span>
+                <svg
+                  aria-hidden
+                  viewBox="0 0 12 12"
+                  className={`h-3 w-3 shrink-0 transition-transform ${weightOpen ? "rotate-180 text-amber-400" : ""}`}
+                >
+                  <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              </div>
+              <div className="mt-1 text-xl font-mono font-bold text-zinc-50 tabular-nums">
+                {formatUnitValue(Math.round(result.weightKg), "kg")}
+              </div>
+            </Panel>
+          </button>
           <Stat
             label="Theoretical Top Speed"
             value={formatUnitValue(Math.round(result.theoreticalTopSpeedKph), "kph")}
@@ -107,6 +177,11 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
             value={`${engineSizeLabel(engine)},${engine.displacementL.toFixed(1)}L`}
           />
         </div>
+        {weightOpen && (
+          <div id="weight-breakdown">
+            <WeightBreakdownPanel components={result.weightBreakdown} totalKg={result.weightKg} />
+          </div>
+        )}
       </div>
 
       {result.testType === "hotLap" && result.circuitId && (
@@ -166,6 +241,21 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
               onHoverTChange={setHoverT}
             />
           </Panel>
+          {result.testType !== "braking" && (
+            <Panel>
+              <TimeSeriesGraph
+                telemetry={result.telemetry}
+                currentT={finalT}
+                getValue={(s) => s.wheelSpinPercent ?? 0}
+                peakValue={Math.max(20, result.peakWheelSpinPercent)}
+                color="#f472b6"
+                label={`Wheel Spin (% slip) vs Time, peak ${Math.round(result.peakWheelSpinPercent)}%`}
+                formatValue={(v) => `${Math.round(v)}%`}
+                hoverT={hoverT}
+                onHoverTChange={setHoverT}
+              />
+            </Panel>
+          )}
           <Panel>
             <CombustionFrictionGraph curves={curves} />
           </Panel>

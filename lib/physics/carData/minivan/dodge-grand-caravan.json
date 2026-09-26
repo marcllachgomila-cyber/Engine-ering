@@ -17,7 +17,7 @@
     "gearCount": 6,
     "drivetrain": "fwd",
     "dualClutch": false,
-    "autoShiftStrategy": "maxTorque"
+    "autoShiftStrategy": "maxPower"
   },
   "chassis": {
     "weightKg": 1980,

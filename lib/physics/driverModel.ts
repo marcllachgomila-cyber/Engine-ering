@@ -1,6 +1,8 @@
 import { downforceN, dragForceN } from "./aeroModel";
 import { computeDrive, LongitudinalModel, SpeedProfilePoint, tyreUtilizationAt } from "./speedProfile";
+import { effectiveDriveForceN, wheelSpinPercent } from "./traction";
 import { EngineCurves, VehicleSpec } from "./types";
+import { rotatingInertiaFactor } from "./vehicleDynamics";
 
 // A deterministic virtual driver's per-point control inputs, derived from
 // the already-converged speed profile rather than driven by its own
@@ -24,6 +26,7 @@ export interface DriverInputPoint {
   dragN: number;
   downforceN: number;
   tyreUtilization: number;
+  wheelSpinPercent: number;
   accelMs2: number;
 }
 
@@ -50,12 +53,26 @@ export function deriveDriverInputs(
     let brakeInput = 0;
     let brakeForceN = 0;
     let tyreForceForUtilN = 0;
+    let wheelSpin = 0;
 
     if (netForceN >= 0) {
       const driveForceUsedN = netForceN + drag + model.rollingForceN;
       const driveForceAvailN = model.availableDriveForceN(point.speedMs, point.curvature);
       throttle = Math.min(1, Math.max(0, driveForceUsedN / Math.max(1, driveForceAvailN)));
       tyreForceForUtilN = Math.max(0, driveForceUsedN);
+      // Flat out, the wheels see everything the engine sends them, even the
+      // part the tyres can't use; part throttle only asks for what's used.
+      const fullThrottleDemandN = effectiveDriveForceN(
+        drive.engineForceN,
+        drag + model.rollingForceN,
+        rotatingInertiaFactor(vehicle, drive.gear),
+      );
+      const demandN = throttle >= 0.999 ? fullThrottleDemandN : Math.max(0, driveForceUsedN);
+      wheelSpin = wheelSpinPercent(
+        demandN,
+        model.driveTractionLimitN(point.speedMs, point.curvature),
+        model.tractionControl,
+      );
     } else {
       const decelForceN = -netForceN;
       const engineBrakingForceN =
@@ -89,6 +106,7 @@ export function deriveDriverInputs(
       dragN: drag,
       downforceN: downforce,
       tyreUtilization,
+      wheelSpinPercent: wheelSpin,
       accelMs2: actualAccelMs2,
     };
   });

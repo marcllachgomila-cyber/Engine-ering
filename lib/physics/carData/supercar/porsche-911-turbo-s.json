@@ -10,12 +10,13 @@
     "redlineRpm": 7200,
     "maxRevRpm": 7500,
     "aspiration": "turbo",
-    "fuelType": "petrol"
+    "fuelType": "petrol",
+    "boostBar": 1.23
   },
   "gearbox": {
     "transmissionType": "auto",
     "gearCount": 8,
-    "drivetrain": "rwd",
+    "drivetrain": "awd",
     "dualClutch": true,
     "autoShiftStrategy": "maxPower"
   },

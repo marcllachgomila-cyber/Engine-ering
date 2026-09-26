@@ -2,7 +2,7 @@ import { BRAKE_AMBIENT_TEMP_C, BRAKE_MATERIALS, brakeCoolingRatePerS } from "./b
 import { deriveDriverInputs } from "./driverModel";
 import { buildEngineCurves } from "./engineModel";
 import { buildLongitudinalModel, computeSpeedProfile } from "./speedProfile";
-import { deriveVehicle } from "./vehicleModel";
+import { computeWeightBreakdown, deriveVehicle } from "./vehicleModel";
 import {
   Circuit,
   ChassisConfig,
@@ -14,17 +14,6 @@ import {
 } from "./types";
 import { G, estimateTopSpeedKph } from "./vehicleDynamics";
 
-// Mechanical + driver delay per gear change: a manual needs a clutch and a
-// physical lever throw, a torque-converter/single-clutch auto is quicker,
-// and a dual-clutch box is close to instantaneous. Applied as dead time
-// added directly to the lap clock at every gear change, rather than
-// modeled inside the speed-position solve (which works in distance, not
-// time, and doesn't need discrete events to find the fastest achievable
-// speed at each point).
-const MANUAL_SHIFT_TIME_S = 0.25;
-const DUAL_CLUTCH_SHIFT_TIME_S = 0.05;
-const AUTO_SHIFT_TIME_S = 0.15;
-
 // Below this speed, a distance-domain dt = ds / v integration blows up
 // numerically. A hot lap's speed profile should never actually get this
 // low (see UNCONSTRAINED_SPEED_MS/cornering-limit floor in
@@ -32,11 +21,6 @@ const AUTO_SHIFT_TIME_S = 0.15;
 // (e.g. near-zero grip) so the simulation stays finite instead of
 // producing Infinity/NaN lap times.
 const MIN_INTEGRATION_SPEED_MS = 0.3;
-
-function shiftTimeS(gearbox: GearboxConfig): number {
-  if (gearbox.transmissionType === "manual") return MANUAL_SHIFT_TIME_S;
-  return gearbox.dualClutch ? DUAL_CLUTCH_SHIFT_TIME_S : AUTO_SHIFT_TIME_S;
-}
 
 // One theoretical flying lap of a circuit, calculated (not guessed) end to
 // end:
@@ -74,13 +58,19 @@ export function simulateHotLap(
   let prevGear = inputs[0]?.gear ?? 1;
 
   const telemetry: Telemetry[] = [];
+  let peakWheelSpinPercent = 0;
 
   for (let i = 0; i < n; i++) {
     const point = profile[i];
     const input = inputs[i];
 
+    // Each gear change (vehicle.shiftTimeS, see vehicleModel.ts) is added
+    // as dead time on the lap clock rather than modeled inside the
+    // speed-position solve, which works in distance, not time, and doesn't
+    // need discrete events to find the fastest achievable speed at each
+    // point.
     if (input.gear !== prevGear) {
-      t += shiftTimeS(gearbox);
+      t += vehicle.shiftTimeS;
       prevGear = input.gear;
     }
 
@@ -106,6 +96,7 @@ export function simulateHotLap(
       brakeTempC += (input.brakeForceN * ds) / brakeMaterial.thermalMassJPerC;
     }
 
+    peakWheelSpinPercent = Math.max(peakWheelSpinPercent, input.wheelSpinPercent);
     telemetry.push({
       t,
       speedKph: point.speedMs * 3.6,
@@ -121,6 +112,7 @@ export function simulateHotLap(
       throttle: input.throttle,
       brakeInput: input.brakeInput,
       tyreUtilization: input.tyreUtilization,
+      wheelSpinPercent: input.wheelSpinPercent,
       downforceN: input.downforceN,
       dragN: input.dragN,
       curvature: point.curvature,
@@ -143,8 +135,10 @@ export function simulateHotLap(
     peakTorqueNm: curves.peakTorqueNm,
     peakTorqueRpm: curves.peakTorqueRpm,
     weightKg: vehicle.weightKg,
+    weightBreakdown: computeWeightBreakdown(engine, chassis, gearbox).components,
     powerToWeightHpPerTonne: curves.peakPowerHp / (vehicle.weightKg / 1000),
     theoreticalTopSpeedKph: estimateTopSpeedKph(curves, vehicle, 0),
+    peakWheelSpinPercent,
     circuitId: circuit.id,
   };
 }

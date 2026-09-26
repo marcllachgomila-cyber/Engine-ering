@@ -17,7 +17,7 @@
     "gearCount": 8,
     "drivetrain": "fwd",
     "dualClutch": false,
-    "autoShiftStrategy": "maxTorque"
+    "autoShiftStrategy": "maxPower"
   },
   "chassis": {
     "weightKg": 2010,

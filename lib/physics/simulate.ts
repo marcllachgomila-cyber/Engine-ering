@@ -3,16 +3,18 @@ import { normalLoadN } from "./aeroModel";
 import { getCircuit } from "./circuits";
 import { buildEngineCurves } from "./engineModel";
 import { simulateHotLap } from "./lapSimulate";
-import { deriveVehicle } from "./vehicleModel";
+import { deliveredDriveForceN, effectiveDriveForceN, tractionLimitN, wheelSpinPercent } from "./traction";
+import { computeWeightBreakdown, deriveVehicle } from "./vehicleModel";
 import {
   AIR_DENSITY_KG_M3,
   conditionHeadwindMs,
   estimateTopSpeedKph,
   G,
   gearForSpeed,
+  rotatingInertiaFactor,
   rpmFromSpeed,
   tyreGripMultiplier,
-  wheelSpinEfficiency,
+  wheelForceN,
 } from "./vehicleDynamics";
 import {
   ChassisConfig,
@@ -29,11 +31,6 @@ const HUNDRED_KPH_MS = 100 / 3.6;
 const DRAG_DISTANCE_M = 500;
 const TEN_SECOND_DURATION_S = 10;
 const SAFETY_MAX_TIME_S = 60;
-
-// With traction control off, once the tires break loose the car is at the
-// mercy of kinetic friction (lower than static) until grip is regained,
-// instead of the smooth, modulated cap traction control provides.
-const UNCONTROLLED_SLIP_PENALTY = 0.75;
 
 // A clutch-dump launch holds the engine at its torque peak and slips the
 // clutch to get there, instead of easing away from idle - the wheels see
@@ -57,6 +54,16 @@ export function isClutchDumpLaunch(test: TestConfig): boolean {
 // pre-launch countdown.
 export function computeLaunchRpm(curves: EngineCurves): number {
   return Math.min(Math.max(curves.peakTorqueRpm, curves.idleRpm), curves.maxRevRpm);
+}
+
+// Without a clutch dump the driver still doesn't pull away from idle: they
+// feed the clutch in (or the torque converter slips) at moderate revs,
+// about halfway to the torque peak. Same slip-until-road-speed-catches-up
+// logic as the clutch dump, just at a gentler rpm.
+const GENTLE_LAUNCH_FRACTION_OF_PEAK_TORQUE_RPM = 0.75;
+
+function gentleLaunchRpm(curves: EngineCurves): number {
+  return Math.max(curves.idleRpm, computeLaunchRpm(curves) * GENTLE_LAUNCH_FRACTION_OF_PEAK_TORQUE_RPM);
 }
 
 export interface CruiseState {
@@ -103,18 +110,14 @@ export function simulate(
     chassis.tyreCompound,
     test.condition,
   );
-  const effectiveMu =
-    vehicle.tireGripMu * gripMultiplier * wheelSpinEfficiency(chassis.wheelSpinPercent);
+  const effectiveMu = vehicle.tireGripMu * gripMultiplier;
 
   // Traction/braking limits scale with normal (tyre) load, not just static
   // weight - aero downforce adds to it at speed, aero lift (boxy road
-  // bodies) subtracts from it, exactly as in the hot-lap model.
-  const tractionLimitAt = (speedMs: number): number =>
-    effectiveMu * normalLoadN(speedMs, vehicle, G);
-
-  // Braking isn't limited by launch wheel-spin tuning - it's modeled as an
-  // idealized max-effort stop (perfect ABS, no lock-up), so it only inherits
-  // the tire's grip and the road condition, not the wheelspin term above.
+  // bodies) subtracts from it, exactly as in the hot-lap model. Under
+  // power only the driven axle counts, with weight transfer (traction.ts);
+  // braking is an idealized max-effort stop (perfect ABS, no lock-up) on
+  // all four tyres.
   const brakingTractionLimitAt = (speedMs: number): number =>
     vehicle.tireGripMu * gripMultiplier * normalLoadN(speedMs, vehicle, G);
 
@@ -126,8 +129,12 @@ export function simulate(
   const brakeMaterial = BRAKE_MATERIALS[test.brakeMaterial];
   let reachedHundredAtS: number | null = speedMs >= HUNDRED_KPH_MS ? 0 : null;
 
-  const clutchDumpActive = isClutchDumpLaunch(test);
-  const launchRpm = computeLaunchRpm(curves);
+  const standingStart = speedMs === 0;
+  const launchRpm = isClutchDumpLaunch(test) ? computeLaunchRpm(curves) : gentleLaunchRpm(curves);
+  // Time left in the current upshift, during which no drive reaches the
+  // wheels.
+  let shiftRemainingS = 0;
+  let peakWheelSpinPercent = 0;
 
   const telemetry: Telemetry[] = [];
   const rollingForce = vehicle.rollingResistanceCoefficient * vehicle.weightKg * G;
@@ -200,29 +207,15 @@ export function simulate(
 
     // Still slipping: held at launch rpm until road speed's natural rpm
     // catches up to it, at which point the clutch locks up.
-    const clutchSlipping = clutchDumpActive && gear === 1 && rpm < launchRpm;
+    const clutchSlipping = standingStart && gear === 1 && rpm < launchRpm;
     if (clutchSlipping) rpm = launchRpm;
 
-    if (rpm > vehicle.shiftRpm && gear < vehicle.gearRatios.length) {
+    if (rpm > vehicle.shiftRpm && gear < vehicle.gearRatios.length && shiftRemainingS <= 0) {
       gear += 1;
+      shiftRemainingS = vehicle.shiftTimeS;
       continue;
     }
     rpm = Math.min(rpm, curves.maxRevRpm);
-
-    const torqueNm = curves.torqueAt(rpm);
-    const engineForce =
-      (torqueNm * gearRatio * vehicle.finalDrive * vehicle.drivetrainEfficiency) /
-      vehicle.wheelRadiusM;
-
-    const tractionLimit = tractionLimitAt(speedMs);
-    let driveForce: number;
-    if (engineForce <= tractionLimit) {
-      driveForce = engineForce;
-    } else if (chassis.tractionControl) {
-      driveForce = tractionLimit;
-    } else {
-      driveForce = tractionLimit * UNCONTROLLED_SLIP_PENALTY;
-    }
 
     const relativeSpeedMs = speedMs + headwindMs;
     const dragForce =
@@ -232,9 +225,19 @@ export function simulate(
       vehicle.frontalAreaM2 *
       relativeSpeedMs *
       relativeSpeedMs;
+    const inertiaFactor = rotatingInertiaFactor(vehicle, gear);
 
-    const netForce = driveForce - dragForce - rollingForce;
-    const accelMs2 = netForce / vehicle.weightKg;
+    const shifting = shiftRemainingS > 0;
+    shiftRemainingS -= DT;
+    const torqueNm = shifting ? 0 : curves.torqueAt(rpm);
+    const resistance = dragForce + rollingForce;
+    const demand = effectiveDriveForceN(wheelForceN(torqueNm, gearRatio, vehicle), resistance, inertiaFactor);
+    const tractionLimit = tractionLimitN(speedMs, vehicle, effectiveMu, resistance);
+    const driveForce = deliveredDriveForceN(demand, tractionLimit, chassis.tractionControl);
+    const wheelSpin = wheelSpinPercent(demand, tractionLimit, chassis.tractionControl);
+    peakWheelSpinPercent = Math.max(peakWheelSpinPercent, wheelSpin);
+
+    const accelMs2 = (driveForce - resistance) / vehicle.weightKg;
 
     speedMs = Math.max(0, speedMs + accelMs2 * DT);
     distanceM += speedMs * DT;
@@ -253,6 +256,7 @@ export function simulate(
       torqueNm,
       gForce: accelMs2 / G,
       distanceM,
+      wheelSpinPercent: wheelSpin,
     });
   }
 
@@ -280,7 +284,9 @@ export function simulate(
     peakTorqueNm: curves.peakTorqueNm,
     peakTorqueRpm: curves.peakTorqueRpm,
     weightKg: vehicle.weightKg,
+    weightBreakdown: computeWeightBreakdown(engine, chassis, gearbox).components,
     powerToWeightHpPerTonne: curves.peakPowerHp / (vehicle.weightKg / 1000),
     theoreticalTopSpeedKph: estimateTopSpeedKph(curves, vehicle, headwindMs),
+    peakWheelSpinPercent,
   };
 }

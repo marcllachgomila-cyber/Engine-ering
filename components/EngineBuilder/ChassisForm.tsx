@@ -146,7 +146,7 @@ export default function ChassisForm({
             minLabel={formatUnitValue(preset.weightMinKg, "kg")}
             maxLabel={formatUnitValue(preset.weightMaxKg, "kg")}
             recommended={preset.weightKg}
-            helpText={`Recommended: ${formatUnitValue(preset.weightKg, "kg")}`}
+            helpText={`Total weight, engine and everything else included. Recommended: ${formatUnitValue(preset.weightKg, "kg")}`}
           />
         </fieldset>
       </SectionCard>
@@ -277,20 +277,6 @@ export default function ChassisForm({
           maxLabel={formatUnitValue(50, "psi")}
           recommended={32}
           helpText={`Recommended: ${formatUnitValue(32, "psi")}`}
-        />
-
-        <Slider
-          label="Wheel Spin"
-          value={value.wheelSpinPercent}
-          valueLabel={formatUnitValue(value.wheelSpinPercent, "%")}
-          min={0}
-          max={100}
-          step={1}
-          onChange={(v) => onChange({ ...value, wheelSpinPercent: v })}
-          minLabel={formatUnitValue(0, "%")}
-          maxLabel={formatUnitValue(100, "%")}
-          recommended={10}
-          helpText={`Recommended: ${formatUnitValue(10, "%")}`}
         />
       </SectionCard>
 

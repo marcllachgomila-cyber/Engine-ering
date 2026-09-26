@@ -34,6 +34,7 @@ export const DEFAULT_GEARBOX: GearboxConfig = {
 };
 
 export interface BodyTypePreset {
+  // Total (kerb) weight, everything included - what the Weight slider sets.
   weightKg: number;
   weightMinKg: number;
   weightMaxKg: number;
@@ -47,32 +48,55 @@ export interface BodyTypePreset {
   // order-of-magnitude figures, not measured wind-tunnel data for any real
   // car - see the hot-lap report for what data would replace them.
   liftCoefficient: number;
+  // Axle geometry for weight transfer (see traction.ts): wheelbase, share
+  // of static weight on the rear axle, and centre-of-gravity height.
+  // Representative figures for the body style, not any one car.
+  wheelbaseM: number;
+  rearWeightFraction: number;
+  cgHeightM: number;
+  // Tyre sidewall height as a fraction of tread width (the "35" in
+  // 285/35 R20). Rolling radius = rim radius + sidewall.
+  tyreAspectRatio: number;
 }
 
 export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
   minivan: {
-    weightKg: 1800,
-    weightMinKg: 1400,
-    weightMaxKg: 2400,
+    weightKg: 2000,
+    weightMinKg: 1500,
+    weightMaxKg: 2600,
     dragCoefficient: 0.33,
     frontalAreaM2: 2.8,
     liftCoefficient: -0.05,
+    // Transverse engine over the front wheels.
+    wheelbaseM: 3.0,
+    rearWeightFraction: 0.43,
+    cgHeightM: 0.65,
+    tyreAspectRatio: 0.6,
   },
   suv: {
     weightKg: 2100,
-    weightMinKg: 1700,
-    weightMaxKg: 2800,
+    weightMinKg: 1400,
+    weightMaxKg: 3000,
     dragCoefficient: 0.38,
     frontalAreaM2: 3.1,
     liftCoefficient: -0.1,
+    wheelbaseM: 2.9,
+    rearWeightFraction: 0.47,
+    cgHeightM: 0.7,
+    tyreAspectRatio: 0.5,
   },
   supercar: {
-    weightKg: 1400,
+    weightKg: 1500,
     weightMinKg: 1100,
-    weightMaxKg: 1900,
-    dragCoefficient: 0.3,
-    frontalAreaM2: 1.9,
+    weightMaxKg: 2100,
+    dragCoefficient: 0.39,
+    frontalAreaM2: 1.95,
     liftCoefficient: 0.9,
+    // Mid/rear engine: most of the weight over the driven rear axle.
+    wheelbaseM: 2.65,
+    rearWeightFraction: 0.59,
+    cgHeightM: 0.43,
+    tyreAspectRatio: 0.3,
   },
   f1: {
     weightKg: 798,
@@ -84,6 +108,12 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     dragCoefficient: 0.9,
     frontalAreaM2: 1.5,
     liftCoefficient: 3.0,
+    wheelbaseM: 3.6,
+    rearWeightFraction: 0.55,
+    cgHeightM: 0.28,
+    // Unused - F1 tyres are specified by outer diameter (see
+    // vehicleModel.ts), not aspect ratio.
+    tyreAspectRatio: 0.45,
   },
 };
 
@@ -91,7 +121,6 @@ export const DEFAULT_CHASSIS: ChassisConfig = {
   bodyType: "supercar",
   weightKg: BODY_TYPE_PRESETS.supercar.weightKg,
   tyrePressurePsi: 32,
-  wheelSpinPercent: 10,
   tractionControl: true,
   frontWheelDiameterIn: 20,
   rearWheelDiameterIn: 21,
