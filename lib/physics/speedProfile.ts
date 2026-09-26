@@ -34,19 +34,29 @@ export interface DriveState {
   gear: number;
   rpm: number;
   torqueNm: number;
+  // The part of torqueNm coming from the electric motor.
+  electricTorqueNm: number;
   engineForceN: number;
 }
 
-export function computeDrive(speedMs: number, vehicle: VehicleSpec, curves: EngineCurves): DriveState {
+// `electricCutoffMs`: above this speed the electric motor isn't deployed
+// (see the per-lap energy limit in lapSimulate.ts).
+export function computeDrive(
+  speedMs: number,
+  vehicle: VehicleSpec,
+  curves: EngineCurves,
+  electricCutoffMs = Infinity,
+): DriveState {
   const gear = gearForAcceleration(speedMs, vehicle);
   const gearRatio = vehicle.gearRatios[gear - 1];
   const rpm = Math.min(
     Math.max(rpmFromSpeed(speedMs, gearRatio, vehicle), curves.idleRpm),
     curves.maxRevRpm,
   );
-  const torqueNm = curves.torqueAt(rpm);
+  const electricTorqueNm = speedMs > electricCutoffMs ? 0 : curves.electricTorqueAt(rpm);
+  const torqueNm = curves.torqueAt(rpm) - curves.electricTorqueAt(rpm) + electricTorqueNm;
   const engineForceN = wheelForceN(torqueNm, gearRatio, vehicle);
-  return { gear, rpm, torqueNm, engineForceN };
+  return { gear, rpm, torqueNm, electricTorqueNm, engineForceN };
 }
 
 export interface LongitudinalModel {
@@ -55,6 +65,7 @@ export interface LongitudinalModel {
   headwindMs: number;
   rollingForceN: number;
   tractionControl: boolean;
+  electricCutoffMs: number;
   lateralDemandN: (speedMs: number, curvature: number) => number;
   driveTractionLimitN: (speedMs: number, curvature: number) => number;
   availableDriveForceN: (speedMs: number, curvature: number) => number;
@@ -73,6 +84,7 @@ export function buildLongitudinalModel(
   chassis: ChassisConfig,
   curves: EngineCurves,
   test: TestConfig,
+  electricCutoffMs = Infinity,
 ): LongitudinalModel {
   const { muLong, muLat } = computeTyreLimits(vehicle, chassis, test.condition);
   const headwindMs = conditionHeadwindMs(test.condition);
@@ -108,7 +120,7 @@ export function buildLongitudinalModel(
   // Longitudinal tyre force actually deliverable at this speed, net of
   // spinning up the drivetrain's rotating inertia (see traction.ts).
   const availableDriveForceN = (speedMs: number, curvature: number): number => {
-    const drive = computeDrive(speedMs, vehicle, curves);
+    const drive = computeDrive(speedMs, vehicle, curves, electricCutoffMs);
     const resistanceN = dragForceN(speedMs + headwindMs, vehicle) + rollingForceN;
     return deliveredDriveForceN(
       effectiveDriveForceN(drive.engineForceN, resistanceN, rotatingInertiaFactor(vehicle, drive.gear)),
@@ -150,6 +162,7 @@ export function buildLongitudinalModel(
     headwindMs,
     rollingForceN,
     tractionControl: chassis.tractionControl,
+    electricCutoffMs,
     lateralDemandN,
     driveTractionLimitN,
     availableDriveForceN,

@@ -196,6 +196,7 @@ export function buildEngineCurves(engine: EngineConfig): EngineCurves {
     powerAt,
     frictionTorqueAt,
     combustionTorqueAt,
+    electricTorqueAt,
     idleRpm: IDLE_RPM,
     redlineRpm,
     maxRevRpm,

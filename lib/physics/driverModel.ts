@@ -20,6 +20,8 @@ export interface DriverInputPoint {
   gear: number;
   rpm: number;
   torqueNm: number;
+  // Electric power actually being deployed here (W).
+  electricPowerW: number;
   throttle: number;
   brakeInput: number;
   brakeForceN: number;
@@ -41,7 +43,7 @@ export function deriveDriverInputs(
 
   return profile.map((point, i) => {
     const next = profile[(i + 1) % n];
-    const drive = computeDrive(point.speedMs, vehicle, curves);
+    const drive = computeDrive(point.speedMs, vehicle, curves, model.electricCutoffMs);
     const drag = dragForceN(point.speedMs + model.headwindMs, vehicle);
     const downforce = downforceN(point.speedMs, vehicle);
 
@@ -100,6 +102,8 @@ export function deriveDriverInputs(
       gear: drive.gear,
       rpm: drive.rpm,
       torqueNm: drive.torqueNm,
+      // The motor delivers its share of whatever the throttle asks for.
+      electricPowerW: throttle * drive.electricTorqueNm * drive.rpm * ((2 * Math.PI) / 60),
       throttle,
       brakeInput,
       brakeForceN,

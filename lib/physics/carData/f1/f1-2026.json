@@ -11,7 +11,7 @@
     "maxRevRpm": 15000,
     "aspiration": "turbo",
     "fuelType": "petrol",
-    "boostBar": 2.8,
+    "boostBar": 1.7,
     "hybridBoostKw": 350,
     "hybridMaxTorqueNm": 500
   },
@@ -29,5 +29,5 @@
     "frontWheelWidthMm": 305,
     "rearWheelWidthMm": 355
   },
-  "notes": "New-generation power unit: roughly 50/50 electric/combustion split and no MGU-H, but the ICE stays a 1.6L V6 turbo - modeled here with a redline slightly higher than the frozen 2022-2025 spec (see f1-2022.json onward). The MGU-K's regulated output nearly triples (120kW -> 350kW) to carry that heavier electric share, with a 500Nm mechanical torque limit per the FIA's 2026 PU regulations. New-generation cars are also mandated smaller and lighter than the 2022-2025 ground-effect era, reflected in the lower chassis weight here. maxRevRpm stays at the same 15,000rpm FIA hard limit that's applied across every season here (see realCars.ts)."
+  "notes": "New-generation power unit: roughly 50/50 electric/combustion split and no MGU-H, but the ICE stays a 1.6L V6 turbo - modeled here with a redline slightly higher than the frozen 2022-2025 spec (see f1-2022.json onward). The 2026 rules cut the ICE fuel energy flow so it makes only ~400kW; boostBar 1.7 stands in for that cap (it lands the ICE at ~400kW), not a regulated boost figure. The MGU-K output nearly triples (120kW -> 350kW) to carry the heavier electric share, with a 500Nm mechanical torque limit, for ~750kW (~1,000hp) combined. The real MGU-K can only deploy what it harvests over a lap (8.5MJ under the 2026 rules), and engine.hybridDeployMjPerLap can model that (see lapSimulate.ts) - but it is deliberately left unset here: real 2026 cars pair it with active aero that cuts straight-line drag, which this simulator does not model, and without that the ~400kW ICE alone tops out near 270km/h, so enforcing the limit would make every lap far slower than the real cars. New-generation cars are also mandated smaller and lighter than the 2022-2025 ground-effect era, reflected in the lower chassis weight here. maxRevRpm stays at the same 15,000rpm FIA hard limit that is applied across every season here (see realCars.ts)."
 }

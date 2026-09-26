@@ -1,16 +1,18 @@
 import { BRAKE_AMBIENT_TEMP_C, BRAKE_MATERIALS, brakeCoolingRatePerS } from "./brakeModel";
-import { deriveDriverInputs } from "./driverModel";
+import { DriverInputPoint, deriveDriverInputs } from "./driverModel";
 import { buildEngineCurves } from "./engineModel";
-import { buildLongitudinalModel, computeSpeedProfile } from "./speedProfile";
+import { LongitudinalModel, SpeedProfilePoint, buildLongitudinalModel, computeSpeedProfile } from "./speedProfile";
 import { computeWeightBreakdown, deriveVehicle } from "./vehicleModel";
 import {
   Circuit,
   ChassisConfig,
   EngineConfig,
+  EngineCurves,
   GearboxConfig,
   SimulationResult,
   Telemetry,
   TestConfig,
+  VehicleSpec,
 } from "./types";
 import { G, estimateTopSpeedKph } from "./vehicleDynamics";
 
@@ -21,6 +23,74 @@ import { G, estimateTopSpeedKph } from "./vehicleDynamics";
 // (e.g. near-zero grip) so the simulation stays finite instead of
 // producing Infinity/NaN lap times.
 const MIN_INTEGRATION_SPEED_MS = 0.3;
+
+// Bisection steps when searching for the deployment cutoff speed that uses
+// exactly the lap's electrical energy budget - 20 halvings of a ~100m/s
+// range pins it to 0.1mm/s, far past mattering.
+const DEPLOY_CUTOFF_BISECTION_STEPS = 20;
+
+export interface HotLapSolution {
+  curves: EngineCurves;
+  vehicle: VehicleSpec;
+  model: LongitudinalModel;
+  profile: SpeedProfilePoint[];
+  inputs: DriverInputPoint[];
+  // Speed above which the electric motor stops deploying (Infinity when
+  // the energy limit never bites), and the energy it deploys over the lap.
+  electricCutoffMs: number;
+  electricDeployedMj: number;
+}
+
+// The speed profile and driver inputs for one lap, within the power unit's
+// per-lap electrical energy limit (engine.hybridDeployMjPerLap) if it has
+// one. When flat-out deployment would need more than that, the car deploys
+// the motor only below a cutoff speed and runs on the combustion engine
+// alone above it - what real hybrid F1 cars do ("clipping" at the end of
+// the straights), and close to the best use of the energy, since a joule
+// spent accelerating out of a slow corner buys more time than one spent at
+// 300km/h. The cutoff is whatever speed spends exactly the budget.
+export function solveHotLap(
+  engine: EngineConfig,
+  chassis: ChassisConfig,
+  gearbox: GearboxConfig,
+  test: TestConfig,
+  circuit: Circuit,
+): HotLapSolution {
+  const curves = buildEngineCurves(engine);
+  const vehicle = deriveVehicle(engine, curves, chassis, gearbox);
+
+  const solveWithCutoff = (electricCutoffMs: number): HotLapSolution => {
+    const model = buildLongitudinalModel(vehicle, chassis, curves, test, electricCutoffMs);
+    const profile = computeSpeedProfile(circuit.points, vehicle, model, test.lapStartMode);
+    const inputs = deriveDriverInputs(profile, vehicle, curves, model);
+    const ds = profile.length > 1 ? profile[1].distanceM - profile[0].distanceM : 0;
+    let deployedJ = 0;
+    for (let i = 0; i < profile.length; i++) {
+      deployedJ += (inputs[i].electricPowerW * ds) / Math.max(MIN_INTEGRATION_SPEED_MS, profile[i].speedMs);
+    }
+    return { curves, vehicle, model, profile, inputs, electricCutoffMs, electricDeployedMj: deployedJ / 1e6 };
+  };
+
+  const unlimited = solveWithCutoff(Infinity);
+  const budgetMj = engine.hybridDeployMjPerLap;
+  if (budgetMj === undefined || unlimited.electricDeployedMj <= budgetMj) return unlimited;
+
+  // Deployed energy only grows as the cutoff rises, so bisect on it.
+  let low = 0;
+  let high = Math.max(...unlimited.profile.map((p) => p.speedMs));
+  let best = solveWithCutoff(low);
+  for (let k = 0; k < DEPLOY_CUTOFF_BISECTION_STEPS; k++) {
+    const mid = (low + high) / 2;
+    const attempt = solveWithCutoff(mid);
+    if (attempt.electricDeployedMj <= budgetMj) {
+      low = mid;
+      best = attempt;
+    } else {
+      high = mid;
+    }
+  }
+  return best;
+}
 
 // One theoretical flying lap of a circuit, calculated (not guessed) end to
 // end:
@@ -42,12 +112,7 @@ export function simulateHotLap(
   test: TestConfig,
   circuit: Circuit,
 ): SimulationResult {
-  const curves = buildEngineCurves(engine);
-  const vehicle = deriveVehicle(engine, curves, chassis, gearbox);
-  const model = buildLongitudinalModel(vehicle, chassis, curves, test);
-
-  const profile = computeSpeedProfile(circuit.points, vehicle, model, test.lapStartMode);
-  const inputs = deriveDriverInputs(profile, vehicle, curves, model);
+  const { curves, vehicle, profile, inputs } = solveHotLap(engine, chassis, gearbox, test, circuit);
 
   const n = profile.length;
   const ds = n > 1 ? profile[1].distanceM - profile[0].distanceM : circuit.lengthM;
@@ -102,7 +167,9 @@ export function simulateHotLap(
       speedKph: point.speedMs * 3.6,
       rpm: input.rpm,
       gear: input.gear,
-      hp: curves.powerAt(input.rpm),
+      // What the power unit can give here: the combustion engine plus the
+      // motor, unless it's clipped above the deployment cutoff.
+      hp: (input.torqueNm * input.rpm * ((2 * Math.PI) / 60)) / 745.7,
       torqueNm: input.torqueNm,
       gForce: input.accelMs2 / G,
       distanceM: point.distanceM,

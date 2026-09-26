@@ -31,6 +31,10 @@ export interface EngineConfig {
   // least realistic (screaming near the limiter).
   hybridBoostKw?: number;
   hybridMaxTorqueNm?: number;
+  // Electrical energy the motor may deploy over one lap, in MJ - a hot-lap
+  // limit only (see lapSimulate.ts). Undefined = unlimited, which is close
+  // enough for any single straight-line test.
+  hybridDeployMjPerLap?: number;
 }
 
 export type TransmissionType = "manual" | "auto";
@@ -116,6 +120,8 @@ export interface EngineCurves {
   powerAt: (rpm: number) => number;
   frictionTorqueAt: (rpm: number) => number;
   combustionTorqueAt: (rpm: number) => number;
+  // The electric motor's share of torqueAt (0 for a non-hybrid).
+  electricTorqueAt: (rpm: number) => number;
   idleRpm: number;
   redlineRpm: number;
   maxRevRpm: number;

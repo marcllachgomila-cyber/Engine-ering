@@ -1,11 +1,8 @@
 import { getCircuit } from "./circuits";
 import { DEFAULT_CHASSIS, DEFAULT_TEST_CONFIG, defaultTyresFor } from "./defaults";
-import { buildEngineCurves } from "./engineModel";
 import { findRealCarPreset, gearboxFromPreset } from "./realCars";
-import { buildLongitudinalModel, computeSpeedProfile } from "./speedProfile";
-import { simulateHotLap } from "./lapSimulate";
+import { simulateHotLap, solveHotLap } from "./lapSimulate";
 import { ChassisConfig, TestConfig } from "./types";
-import { deriveVehicle } from "./vehicleModel";
 
 // Dev-only geometry check: prints every corner the physics actually sees on
 // a circuit's racing line - where it is, its tightest radius and the speed
@@ -44,10 +41,7 @@ export function debugCircuitCorners(circuitId: string, carId = "f1-2025"): Corne
   };
   const gearbox = gearboxFromPreset(car);
   const test: TestConfig = { ...DEFAULT_TEST_CONFIG, testType: "hotLap", circuitId: circuit.id };
-  const curves = buildEngineCurves(car.engine);
-  const vehicle = deriveVehicle(car.engine, curves, chassis, gearbox);
-  const model = buildLongitudinalModel(vehicle, chassis, curves, test);
-  const profile = computeSpeedProfile(circuit.points, vehicle, model, test.lapStartMode);
+  const { profile, electricCutoffMs, electricDeployedMj } = solveHotLap(car.engine, chassis, gearbox, test, circuit);
 
   const corners: CornerReport[] = [];
   const inCorner = (i: number) => Math.abs(profile[i].curvature) > 1 / CORNER_RADIUS_THRESHOLD_M;
@@ -93,6 +87,10 @@ export function debugCircuitCorners(circuitId: string, carId = "f1-2025"): Corne
   console.log(
     `lap ${formatLapTime(lapTimeS)}, min radius ${minRadiusM.toFixed(1)} m, ${circuit.points.length} points`,
   );
+  if (car.engine.hybridBoostKw) {
+    const cutoff = Number.isFinite(electricCutoffMs) ? `above ${(electricCutoffMs * 3.6).toFixed(0)} km/h` : "never";
+    console.log(`electric: ${electricDeployedMj.toFixed(2)} MJ deployed, clipped ${cutoff}`);
+  }
   console.log("  #  dir   start m   apex m  min radius m  apex km/h");
   corners.forEach((c, k) => {
     console.log(
