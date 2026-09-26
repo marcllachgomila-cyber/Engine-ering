@@ -2,14 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { EngineConfig, SimulationResult, WeightComponent } from "@/lib/physics/types";
-import { buildEngineCurves } from "@/lib/physics/engineModel";
 import { engineSizeLabel } from "@/lib/physics/engineLayout";
 import { getCircuit } from "@/lib/physics/circuits";
 import { resultHeadline } from "@/lib/testResultLabel";
 import { CornerMarks, FOCUS_RING, formatUnitValue, Panel, SectionTag } from "@/components/EngineBuilder/FormControls";
 import CircuitMap from "./CircuitMap";
 import TimeSeriesGraph from "./TimeSeriesGraph";
-import CombustionFrictionGraph from "./CombustionFrictionGraph";
 
 interface ResultsSummaryProps {
   engine: EngineConfig;
@@ -93,8 +91,6 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
           : "Didn't reach 100 kph in the run";
     }
   }
-
-  const curves = useMemo(() => buildEngineCurves(engine), [engine]);
 
   const finalT = result.telemetry[result.telemetry.length - 1]?.t ?? 0;
 
@@ -256,9 +252,6 @@ export default function ResultsSummary({ engine, result }: ResultsSummaryProps) 
               />
             </Panel>
           )}
-          <Panel>
-            <CombustionFrictionGraph curves={curves} />
-          </Panel>
         </div>
       </div>
 
