@@ -124,7 +124,14 @@ export default function GearboxForm({
               <OptionButton
                 key={t}
                 active={value.transmissionType === t}
-                onClick={() => onChange({ ...value, transmissionType: t })}
+                onClick={() =>
+                  onChange({
+                    ...value,
+                    transmissionType: t,
+                    // A dual-clutch box is always computer-shifted, so manual forces single.
+                    dualClutch: t === "manual" ? false : value.dualClutch,
+                  })
+                }
               >
                 {TRANSMISSION_LABELS[t]}
               </OptionButton>
@@ -142,6 +149,7 @@ export default function GearboxForm({
           <div className="flex flex-wrap gap-2">
             <OptionButton
               active={value.dualClutch}
+              disabled={value.transmissionType === "manual"}
               onClick={() => onChange({ ...value, dualClutch: true })}
             >
               Dual Clutch
@@ -153,6 +161,11 @@ export default function GearboxForm({
               Single Clutch
             </OptionButton>
           </div>
+          {value.transmissionType === "manual" && (
+            <p className="text-xs text-zinc-500 mt-2">
+              Dual clutch needs an automatic &mdash; there&rsquo;s no manual version.
+            </p>
+          )}
         </div>
 
         {value.transmissionType === "auto" && (

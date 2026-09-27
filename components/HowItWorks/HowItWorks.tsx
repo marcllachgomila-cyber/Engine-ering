@@ -705,7 +705,9 @@ k &= 1, 2, \dots, N
         <P>
           Each upshift cuts drive to the wheels for a moment: 0.05 s for a dual-clutch box, which
           has the next gear pre-selected, 0.15 s for a torque-converter automatic, and 0.3 s for a
-          manual, which needs a clutch and a lever throw.
+          manual, which needs a clutch and a lever throw. Dual clutch is only offered with an
+          automatic: the two clutches hand over drive under computer control, so there&rsquo;s no
+          manual version, and picking Manual switches the clutch back to single.
         </P>
         <H3>Wheel force</H3>
         <P>
