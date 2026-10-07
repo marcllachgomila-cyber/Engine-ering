@@ -1,47 +1,16 @@
 import * as THREE from "three";
-import { BodyType } from "@/lib/physics/types";
+import { AxleLayout, axleLayout as layoutAxles, Profile, sampleProfile } from "@/lib/physics/bodyShapes";
 import { VehicleState } from "@/lib/physics/vehicleState";
 
 // Shared building blocks for the placeholder vehicle models. Scene units are
 // metres, +X forward, +Y up, +Z to the car's left, ground at y = 0, and the
-// body is centred on x = 0 / z = 0.
+// body is centred on x = 0 / z = 0. The shapes themselves live in
+// lib/physics/bodyShapes.ts, shared with the 2D wind tunnel.
 
-// A side profile as (u, v) pairs: u runs nose (0) to tail (1) along the
-// body length, v is the height above the floor as a fraction of the body's
-// height above its ride height.
-export type Profile = [number, number][];
-
-export function sampleProfile(profile: Profile, u: number): number {
-  for (let i = 1; i < profile.length; i++) {
-    const [u0, v0] = profile[i - 1];
-    const [u1, v1] = profile[i];
-    if (u <= u1 && u1 > u0) return v0 + ((u - u0) / (u1 - u0)) * (v1 - v0);
-  }
-  return profile[profile.length - 1][1];
-}
-
-// Where each body style's axles sit along its length. The physics only
-// knows the wheelbase, so how the remaining length splits into front and
-// rear overhang is a visual-only, representative figure per body style:
-// mid-engined cars and F1 cars carry more ahead of the front axle than
-// front-engined boxes, which hang more out the back.
-const FRONT_OVERHANG_SHARE: Record<BodyType, number> = {
-  minivan: 0.44,
-  suv: 0.43,
-  supercar: 0.52,
-  f1: 0.55,
-};
-
-export interface AxleLayout {
-  frontX: number;
-  rearX: number;
-}
+export type { AxleLayout, Profile };
 
 export function axleLayout(vehicle: VehicleState): AxleLayout {
-  const { lengthM, wheelbaseM } = vehicle.dimensions;
-  const overhangM = Math.max(0, lengthM - wheelbaseM);
-  const frontX = lengthM / 2 - overhangM * FRONT_OVERHANG_SHARE[vehicle.identity.bodyType];
-  return { frontX, rearX: frontX - wheelbaseM };
+  return layoutAxles(vehicle.dimensions, vehicle.identity.bodyType);
 }
 
 export interface Arch {

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Edges } from "@react-three/drei";
 import * as THREE from "three";
+import { openWheelSpineChains, openWheelStations } from "@/lib/physics/bodyShapes";
 import { AeroMode } from "@/lib/physics/types";
 import { VehicleState } from "@/lib/physics/vehicleState";
 import { axleLayout, extrudeAcross, lerpKnots, pointsShape, shapeWidth, VEHICLE_COLORS } from "./geometry";
@@ -77,32 +78,17 @@ export default function OpenWheelModel({ vehicle, aeroMode }: { vehicle: Vehicle
   const rearR = vehicle.tyres.rear.rollingRadiusM;
   const halfL = lengthM / 2;
 
-  // Key stations along the car.
-  const noseTipX = halfL - 0.15;
-  const cockpitFrontX = frontX - 0.55;
-  const rollHoopX = frontX - 1.25;
-  const sidepodFrontX = frontX - 0.95;
-  const sidepodRearX = rearX + 0.45;
-  const gearboxEndX = rearX - 0.3;
+  // Key stations along the car (shared with the 2D wind tunnel's section).
+  const { noseTipX, cockpitFrontX, rollHoopX, sidepodFrontX, sidepodRearX, gearboxEndX } = openWheelStations(
+    lengthM,
+    axles,
+  );
 
   // Nose, monocoque, airbox and engine cover in one side profile, narrowed
   // in plan from the slim nose to the tub and back down to the gearbox.
   const spineBody = useMemo(() => {
-    const shape = pointsShape([
-      [noseTipX, 0.14],
-      [noseTipX, 0.2],
-      [frontX, 0.42],
-      [cockpitFrontX, 0.58],
-      [rollHoopX + 0.1, 0.62],
-      [rollHoopX - 0.05, heightM],
-      [rollHoopX - 0.35, heightM - 0.05],
-      [rearX + 0.6, 0.5],
-      [gearboxEndX, 0.38],
-      [gearboxEndX, 0.18],
-      [rearX + 0.4, 0.08],
-      [frontX - 0.3, 0.08],
-      [frontX + 0.2, 0.12],
-    ]);
+    const { upper, lower } = openWheelSpineChains(lengthM, heightM, { frontX, rearX });
+    const shape = pointsShape([...upper, ...[...lower].reverse()]);
     const knots: [number, number][] = [
       [gearboxEndX, 0.3],
       [rearX + 0.6, 0.45],
@@ -113,7 +99,7 @@ export default function OpenWheelModel({ vehicle, aeroMode }: { vehicle: Vehicle
       [noseTipX, 0.22],
     ];
     return shapeWidth(extrudeAcross(shape, SPINE_MAX_WIDTH_M, 0.03), (x) => lerpKnots(knots, x) / SPINE_MAX_WIDTH_M);
-  }, [noseTipX, frontX, cockpitFrontX, rollHoopX, heightM, rearX, gearboxEndX]);
+  }, [lengthM, heightM, noseTipX, frontX, cockpitFrontX, rollHoopX, rearX, gearboxEndX]);
 
   // Sidepods: radiator inlets behind the front wheels, tapering in plan
   // and height toward the rear ("coke bottle").

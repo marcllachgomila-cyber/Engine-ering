@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
+import { ClosedBodySpec } from "@/lib/physics/bodyShapes";
 import { VehicleState } from "@/lib/physics/vehicleState";
 import {
   ARCH_CLEARANCE_M,
   axleLayout,
   bodySideShape,
   extrudeAcross,
-  Profile,
   profilePolygonShape,
   shapeWidth,
   smoothstep,
@@ -18,55 +18,8 @@ import Wheels from "./Wheels";
 
 // Generic closed-bodywork car: a full-width lower body (bonnet, flanks,
 // boot/deck) with the wheel arches cut in, plus a narrower glasshouse on
-// top. Every road body style is this one model fed a different spec - the
-// numbers below are shape descriptors for a representative car of the
-// class, not any manufacturer's surfaces.
-export interface ClosedBodySpec {
-  // Upper outline of the lower body, nose to tail (see Profile).
-  lowerProfile: Profile;
-  // The glasshouse as a closed polygon in the same (u, v) space.
-  cabin: Profile;
-  // Cabin width at its base, as a fraction of body width, and how much
-  // narrower it gets by the roof (tumblehome).
-  cabinWidthFraction: number;
-  tumblehome: number;
-  // Plan-view narrowing at the very nose and tail, as a fraction of width.
-  noseTaper: number;
-  tailTaper: number;
-}
-
-// One-box: short bonnet, steep windscreen running straight into a long
-// flat roof and a near-vertical tailgate.
-export const MINIVAN_SPEC: ClosedBodySpec = {
-  lowerProfile: [[0, 0.25], [0.02, 0.42], [0.1, 0.5], [0.2, 0.53], [0.97, 0.56], [1, 0.5]],
-  cabin: [[0.12, 0.49], [0.32, 1], [0.95, 0.985], [0.995, 0.62], [0.995, 0.49]],
-  cabinWidthFraction: 0.93,
-  tumblehome: 0.1,
-  noseTaper: 0.08,
-  tailTaper: 0.03,
-};
-
-// Two-box: tall upright nose and bonnet, high beltline, square tail.
-export const SUV_SPEC: ClosedBodySpec = {
-  lowerProfile: [[0, 0.3], [0.02, 0.48], [0.2, 0.56], [0.28, 0.58], [0.97, 0.6], [1, 0.52]],
-  cabin: [[0.27, 0.55], [0.42, 1], [0.92, 0.98], [0.985, 0.64], [0.985, 0.55]],
-  cabinWidthFraction: 0.9,
-  tumblehome: 0.12,
-  noseTaper: 0.08,
-  tailTaper: 0.04,
-};
-
-// Mid-engine wedge: low pointed nose, cab-forward canopy, engine deck
-// behind the cabin over the rear axle.
-export const SUPERCAR_SPEC: ClosedBodySpec = {
-  lowerProfile: [[0, 0.3], [0.02, 0.4], [0.12, 0.45], [0.3, 0.52], [0.85, 0.58], [0.96, 0.56], [1, 0.42]],
-  cabin: [[0.28, 0.48], [0.45, 1], [0.6, 0.99], [0.86, 0.58], [0.86, 0.48]],
-  cabinWidthFraction: 0.8,
-  tumblehome: 0.18,
-  noseTaper: 0.15,
-  tailTaper: 0.06,
-};
-
+// top. Every road body style is this one model fed a different spec (see
+// lib/physics/bodyShapes.ts, shared with the 2D wind tunnel).
 export default function ClosedBodyModel({ vehicle, spec }: { vehicle: VehicleState; spec: ClosedBodySpec }) {
   const { lengthM, widthM, heightM, rideHeightM } = vehicle.dimensions;
   const axles = axleLayout(vehicle);

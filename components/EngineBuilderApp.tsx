@@ -258,7 +258,9 @@ export default function EngineBuilderApp() {
                     </span>
                   )}
                 </div>
-                <div className="w-full h-[26rem] relative">
+                {/* The wind tunnel carries its readout under the flow picture, so
+                    it gets a taller panel than the 3D previews. */}
+                <div className={`w-full relative ${previewMode === "aero" ? "h-[38rem]" : "h-[26rem]"}`}>
                   {/* Only one preview is mounted at a time, so there's only
                       ever one WebGL context on the page (the wind tunnel
                       uses plain 2D canvas, no WebGL at all). */}
@@ -269,7 +271,7 @@ export default function EngineBuilderApp() {
                     </>
                   )}
                   {previewMode === "vehicle" && <VehiclePreview vehicle={vehicle} />}
-                  {previewMode === "aero" && <WindTunnel2D />}
+                  {previewMode === "aero" && <WindTunnel2D vehicle={vehicle} />}
                 </div>
               </div>
               {(step === "chassis" || step === "engine") && <TipsBox />}

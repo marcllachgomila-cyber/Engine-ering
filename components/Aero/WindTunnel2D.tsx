@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { densifyPolygon, solvePotentialFlow, Vec2 } from "@/lib/aero/panelMethod";
 import { domainFor, FlowGrid, sampleFlow, traceStreamline, velocityAt, wakeOutline } from "@/lib/aero/flowField";
-import { BodyOutline, REFERENCE_BODY } from "@/lib/aero/referenceBody";
+import { BodyOutline, CRITICAL_REAR_SLANT_DEG, vehicleBodyOutline } from "@/lib/aero/bodyOutline";
+import { VehicleState } from "@/lib/physics/vehicleState";
+import AeroReadout from "./AeroReadout";
 
 // 2D wind tunnel: a side-on view of the potential-flow field around a body
 // (lib/aero), drawn with the plain 2D canvas API rather than WebGL so it
@@ -51,19 +53,25 @@ const PARTICLE_COUNT = 260;
 const STREAMLINE_COUNT = 16;
 const RANDOM_RESPAWN_SHARE = 0.25;
 
-// The solve is cached per body, so flipping between preview modes doesn't
-// redo it.
-const fieldCache = new Map<string, FlowGrid>();
-// Known without solving, so the panel can reserve the tunnel's space up front.
-const TUNNEL_DOMAIN = domainFor(REFERENCE_BODY);
+// No speed figures are read off the solution for display: on these
+// placeholder shapes the peak values are dominated by sharp corners (where
+// potential flow is singular), so they'd be artefacts, not results.
+interface SolvedField {
+  grid: FlowGrid;
+}
 
-function solveField(body: BodyOutline): FlowGrid {
-  const cached = fieldCache.get(body.name);
+// The solve is cached per body shape (body type + dimensions), so flipping
+// between preview modes or presets of the same body type doesn't redo it.
+const fieldCache = new Map<string, SolvedField>();
+
+function solveField(body: BodyOutline): SolvedField {
+  const cached = fieldCache.get(body.key);
   if (cached) return cached;
   const flow = solvePotentialFlow(densifyPolygon(body.polygon, PANEL_SPACING_M), { ground: true });
   const grid = sampleFlow(flow, body, domainFor(body));
-  fieldCache.set(body.name, grid);
-  return grid;
+  const solved = { grid };
+  fieldCache.set(body.key, solved);
+  return solved;
 }
 
 interface View {
@@ -138,19 +146,27 @@ function drawStatic(ctx: CanvasRenderingContext2D, grid: FlowGrid, view: View, w
   }
 }
 
-export default function WindTunnel2D() {
+export default function WindTunnel2D({ vehicle }: { vehicle: VehicleState }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const staticRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<HTMLCanvasElement>(null);
-  const [grid, setGrid] = useState<FlowGrid | null>(() => fieldCache.get(REFERENCE_BODY.name) ?? null);
+
+  // Building the outline is cheap; the expensive solve is cached by the
+  // outline's key (body type + dimensions), so weight, engine or tyre
+  // tweaks never re-solve anything.
+  const body = useMemo(() => vehicleBodyOutline(vehicle), [vehicle]);
+  const domain = useMemo(() => domainFor(body), [body]);
+  const [solved, setSolved] = useState<{ key: string; field: SolvedField } | null>(null);
+  const field = fieldCache.get(body.key) ?? (solved?.key === body.key ? solved.field : null);
+  const grid = field?.grid ?? null;
 
   // Solve off the first paint so the panel shows its "solving" state
   // instead of freezing on the click that opened it.
   useEffect(() => {
-    if (grid) return;
-    const id = setTimeout(() => setGrid(solveField(REFERENCE_BODY)), 30);
+    if (field) return;
+    const id = setTimeout(() => setSolved({ key: body.key, field: solveField(body) }), 30);
     return () => clearTimeout(id);
-  }, [grid]);
+  }, [body, field]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -260,10 +276,15 @@ export default function WindTunnel2D() {
     };
   }, [grid]);
 
+  const bodyName = vehicle.identity.bodyType === "f1" ? "open-wheel" : vehicle.identity.bodyType;
+  const slope = body.rearSlope;
+  const wakeHeightM = body.separationTop.y - body.separationBottom.y;
+
   return (
     <div className="absolute inset-0 flex flex-col font-mono text-[10px] text-zinc-500">
       <div className="px-4 pt-3 pb-2 uppercase tracking-wider text-zinc-400">
-        {REFERENCE_BODY.name} · side section · illustrative
+        Generic {bodyName} shape · {body.section === "silhouette" ? "side silhouette" : "centreline section"} ·
+        illustrative
       </div>
       {/* The tunnel's height is fixed by the panel width and the domain's
           aspect ratio; it sits centred in whatever height is left. */}
@@ -271,7 +292,7 @@ export default function WindTunnel2D() {
         <div
           ref={containerRef}
           className="relative w-full shrink-0"
-          style={{ aspectRatio: `${TUNNEL_DOMAIN.xMax - TUNNEL_DOMAIN.xMin} / ${TUNNEL_DOMAIN.yMax}` }}
+          style={{ aspectRatio: `${domain.xMax - domain.xMin} / ${domain.yMax}` }}
         >
           <canvas ref={staticRef} className="absolute inset-0" aria-hidden />
           <canvas
@@ -287,8 +308,9 @@ export default function WindTunnel2D() {
           )}
         </div>
       </div>
-      <div className="max-h-[45%] shrink-0 space-y-2 overflow-y-auto px-4 pt-2 pb-3">
-        <div>
+      <div className="max-h-[58%] shrink-0 space-y-2 overflow-y-auto px-4 pt-2 pb-3">
+        <AeroReadout vehicle={vehicle} />
+        <div className="border-t border-zinc-800 pt-2">
           <div className="mb-1 text-zinc-400">Local air speed ÷ freestream</div>
           <div className="h-1.5 w-full rounded-full" style={{ background: LEGEND_GRADIENT }} />
           <div className="mt-0.5 flex justify-between">
@@ -307,18 +329,49 @@ export default function WindTunnel2D() {
             Wake (empirical sketch)
           </span>
         </div>
+        {/* What the model concluded for this shape, and why. */}
+        <ul className="space-y-0.5 leading-snug text-zinc-400">
+          <li>
+            {slope ? (
+              <>
+                Rear slope {slope.angleDeg.toFixed(0)}° {body.separatesAtRoof ? ">" : "<"} {CRITICAL_REAR_SLANT_DEG}°:{" "}
+                {body.separatesAtRoof
+                  ? "flow assumed to separate at the roof's trailing edge, so the whole tail sits in the wake"
+                  : "flow assumed to stay attached down to the tail"}
+              </>
+            ) : (
+              "No rear slope: flow assumed to leave at the tail's edges"
+            )}{" "}
+            · wake height {wakeHeightM.toFixed(2)} m
+          </li>
+        </ul>
         <details className="text-zinc-500">
           <summary className="cursor-pointer text-zinc-400">Model &amp; assumptions · not CFD</summary>
           <ul className="mt-1 list-disc space-y-0.5 pl-4 leading-snug">
             <li>
-              2D incompressible potential flow (source-panel method) around a fixed reference profile, with the
-              road as a mirror-image ground plane. Inviscid: no boundary layer, no drag or lift from this solution.
+              2D incompressible potential flow (source-panel method) around the body type&rsquo;s generic shape,
+              with the road as a mirror-image ground plane. Inviscid: no boundary layer, no drag or lift from this
+              solution. A preset uses its body type&rsquo;s shape, not the real car&rsquo;s.
             </li>
             <li>
-              Separation points and the wake are an empirical sketch, not solved. A real wake is unsteady and 3D.
+              {body.section === "silhouette"
+                ? "The section is the side silhouette (body and cabin together); wheels aren't modelled."
+                : "Open-wheel: the section is the centreline (nose, cockpit, engine cover) only - wings, wheels and the floor, where most of an F1 car's downforce comes from, aren't modelled."}
             </li>
             <li>
-              2D flow can&rsquo;t go around the car&rsquo;s sides, so roof speeds are higher than on a real car.
+              Separation follows the slanted-back body result: a rear slope steeper than about{" "}
+              {CRITICAL_REAR_SLANT_DEG}° separates at its top edge. In reality this switch is a 3D effect and not
+              perfectly sharp. The wake itself is an empirical sketch, not solved; a real wake is unsteady and 3D.
+            </li>
+            <li>
+              2D flow can&rsquo;t go around the car&rsquo;s sides, so speeds over the body are higher than on a real
+              car.
+            </li>
+            <li>
+              The forces above don&rsquo;t come from this flow picture: they use the body type&rsquo;s representative
+              Cd, Cl and frontal area (the same values the simulation uses, not measured data), still air, and ISA
+              sea-level air (1.225 kg/m³, 15 °C). Coefficients are taken as constant with speed, ride height and
+              yaw. The data has no front/rear downforce split, so there&rsquo;s no aero balance.
             </li>
           </ul>
         </details>

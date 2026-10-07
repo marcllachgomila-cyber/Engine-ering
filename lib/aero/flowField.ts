@@ -1,5 +1,5 @@
 import { pointInPolygon, PotentialFlow, Vec2 } from "./panelMethod";
-import { BodyOutline } from "./referenceBody";
+import { BodyOutline } from "./bodyOutline";
 
 // The flow the 2D wind tunnel draws: the potential-flow solution sampled on
 // a grid (so particles can look velocities up cheaply every frame), with an
@@ -14,7 +14,13 @@ import { BodyOutline } from "./referenceBody";
 // order-of-magnitude sketch of a bluff-body near wake - NOT solved from
 // anything - so the visualisation shows roughly the right picture:
 //
-// - It starts at the body's separation points, spanning the base height h.
+// - It starts at the body's base (the tail's vertical face), spanning the
+//   base height h from the underbody trailing edge up to the upper
+//   separation point - the tail top, or the roof's trailing edge if the
+//   rear slope separates (see bodyOutline.ts), which makes h, and so the
+//   whole wake, bigger.
+// - Over a separated rear slope (between the roof edge and the base) the
+//   air under the shear layer is dead, recirculating air.
 // - Along its centreline the streamwise velocity is 1 - D(xi), with
 //   xi = (distance behind the base) / h and D(xi) = 1.25 / sqrt(1 + xi^2):
 //   reversed flow (-0.25) right behind the base, a recirculation bubble
@@ -31,7 +37,9 @@ const WAKE_SPREAD_PER_H = 0.12;
 const WAKE_MIXING_BAND_H = 0.25;
 
 export interface Wake {
-  xStart: number;
+  // Where the upper shear layer leaves the body, and where the base is.
+  xSeparation: number;
+  xBase: number;
   yTop: number;
   yBottom: number;
   baseHeightM: number;
@@ -39,7 +47,8 @@ export interface Wake {
 
 export function wakeFromBody(body: BodyOutline): Wake {
   return {
-    xStart: Math.max(body.separationTop.x, body.separationBottom.x),
+    xSeparation: body.separationTop.x,
+    xBase: Math.max(body.tailTop.x, body.separationBottom.x),
     yTop: body.separationTop.y,
     yBottom: body.separationBottom.y,
     baseHeightM: body.separationTop.y - body.separationBottom.y,
@@ -51,28 +60,40 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
+function wakeDeficit(xi: number): number {
+  return WAKE_REVERSE_DEFICIT / Math.sqrt(1 + xi * xi);
+}
+
 // How far a point is "in" the wake (0 outside, 1 on its core) and the
-// wake's own streamwise velocity there.
+// wake's own streamwise velocity there. Points inside the body never get
+// here (the sampled grid marks them solid first).
 export function wakeAt(wake: Wake, x: number, y: number): { weight: number; u: number } {
-  if (x < wake.xStart) return { weight: 0, u: 1 };
+  if (x < wake.xSeparation) return { weight: 0, u: 1 };
   const h = wake.baseHeightM;
-  const xi = (x - wake.xStart) / h;
+  if (x < wake.xBase) {
+    // Over a separated slope: everything under the shear layer.
+    const weight = 1 - smoothstep(wake.yTop, wake.yTop + WAKE_MIXING_BAND_H * h, y);
+    return { weight, u: 1 - wakeDeficit(0) };
+  }
+  const xi = (x - wake.xBase) / h;
   const halfWidth = (h / 2) * (1 + WAKE_SPREAD_PER_H * xi);
   const yCentre = (wake.yTop + wake.yBottom) / 2;
   const weight = 1 - smoothstep(halfWidth, halfWidth + WAKE_MIXING_BAND_H * h, Math.abs(y - yCentre));
-  return { weight, u: 1 - WAKE_REVERSE_DEFICIT / Math.sqrt(1 + xi * xi) };
+  return { weight, u: 1 - wakeDeficit(xi) };
 }
 
-// The wake's outline, for drawing: upper and lower edges out to xEnd.
+// The wake's outline, for drawing: the upper edge from the separation
+// point, the lower from the base, both out to xEnd.
 export function wakeOutline(wake: Wake, xEnd: number, samples = 24): { upper: Vec2[]; lower: Vec2[] } {
   const yCentre = (wake.yTop + wake.yBottom) / 2;
-  const upper: Vec2[] = [];
+  const halfWidthAt = (x: number) =>
+    (wake.baseHeightM / 2) * (1 + (WAKE_SPREAD_PER_H * Math.max(0, x - wake.xBase)) / wake.baseHeightM);
+  const upper: Vec2[] = wake.xSeparation < wake.xBase ? [{ x: wake.xSeparation, y: wake.yTop }] : [];
   const lower: Vec2[] = [];
   for (let i = 0; i <= samples; i++) {
-    const x = wake.xStart + ((xEnd - wake.xStart) * i) / samples;
-    const halfWidth = (wake.baseHeightM / 2) * (1 + (WAKE_SPREAD_PER_H * (x - wake.xStart)) / wake.baseHeightM);
-    upper.push({ x, y: yCentre + halfWidth });
-    lower.push({ x, y: Math.max(0, yCentre - halfWidth) });
+    const x = wake.xBase + ((xEnd - wake.xBase) * i) / samples;
+    upper.push({ x, y: yCentre + halfWidthAt(x) });
+    lower.push({ x, y: Math.max(0, yCentre - halfWidthAt(x)) });
   }
   return { upper, lower };
 }

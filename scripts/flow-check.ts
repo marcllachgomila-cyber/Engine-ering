@@ -4,7 +4,10 @@
 // Run with: npx tsx scripts/flow-check.ts
 import { densifyPolygon, solvePotentialFlow, Vec2 } from "../lib/aero/panelMethod";
 import { domainFor, sampleFlow, traceStreamline } from "../lib/aero/flowField";
-import { REFERENCE_BODY } from "../lib/aero/referenceBody";
+import { REFERENCE_BODY, vehicleBodyOutline, CRITICAL_REAR_SLANT_DEG, profileOutline } from "../lib/aero/bodyOutline";
+import { BODY_TYPE_PRESETS, DEFAULT_CHASSIS, DEFAULT_ENGINE, DEFAULT_GEARBOX, defaultTyresFor } from "../lib/physics/defaults";
+import { buildVehicleState } from "../lib/physics/vehicleState";
+import { BodyType } from "../lib/physics/types";
 
 let failures = 0;
 function check(name: string, ok: boolean, detail: string) {
@@ -87,6 +90,55 @@ console.log(`  grid ${grid.nx} x ${grid.ny}, sampled in ${sampleMs.toFixed(0)} m
 check("sampling cost", sampleMs < 1500, `${sampleMs.toFixed(0)} ms (Node; a phone is slower)`);
 const line = traceStreamline(grid, domain.xMin, 0.5 * REFERENCE_BODY.heightM + 1.5, 0.05);
 check("streamline crosses the tunnel", line.length > 10 && line[line.length - 1].x > REFERENCE_BODY.lengthM / 2, `${line.length} points, ends at x=${line[line.length - 1].x.toFixed(2)} m`);
+
+// 4. Every body type's own outline (what the tunnel shows for that car).
+console.log(`
+Vehicle sections (rear slope > ${CRITICAL_REAR_SLANT_DEG} deg separates at the roof edge)`);
+for (const bodyType of Object.keys(BODY_TYPE_PRESETS) as BodyType[]) {
+  const vehicle = buildVehicleState(
+    { ...DEFAULT_CHASSIS, bodyType, weightKg: BODY_TYPE_PRESETS[bodyType].weightKg, ...defaultTyresFor(bodyType) },
+    DEFAULT_ENGINE,
+    DEFAULT_GEARBOX,
+    null,
+  );
+  const body = vehicleBodyOutline(vehicle);
+  const t = performance.now();
+  const f = solvePotentialFlow(densifyPolygon(body.polygon, 0.1), { ground: true });
+  const g = sampleFlow(f, body, domainFor(body));
+  const ms = performance.now() - t;
+  const tangency = Math.max(
+    ...f.panels.map((p) => {
+      const vel = f.velocityAt(p.xc + p.nx * 1e-6, p.yc + p.ny * 1e-6);
+      return Math.abs(vel.x * p.nx + vel.y * p.ny);
+    }),
+  );
+  const gross = f.panels.reduce((acc, p, j) => acc + Math.abs(f.strengths[j]) * p.length, 0);
+  const net = f.panels.reduce((acc, p, j) => acc + f.strengths[j] * p.length, 0);
+  const slope = body.rearSlope ? `${body.rearSlope.angleDeg.toFixed(1)} deg` : "none";
+  const wakeH = body.separationTop.y - body.separationBottom.y;
+  console.log(
+    `  ${bodyType.padEnd(9)} ${body.section.padEnd(10)} ${String(f.panels.length).padStart(3)} panels  rear slope ${slope.padEnd(9)} -> ${body.separatesAtRoof ? "separates at roof edge" : "attached to tail     "}  wake h ${wakeH.toFixed(2)} m  ${ms.toFixed(0)} ms (grid ${g.nx}x${g.ny})`,
+  );
+  check(`${bodyType} tangency`, tangency < 2e-3, tangency.toExponential(2));
+  check(`${bodyType} mass conservation`, Math.abs(net) / gross < 0.01, `${((100 * Math.abs(net)) / gross).toFixed(2)}% of total`);
+  check(`${bodyType} wake above ground`, body.separationBottom.y > 0 && wakeH > 0, `base ${body.separationBottom.y.toFixed(2)}-${body.separationTop.y.toFixed(2)} m`);
+}
+
+// 5. Separation responds to geometry: synthetic fastbacks with a known rear
+// slant either side of the critical angle (4 m long, 1.25 m body height,
+// slant over the last quarter of the length).
+console.log("\nSynthetic rear slants");
+for (const angleDeg of [20, 40]) {
+  const drop = 1.0 * Math.tan((angleDeg * Math.PI) / 180);
+  const body = profileOutline(`slant ${angleDeg}`, [[0, 0.3], [0.05, 0.6], [0.3, 0.75], [0.4, 1], [0.75, 1], [1, 1 - drop / 1.25]], 4, 1.4, 0.15);
+  const measured = body.rearSlope?.angleDeg ?? 0;
+  check(`${angleDeg} deg slant measured`, Math.abs(measured - angleDeg) < 3, `${measured.toFixed(1)} deg`);
+  check(
+    `${angleDeg} deg slant decision`,
+    body.separatesAtRoof === angleDeg > CRITICAL_REAR_SLANT_DEG,
+    body.separatesAtRoof ? "separates at roof edge" : "attached",
+  );
+}
 
 console.log(failures ? `\n${failures} check(s) failed` : "\nAll flow checks passed");
 process.exit(failures ? 1 : 0);
