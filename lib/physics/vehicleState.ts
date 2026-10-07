@@ -101,6 +101,8 @@ export interface VehicleTyres {
   // Dry-road friction coefficient before compound/condition multipliers.
   baseGripMu: number;
   tractionControl: boolean;
+  // Rolling resistance force = this x weight x g (constant with speed).
+  rollingResistanceCoefficient: number;
 }
 
 export interface VehicleAero {
@@ -272,6 +274,7 @@ export function buildVehicleState(
       optimalPressurePsi: preset.optimalTyrePressurePsi,
       baseGripMu: vehicle.tireGripMu,
       tractionControl: chassis.tractionControl,
+      rollingResistanceCoefficient: vehicle.rollingResistanceCoefficient,
     },
     aero: {
       dragCoefficient: vehicle.dragCoefficient,

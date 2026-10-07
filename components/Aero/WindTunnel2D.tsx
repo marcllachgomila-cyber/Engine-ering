@@ -1,53 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { densifyPolygon, solvePotentialFlow, Vec2 } from "@/lib/aero/panelMethod";
-import { domainFor, FlowGrid, sampleFlow, traceStreamline, velocityAt, wakeOutline } from "@/lib/aero/flowField";
-import { BodyOutline, CRITICAL_REAR_SLANT_DEG, vehicleBodyOutline } from "@/lib/aero/bodyOutline";
+import { useEffect, useMemo, useRef } from "react";
+import { Vec2 } from "@/lib/aero/panelMethod";
+import { domainFor, FlowGrid, traceStreamline, velocityAt, wakeOutline } from "@/lib/aero/flowField";
+import { CRITICAL_REAR_SLANT_DEG } from "@/lib/aero/bodyOutline";
+import { FAST_POLE, SLOW_POLE, SPEED_LEGEND_GRADIENT, speedColorCss } from "@/lib/aero/speedColors";
 import { VehicleState } from "@/lib/physics/vehicleState";
 import AeroReadout from "./AeroReadout";
+import { useFlowGrid } from "./useFlowGrid";
 
 // 2D wind tunnel: a side-on view of the potential-flow field around a body
 // (lib/aero), drawn with the plain 2D canvas API rather than WebGL so it
-// never competes with the 3D viewer for a GPU context.
-//
-// Colour encodes local speed relative to the freestream, on a diverging
-// scale around 1.0 (validated against the panel surface with the dataviz
-// palette checker): slower flow toward blue, faster toward the brand amber,
-// freestream a neutral grey. The legend carries numeric ticks so colour is
-// never the only cue.
+// never competes with the 3D viewer for a GPU context. Colour is local
+// speed relative to the freestream (lib/aero/speedColors.ts); the legend
+// carries numeric ticks so colour is never the only cue.
 
-const SLOW = [0x4c, 0x8d, 0xf6];
-const NEUTRAL = [0x85, 0x82, 0x7a];
-const FAST = [0xf5, 0xa0, 0x00];
-// Speed ratios that map to the two poles.
-const SLOW_POLE = 0.4;
-const FAST_POLE = 1.6;
-const COLOR_STEPS = 64;
+const speedColor = speedColorCss;
+const LEGEND_GRADIENT = SPEED_LEGEND_GRADIENT;
 
-function mix(a: number[], b: number[], t: number): string {
-  const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
-}
-
-// Precomputed colour lookup over speed ratios SLOW_POLE..FAST_POLE.
-const SPEED_COLORS = Array.from({ length: COLOR_STEPS }, (_, i) => {
-  const s = SLOW_POLE + ((FAST_POLE - SLOW_POLE) * i) / (COLOR_STEPS - 1);
-  return s < 1 ? mix(NEUTRAL, SLOW, (1 - s) / (1 - SLOW_POLE)) : mix(NEUTRAL, FAST, (s - 1) / (FAST_POLE - 1));
-});
-
-function speedColor(speed: number): string {
-  const t = (speed - SLOW_POLE) / (FAST_POLE - SLOW_POLE);
-  return SPEED_COLORS[Math.max(0, Math.min(COLOR_STEPS - 1, Math.round(t * (COLOR_STEPS - 1))))];
-}
-
-const rgb = (c: number[]) => `rgb(${c.join(",")})`;
-const LEGEND_GRADIENT = `linear-gradient(to right, ${rgb(SLOW)}, ${rgb(NEUTRAL)}, ${rgb(FAST)})`;
-
-// Panel spacing for the solver, and the tunnel's visual pacing: particles
-// cross the whole tunnel in about this many seconds at freestream speed.
-// (The field is in freestream units, so the real speed doesn't change it.)
-const PANEL_SPACING_M = 0.1;
+// The tunnel's visual pacing: particles cross the whole tunnel in about
+// this many seconds at freestream speed. (The field is in freestream
+// units, so the real speed doesn't change it.)
 const CROSSING_TIME_S = 3.5;
 const PARTICLE_COUNT = 260;
 const STREAMLINE_COUNT = 16;
@@ -56,23 +29,6 @@ const RANDOM_RESPAWN_SHARE = 0.25;
 // No speed figures are read off the solution for display: on these
 // placeholder shapes the peak values are dominated by sharp corners (where
 // potential flow is singular), so they'd be artefacts, not results.
-interface SolvedField {
-  grid: FlowGrid;
-}
-
-// The solve is cached per body shape (body type + dimensions), so flipping
-// between preview modes or presets of the same body type doesn't redo it.
-const fieldCache = new Map<string, SolvedField>();
-
-function solveField(body: BodyOutline): SolvedField {
-  const cached = fieldCache.get(body.key);
-  if (cached) return cached;
-  const flow = solvePotentialFlow(densifyPolygon(body.polygon, PANEL_SPACING_M), { ground: true });
-  const grid = sampleFlow(flow, body, domainFor(body));
-  const solved = { grid };
-  fieldCache.set(body.key, solved);
-  return solved;
-}
 
 interface View {
   scale: number; // px per metre
@@ -146,27 +102,15 @@ function drawStatic(ctx: CanvasRenderingContext2D, grid: FlowGrid, view: View, w
   }
 }
 
-export default function WindTunnel2D({ vehicle }: { vehicle: VehicleState }) {
+// showReadout: the force readout under the picture - off where the forces
+// are already shown alongside (the results screen).
+export default function WindTunnel2D({ vehicle, showReadout = true }: { vehicle: VehicleState; showReadout?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const staticRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<HTMLCanvasElement>(null);
 
-  // Building the outline is cheap; the expensive solve is cached by the
-  // outline's key (body type + dimensions), so weight, engine or tyre
-  // tweaks never re-solve anything.
-  const body = useMemo(() => vehicleBodyOutline(vehicle), [vehicle]);
+  const { body, grid } = useFlowGrid(vehicle);
   const domain = useMemo(() => domainFor(body), [body]);
-  const [solved, setSolved] = useState<{ key: string; field: SolvedField } | null>(null);
-  const field = fieldCache.get(body.key) ?? (solved?.key === body.key ? solved.field : null);
-  const grid = field?.grid ?? null;
-
-  // Solve off the first paint so the panel shows its "solving" state
-  // instead of freezing on the click that opened it.
-  useEffect(() => {
-    if (field) return;
-    const id = setTimeout(() => setSolved({ key: body.key, field: solveField(body) }), 30);
-    return () => clearTimeout(id);
-  }, [body, field]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -309,8 +253,8 @@ export default function WindTunnel2D({ vehicle }: { vehicle: VehicleState }) {
         </div>
       </div>
       <div className="max-h-[58%] shrink-0 space-y-2 overflow-y-auto px-4 pt-2 pb-3">
-        <AeroReadout vehicle={vehicle} />
-        <div className="border-t border-zinc-800 pt-2">
+        {showReadout && <AeroReadout vehicle={vehicle} />}
+        <div className={showReadout ? "border-t border-zinc-800 pt-2" : undefined}>
           <div className="mb-1 text-zinc-400">Local air speed ÷ freestream</div>
           <div className="h-1.5 w-full rounded-full" style={{ background: LEGEND_GRADIENT }} />
           <div className="mt-0.5 flex justify-between">

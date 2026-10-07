@@ -36,6 +36,7 @@ import TestForm from "./EngineBuilder/TestForm";
 import EnginePreview from "./EngineBuilder/EnginePreview";
 import VehiclePreview from "./EngineBuilder/vehicle3d/VehiclePreview";
 import WindTunnel2D from "./Aero/WindTunnel2D";
+import AeroResults from "./Aero/AeroResults";
 import TipsBox from "./EngineBuilder/TipsBox";
 import StepNav from "./EngineBuilder/StepNav";
 import SimulationRunner from "./Simulation/SimulationRunner";
@@ -295,6 +296,15 @@ export default function EngineBuilderApp() {
         {step === "results" && result && (
           <div className="w-full flex flex-col items-center gap-10">
             <ResultsSummary engine={engine} result={result} />
+            <AeroResults
+              vehicle={vehicle}
+              chassis={chassis}
+              engine={engine}
+              gearbox={gearbox}
+              realCar={realCar}
+              test={test}
+              result={result}
+            />
             <MatchList matches={matches} />
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button

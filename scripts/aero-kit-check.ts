@@ -5,6 +5,7 @@
 // Exits non-zero on any failed check.
 // Run with: npx tsx scripts/aero-kit-check.ts
 import { aeroCoefficients, aeroForcesAt } from "../lib/aero/forces";
+import { compareWithStock, primaryMetric } from "../lib/aero/aeroComparison";
 import { applyAeroKit, STOCK_AERO_KIT } from "../lib/physics/aeroKit";
 import { dragForceN, downforceN } from "../lib/physics/aeroModel";
 import { BODY_TYPE_PRESETS, DEFAULT_CHASSIS, DEFAULT_ENGINE, DEFAULT_GEARBOX, DEFAULT_TEST_CONFIG, defaultTyresFor } from "../lib/physics/defaults";
@@ -102,6 +103,24 @@ const results = kits.map(([name, kit]) => {
 });
 check("downforce costs top speed", results[2].top < results[1].top && results[1].top < results[0].top, results.map((r) => r.top.toFixed(0)).join(" > "));
 check("downforce helps a twisty lap", results[3].lap < results[0].lap, `${results[0].lap.toFixed(2)} s -> ${results[3].lap.toFixed(2)} s`);
+
+// 5. The results screen's stock-vs-setup comparison is like-for-like.
+console.log("\nResults comparison (supercar, full kit, Monaco)");
+const lapTest = { ...DEFAULT_TEST_CONFIG, testType: "hotLap" as const, circuitId: "monaco" };
+const kitted = chassisFor("supercar", fullKit);
+const cmp = compareWithStock(kitted, engine, DEFAULT_GEARBOX, null, lapTest);
+check("setup run = plain simulate", cmp.setup.result.elapsedS === simulate(engine, kitted, DEFAULT_GEARBOX, lapTest).elapsedS, `${cmp.setup.result.elapsedS.toFixed(3)} s`);
+check("stock run = kit removed", cmp.stock.result.elapsedS === simulate(engine, chassisFor("supercar"), DEFAULT_GEARBOX, lapTest).elapsedS, `${cmp.stock.result.elapsedS.toFixed(3)} s`);
+check("explains drag, downforce and CG", cmp.explanations.length === 3, `${cmp.explanations.length} lines`);
+cmp.explanations.forEach((line) => console.log(`    - ${line}`));
+const cdaRatio = cmp.setup.vehicle.aero.dragAreaM2 / cmp.stock.vehicle.aero.dragAreaM2;
+const cubeEstimate = Math.pow(1 / cdaRatio, 1 / 3) - 1;
+const simChange = cmp.setup.result.theoreticalTopSpeedKph / cmp.stock.result.theoreticalTopSpeedKph - 1;
+check("cube-root estimate near the simulation", Math.abs(cubeEstimate - simChange) < 0.03, `estimate ${(cubeEstimate * 100).toFixed(1)}%, simulation ${(simChange * 100).toFixed(1)}%`);
+const m = primaryMetric(cmp.setup.result);
+check("hot lap judged on lap time", m.label === "Lap time" && m.lowerIsBetter && m.value === cmp.setup.result.elapsedS, m.label);
+const plain = compareWithStock(chassisFor("supercar"), engine, DEFAULT_GEARBOX, null, lapTest);
+check("no kit: identical, nothing to explain", plain.explanations.length === 0 && plain.stock.result.elapsedS === plain.setup.result.elapsedS, "");
 
 console.log(failures ? `\n${failures} check(s) failed` : "\nAll aero kit checks passed");
 process.exit(failures ? 1 : 0);

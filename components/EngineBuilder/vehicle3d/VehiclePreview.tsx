@@ -11,6 +11,9 @@ import ClosedBodyModel from "./ClosedBodyModel";
 import DedicatedModel, { vehicleModelUrl } from "./DedicatedModel";
 import DimensionOverlay from "./DimensionOverlay";
 import FallbackBoundary from "./FallbackBoundary";
+import FlowOverlay3D from "./FlowOverlay3D";
+import { useFlowGrid } from "../../Aero/useFlowGrid";
+import { FAST_POLE, SLOW_POLE, SPEED_LEGEND_GRADIENT } from "@/lib/aero/speedColors";
 import OpenWheelModel from "./OpenWheelModel";
 import { OptionButton } from "../FormControls";
 
@@ -58,6 +61,14 @@ function webglSupported(): boolean {
 }
 const subscribeNever = () => () => {};
 
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+const prefersReducedMotion = () => window.matchMedia(REDUCED_MOTION_QUERY).matches;
+const subscribeReducedMotion = (onChange: () => void) => {
+  const query = window.matchMedia(REDUCED_MOTION_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+
 function ViewerMessage({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-8 text-center font-mono text-xs text-zinc-500">
@@ -75,6 +86,11 @@ export default function VehiclePreview({ vehicle }: { vehicle: VehicleState }) {
   // one already selected, which doubles as "reset view".
   const [view, setView] = useState<{ preset: ViewPreset; requestId: number }>({ preset: "iso", requestId: 0 });
   const [showDimensions, setShowDimensions] = useState(false);
+  // Flow overlay: the 2D flow model drawn over the car. Only solved once
+  // it's first switched on.
+  const [showFlow, setShowFlow] = useState(false);
+  const { grid: flowGrid } = useFlowGrid(vehicle, showFlow);
+  const reducedMotion = useSyncExternalStore(subscribeReducedMotion, prefersReducedMotion, () => false);
   const [glReady, setGlReady] = useState(false);
   const [renderFailed, setRenderFailed] = useState(false);
   const hasWebgl = useSyncExternalStore(subscribeNever, webglSupported, () => true);
@@ -175,6 +191,7 @@ export default function VehiclePreview({ vehicle }: { vehicle: VehicleState }) {
               genericModel
             )}
             {showDimensions && <DimensionOverlay vehicle={vehicle} />}
+            {showFlow && flowGrid && <FlowOverlay3D grid={flowGrid} widthM={widthM} animate={!reducedMotion} />}
             <ContactShadows
               key={shadowKey}
               frames={1}
@@ -230,6 +247,9 @@ export default function VehiclePreview({ vehicle }: { vehicle: VehicleState }) {
           <OptionButton active={showDimensions} onClick={() => setShowDimensions((s) => !s)} className={TOOL_BUTTON}>
             Dims
           </OptionButton>
+          <OptionButton active={showFlow} onClick={() => setShowFlow((s) => !s)} className={TOOL_BUTTON}>
+            Flow
+          </OptionButton>
         </div>
       )}
 
@@ -255,6 +275,22 @@ export default function VehiclePreview({ vehicle }: { vehicle: VehicleState }) {
       )}
 
       <div className="pointer-events-none absolute left-4 bottom-3 right-4 font-mono text-[10px] leading-relaxed text-zinc-500">
+        {showFlow && (
+          <div className="mb-1.5">
+            <div className="text-zinc-400">
+              {flowGrid
+                ? `Flow: 2D ${bodyName} section extended across the width · illustrative, not CFD`
+                : "Solving flow…"}
+            </div>
+            {flowGrid && (
+              <div className="mt-1 flex items-center gap-1.5">
+                <span>{SLOW_POLE}×</span>
+                <span className="h-1 w-28 rounded-full" style={{ background: SPEED_LEGEND_GRADIENT }} />
+                <span>{FAST_POLE}× freestream speed</span>
+              </div>
+            )}
+          </div>
+        )}
         <div className="uppercase tracking-wider text-zinc-400">
           {showingDedicated
             ? "Dedicated model · scaled to body length"

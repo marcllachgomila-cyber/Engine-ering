@@ -11,8 +11,7 @@ import {
 import { AeroMode } from "@/lib/physics/types";
 import { VehicleState } from "@/lib/physics/vehicleState";
 import { FOCUS_RING, OptionButton } from "../EngineBuilder/FormControls";
-
-const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${Math.abs(n).toFixed(2)}`;
+import AeroBreakdown from "./AeroBreakdown";
 
 const MIN_SPEED_KPH = 50;
 const MAX_SPEED_KPH = 350;
@@ -96,23 +95,7 @@ export default function AeroReadout({ vehicle }: { vehicle: VehicleState }) {
             : "This body makes lift, not downforce, at every speed"}
         </div>
       </div>
-      {vehicle.aero.kitContributions.length > 0 && (
-        // How the coefficients above were reached from the body type's own.
-        <ul className="space-y-0.5 border-l border-zinc-800 pl-2 leading-snug text-zinc-500">
-          <li className="tabular-nums">
-            {vehicle.identity.bodyType} body: Cd {vehicle.aero.baseDragCoefficient.toFixed(2)} · Cl{" "}
-            {signed(vehicle.aero.baseLiftCoefficient)}
-          </li>
-          {vehicle.aero.kitContributions.map((part) => (
-            <li key={part.label}>
-              <span className="tabular-nums text-zinc-400">
-                {part.label}: Cd {signed(part.dCd)} · Cl {signed(part.dCl)}
-              </span>{" "}
-              - {part.reason}
-            </li>
-          ))}
-        </ul>
-      )}
+      <AeroBreakdown vehicle={vehicle} />
     </div>
   );
 }
