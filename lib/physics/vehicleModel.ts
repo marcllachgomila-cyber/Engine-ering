@@ -1,3 +1,4 @@
+import { aeroKitAvailable, applyAeroKit } from "./aeroKit";
 import { BODY_TYPE_PRESETS } from "./defaults";
 import { isRotary } from "./engineLayout";
 import { recommendedGearRatios } from "./gearRatios";
@@ -284,6 +285,10 @@ export function deriveVehicle(
     1 - Math.abs(chassis.tyrePressurePsi - preset.optimalTyrePressurePsi) * GRIP_LOSS_PER_PSI,
   );
 
+  // The body type's aero and CG, with any bolt-on aero / ride height change
+  // applied (aeroKit.ts). No kit leaves every value exactly as the preset.
+  const aero = applyAeroKit(preset, aeroKitAvailable(chassis.bodyType) ? chassis.aeroKit : undefined);
+
   const drivetrainEfficiency = isAwd ? AWD_DRIVETRAIN_EFFICIENCY : DRIVETRAIN_EFFICIENCY;
   const finalDrive =
     gearbox.finalDrive ??
@@ -292,7 +297,7 @@ export function deriveVehicle(
       gearRatios[gearRatios.length - 1],
       wheelRadiusM,
       weightKg,
-      preset.dragCoefficient * preset.frontalAreaM2,
+      aero.dragCoefficient * aero.frontalAreaM2,
       drivetrainEfficiency,
     );
 
@@ -301,10 +306,10 @@ export function deriveVehicle(
     drivetrain: gearbox.drivetrain,
     wheelbaseM: preset.wheelbaseM,
     rearWeightFraction: preset.rearWeightFraction,
-    cgHeightM: preset.cgHeightM,
-    dragCoefficient: preset.dragCoefficient,
-    frontalAreaM2: preset.frontalAreaM2,
-    liftCoefficient: preset.liftCoefficient,
+    cgHeightM: aero.cgHeightM,
+    dragCoefficient: aero.dragCoefficient,
+    frontalAreaM2: aero.frontalAreaM2,
+    liftCoefficient: aero.liftCoefficient,
     rollingResistanceCoefficient: ROLLING_RESISTANCE_COEFFICIENT,
     drivetrainEfficiency,
     tireGripMu: ROAD_TYRE_MU * widthGripMultiplier * pressureGripMultiplier,

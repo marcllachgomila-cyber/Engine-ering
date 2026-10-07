@@ -101,6 +101,8 @@ export default function EngineBuilderApp() {
         frontWheelWidthMm: car.chassis.frontWheelWidthMm,
         rearWheelWidthMm: car.chassis.rearWheelWidthMm,
         activeAero: car.chassis.activeAero,
+        // Presets are the standard car - no bolt-on aero.
+        aeroKit: undefined,
         ...defaultTyresFor(car.category),
       }));
       setEngine(car.engine);

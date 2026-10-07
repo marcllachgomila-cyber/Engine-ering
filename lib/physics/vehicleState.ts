@@ -1,9 +1,11 @@
+import { AeroContribution, aeroKitAvailable, aeroKitContributions, STOCK_AERO_KIT } from "./aeroKit";
 import { BODY_TYPE_PRESETS, defaultTyresFor } from "./defaults";
 import { buildEngineCurves } from "./engineModel";
 import { engineSizeLabel } from "./engineLayout";
 import { deriveVehicle, tyreRadiusM } from "./vehicleModel";
 import {
   ActiveAeroConfig,
+  AeroKitConfig,
   AutoShiftStrategy,
   BodyDimensions,
   BodyType,
@@ -113,13 +115,29 @@ export interface VehicleAero {
   liftAreaM2: number;
   // Low-drag straight-mode coefficients, for presets that have them.
   activeAero: ActiveAeroConfig | null;
+  // The body type's own coefficients before any aero kit, the kit itself
+  // (null = standard), and its effect part by part - so a UI can show how
+  // the totals above were reached.
+  baseDragCoefficient: number;
+  baseLiftCoefficient: number;
+  kit: AeroKitConfig | null;
+  kitContributions: AeroContribution[];
 }
 
 // A setting that differs from the baseline the car started from: the real
 // car's preset (plus its default tyres), or the body type's defaults for a
 // custom build.
 export interface VehicleModification {
-  field: "weightKg" | "tyreType" | "tyreCompound" | "tyrePressurePsi" | "tractionControl";
+  field:
+    | "weightKg"
+    | "tyreType"
+    | "tyreCompound"
+    | "tyrePressurePsi"
+    | "tractionControl"
+    | "rideHeightOffsetMm"
+    | "rearWing"
+    | "frontSplitter"
+    | "underbody";
   label: string;
   baseline: string | number | boolean;
   current: string | number | boolean;
@@ -162,6 +180,16 @@ function findModifications(
     ["tyrePressurePsi", "Tyre pressure", baseline.tyrePressurePsi, chassis.tyrePressurePsi],
     ["tractionControl", "Traction control", baseline.tractionControl, chassis.tractionControl],
   ];
+  // Aero kit parts, against the standard car (only where the kit applies).
+  const kit = aeroKitAvailable(chassis.bodyType) ? chassis.aeroKit : undefined;
+  if (kit) {
+    checks.push(
+      ["rideHeightOffsetMm", "Ride height offset (mm)", STOCK_AERO_KIT.rideHeightOffsetMm, kit.rideHeightOffsetMm],
+      ["rearWing", "Rear wing", STOCK_AERO_KIT.rearWing, kit.rearWing],
+      ["frontSplitter", "Front splitter", STOCK_AERO_KIT.frontSplitter, kit.frontSplitter],
+      ["underbody", "Underbody", STOCK_AERO_KIT.underbody, kit.underbody],
+    );
+  }
   return checks
     .filter(([, , from, to]) => from !== to)
     .map(([field, label, from, to]) => ({ field, label, baseline: from, current: to }));
@@ -176,6 +204,9 @@ export function buildVehicleState(
   const preset = BODY_TYPE_PRESETS[chassis.bodyType];
   const curves = buildEngineCurves(engine);
   const vehicle = deriveVehicle(engine, curves, chassis, gearbox);
+  const kit = aeroKitAvailable(chassis.bodyType) ? (chassis.aeroKit ?? null) : null;
+  // A ride height change moves the whole body up or down on its wheels.
+  const rideOffsetM = (kit?.rideHeightOffsetMm ?? 0) / 1000;
 
   return {
     identity: {
@@ -188,7 +219,12 @@ export function buildVehicleState(
       bodyType: chassis.bodyType,
       model3d: realCar?.model3d ?? null,
     },
-    dimensions: { ...preset.dimensions, wheelbaseM: vehicle.wheelbaseM },
+    dimensions: {
+      ...preset.dimensions,
+      rideHeightM: preset.dimensions.rideHeightM + rideOffsetM,
+      heightM: preset.dimensions.heightM + rideOffsetM,
+      wheelbaseM: vehicle.wheelbaseM,
+    },
     mass: {
       totalKg: vehicle.weightKg,
       rearWeightFraction: vehicle.rearWeightFraction,
@@ -244,6 +280,10 @@ export function buildVehicleState(
       dragAreaM2: vehicle.dragCoefficient * vehicle.frontalAreaM2,
       liftAreaM2: vehicle.liftCoefficient * vehicle.frontalAreaM2,
       activeAero: vehicle.activeAero ?? null,
+      baseDragCoefficient: preset.dragCoefficient,
+      baseLiftCoefficient: preset.liftCoefficient,
+      kit,
+      kitContributions: kit ? aeroKitContributions(kit, preset.frontalAreaM2) : [],
     },
     modifications: findModifications(chassis, realCar),
   };

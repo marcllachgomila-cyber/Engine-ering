@@ -369,9 +369,13 @@ export default function WindTunnel2D({ vehicle }: { vehicle: VehicleState }) {
             </li>
             <li>
               The forces above don&rsquo;t come from this flow picture: they use the body type&rsquo;s representative
-              Cd, Cl and frontal area (the same values the simulation uses, not measured data), still air, and ISA
-              sea-level air (1.225 kg/m³, 15 °C). Coefficients are taken as constant with speed, ride height and
-              yaw. The data has no front/rear downforce split, so there&rsquo;s no aero balance.
+              Cd, Cl and frontal area plus any aero-kit increments (the same values the simulation uses, not
+              measured data), still air, and ISA sea-level air (1.225 kg/m³, 15 °C). Coefficients don&rsquo;t vary
+              with speed or yaw. The data has no front/rear downforce split, so there&rsquo;s no aero balance.
+            </li>
+            <li>
+              Ride height changes the section drawn here; a wing, splitter or diffuser isn&rsquo;t part of the 2D
+              section - their effect shows in the force figures only.
             </li>
           </ul>
         </details>

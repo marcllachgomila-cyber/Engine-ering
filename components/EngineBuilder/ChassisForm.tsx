@@ -1,8 +1,15 @@
 "use client";
 
+import {
+  aeroKitAvailable,
+  applyAeroKit,
+  RIDE_HEIGHT_OFFSET_MAX_MM,
+  RIDE_HEIGHT_OFFSET_MIN_MM,
+  STOCK_AERO_KIT,
+} from "@/lib/physics/aeroKit";
 import { BODY_TYPE_PRESETS, defaultTyresFor } from "@/lib/physics/defaults";
 import { REAL_CAR_PRESETS, RealCarPreset } from "@/lib/physics/realCars";
-import { BodyType, ChassisConfig, TyreCompound, TyreType } from "@/lib/physics/types";
+import { AeroKitConfig, BodyType, ChassisConfig, RearWing, TyreCompound, TyreType, Underbody } from "@/lib/physics/types";
 import BodyTypeIcon from "./BodyTypeIcon";
 import {
   ContinueButton,
@@ -12,6 +19,7 @@ import {
   SectionCard,
   Slider,
   StepHeader,
+  ToggleSwitch,
 } from "./FormControls";
 import { RealCarPresetCard } from "./RealCarPresetCard";
 
@@ -26,6 +34,19 @@ const TYRE_TYPE_LABELS: Record<TyreType, string> = {
   slick: "Slick",
   standard: "Standard",
 };
+
+const REAR_WING_LABELS: Record<RearWing, string> = {
+  none: "None",
+  low: "Low downforce",
+  high: "High downforce",
+};
+
+const UNDERBODY_LABELS: Record<Underbody, string> = {
+  standard: "Standard",
+  diffuser: "Flat floor + diffuser",
+};
+
+const signed = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(2)}`;
 
 const TYRE_COMPOUND_LABELS: Record<TyreCompound, string> = {
   soft: "Soft",
@@ -52,6 +73,9 @@ export default function ChassisForm({
 }: ChassisFormProps) {
   const preset = BODY_TYPE_PRESETS[value.bodyType];
   const carsForBodyType = REAL_CAR_PRESETS[value.bodyType];
+  const kit = value.aeroKit ?? STOCK_AERO_KIT;
+  const kitAero = applyAeroKit(preset, kit);
+  const updateKit = (patch: Partial<AeroKitConfig>) => onChange({ ...value, aeroKit: { ...kit, ...patch } });
 
   const setBodyType = (bodyType: BodyType) => {
     onSelectRealCar(null);
@@ -60,6 +84,8 @@ export default function ChassisForm({
       bodyType,
       weightKg: BODY_TYPE_PRESETS[bodyType].weightKg,
       activeAero: undefined,
+      // Like weight, the aero setup starts from standard for a new body.
+      aeroKit: undefined,
       ...defaultTyresFor(bodyType),
     });
   };
@@ -280,6 +306,82 @@ export default function ChassisForm({
           recommended={preset.optimalTyrePressurePsi}
           helpText={`Recommended: ${formatUnitValue(preset.optimalTyrePressurePsi, "psi")}`}
         />
+      </SectionCard>
+
+      <SectionCard title="Aero" tag="CHS-03">
+        {!aeroKitAvailable(value.bodyType) ? (
+          <p className="text-xs text-zinc-500">
+            An F1 car&rsquo;s aero is its whole regulated package, already part of its coefficients - there&rsquo;s
+            nothing to bolt on here.
+          </p>
+        ) : (
+          <fieldset disabled={!!realCar} className={`space-y-6 ${realCar ? "opacity-50" : ""}`}>
+            {realCar && (
+              <p className="text-xs text-amber-400/90 -mb-2">
+                Aero is locked to the standard {realCar.make} {realCar.model}. Choose &ldquo;Custom Build&rdquo;
+                above to modify it.
+              </p>
+            )}
+            <Slider
+              label="Ride Height"
+              value={kit.rideHeightOffsetMm}
+              valueLabel={
+                kit.rideHeightOffsetMm === 0
+                  ? "Standard"
+                  : `${kit.rideHeightOffsetMm > 0 ? "+" : ""}${kit.rideHeightOffsetMm} mm`
+              }
+              min={RIDE_HEIGHT_OFFSET_MIN_MM}
+              max={RIDE_HEIGHT_OFFSET_MAX_MM}
+              step={5}
+              onChange={(v) => updateKit({ rideHeightOffsetMm: v })}
+              minLabel={`${RIDE_HEIGHT_OFFSET_MIN_MM} mm`}
+              maxLabel={`+${RIDE_HEIGHT_OFFSET_MAX_MM} mm`}
+              recommended={0}
+              helpText={`Ground clearance ${Math.round(preset.dimensions.rideHeightM * 1000 + kit.rideHeightOffsetMm)} mm (standard ${Math.round(preset.dimensions.rideHeightM * 1000)} mm). Also moves the centre of gravity.`}
+            />
+            <div>
+              <label className="text-sm font-medium text-zinc-300 block mb-2">Rear Wing</label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(REAR_WING_LABELS) as RearWing[]).map((rearWing) => (
+                  <OptionButton key={rearWing} active={kit.rearWing === rearWing} onClick={() => updateKit({ rearWing })}>
+                    {REAR_WING_LABELS[rearWing]}
+                  </OptionButton>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-zinc-300 block mb-2">Underbody</label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(UNDERBODY_LABELS) as Underbody[]).map((underbody) => (
+                  <OptionButton
+                    key={underbody}
+                    active={kit.underbody === underbody}
+                    onClick={() => updateKit({ underbody })}
+                  >
+                    {UNDERBODY_LABELS[underbody]}
+                  </OptionButton>
+                ))}
+              </div>
+            </div>
+            <ToggleSwitch
+              label="Front Splitter"
+              checked={kit.frontSplitter}
+              onChange={(frontSplitter) => updateKit({ frontSplitter })}
+              description="Adds front downforce for very little drag"
+            />
+            <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 font-mono text-xs text-zinc-400">
+              <div>
+                Cd {preset.dragCoefficient.toFixed(2)} &rarr;{" "}
+                <span className="text-zinc-100">{kitAero.dragCoefficient.toFixed(2)}</span> · Cl{" "}
+                {signed(preset.liftCoefficient)} &rarr; <span className="text-zinc-100">{signed(kitAero.liftCoefficient)}</span>
+              </div>
+              <div className="mt-1 text-[10px] text-zinc-500">
+                Representative estimates, applied to the simulation as well as the aero readout. Cl &gt; 0 is
+                downforce.
+              </div>
+            </div>
+          </fieldset>
+        )}
       </SectionCard>
 
       <ContinueButton onClick={onContinue}>Continue to Engine &rarr;</ContinueButton>

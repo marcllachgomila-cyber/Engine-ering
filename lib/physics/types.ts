@@ -186,6 +186,23 @@ export interface ChassisConfig {
   tyreCompound: TyreCompound;
   // Only set by a real-car preset that has it (F1 2026).
   activeAero?: ActiveAeroConfig;
+  // Bolt-on aero and ride height for a custom road car (see aeroKit.ts).
+  // Undefined = the body type as standard, exactly as before this existed,
+  // so older saved configurations load unchanged.
+  aeroKit?: AeroKitConfig;
+}
+
+export type RearWing = "none" | "low" | "high";
+export type Underbody = "standard" | "diffuser";
+
+export interface AeroKitConfig {
+  // Body raised (+) or lowered (-) from the body type's standard ride
+  // height; the wheels stay where they are.
+  rideHeightOffsetMm: number;
+  rearWing: RearWing;
+  frontSplitter: boolean;
+  // "diffuser" = a flat floor ending in a rear diffuser.
+  underbody: Underbody;
 }
 
 export type TestType = "zeroToHundred" | "tenSecond" | "drag500m" | "braking" | "hotLap";

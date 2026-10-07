@@ -13,6 +13,7 @@ import {
   smoothstep,
   VEHICLE_COLORS,
 } from "./geometry";
+import AeroKitParts from "./AeroKitParts";
 import ShapedBodyMesh from "./ShapedBodyMesh";
 import Wheels from "./Wheels";
 
@@ -58,6 +59,7 @@ export default function ClosedBodyModel({ vehicle, spec }: { vehicle: VehicleSta
       <ShapedBodyMesh body={cabinBody}>
         <meshStandardMaterial color={VEHICLE_COLORS.glass} roughness={0.25} metalness={0.2} />
       </ShapedBodyMesh>
+      <AeroKitParts vehicle={vehicle} spec={spec} />
       <Wheels vehicle={vehicle} axles={axles} />
     </group>
   );
