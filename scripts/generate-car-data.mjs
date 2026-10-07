@@ -38,6 +38,47 @@ function walk(dir) {
   return files;
 }
 
+// Dedicated 3D models (a preset's optional "model3d" field, see
+// VehicleModelRef in types.ts) live in public/models/ and are served as-is
+// on GitHub Pages, so check them here rather than finding out in the browser.
+const MODELS_DIR = join(SCRIPT_DIR, "..", "public", "models");
+// Licences known to allow redistributing the file inside this repo and the
+// deployed site. Anything else (NonCommercial/NoDerivatives variants,
+// "editorial use", unclear terms) needs a deliberate decision, so it's
+// rejected rather than silently shipped. "own-work" = made for this project.
+const REDISTRIBUTABLE_LICENSES = new Set(["CC0-1.0", "CC-BY-4.0", "CC-BY-3.0", "CC-BY-SA-4.0", "MIT", "own-work"]);
+// Every model is a download on top of the app; past this it's too heavy for
+// a preview panel (compress it - e.g. gltf-transform with meshopt).
+const MODEL_MAX_BYTES = 5 * 1024 * 1024;
+
+function validateModel(model, file) {
+  const fail = (msg) => {
+    throw new Error(`Car file ${file}: model3d ${msg}`);
+  };
+  if (typeof model.file !== "string" || !/^[a-z0-9-]+\.glb$/.test(model.file)) {
+    fail(`"file" must be a lowercase kebab-case .glb name under public/models/, got ${JSON.stringify(model.file)}`);
+  }
+  const path = join(MODELS_DIR, model.file);
+  let size;
+  try {
+    size = statSync(path).size;
+  } catch {
+    fail(`file not found: ${path}`);
+  }
+  if (size > MODEL_MAX_BYTES) {
+    fail(`${model.file} is ${(size / 1024 / 1024).toFixed(1)} MB - over the ${MODEL_MAX_BYTES / 1024 / 1024} MB limit`);
+  }
+  const credit = model.credit ?? {};
+  for (const key of ["title", "author", "sourceUrl", "license"]) {
+    if (typeof credit[key] !== "string" || !credit[key].trim()) fail(`credit.${key} is required`);
+  }
+  if (!REDISTRIBUTABLE_LICENSES.has(credit.license)) {
+    fail(
+      `licence "${credit.license}" isn't on the redistributable list (${[...REDISTRIBUTABLE_LICENSES].join(", ")}) - check its terms before adding it`,
+    );
+  }
+}
+
 const files = walk(CAR_DATA_DIR).sort();
 
 if (files.length === 0) {
@@ -69,6 +110,8 @@ files.forEach((file, i) => {
       `Car file ${file} has unknown category "${data.category}" - expected one of ${[...VALID_CATEGORIES].join(", ")}`,
     );
   }
+
+  if (data.model3d !== undefined) validateModel(data.model3d, file);
 
   const identifier = `car${i}`;
   const importPath = "./" + relative(PHYSICS_DIR, file).split(sep).join("/");

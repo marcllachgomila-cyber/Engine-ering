@@ -1,6 +1,6 @@
 import { DEFAULT_CIRCUIT_ID } from "./circuits";
 import { recommendedGearRatios } from "./gearRatios";
-import { BodyType, ChassisConfig, EngineConfig, GearboxConfig, TestConfig } from "./types";
+import { BodyDimensions, BodyType, ChassisConfig, EngineConfig, GearboxConfig, TestConfig } from "./types";
 
 export const DEFAULT_ENGINE: EngineConfig = {
   cylinders: 4,
@@ -61,6 +61,12 @@ export interface BodyTypePreset {
   // of it (vehicleModel.ts). Road tyres run in the low-to-mid 30s, heavier
   // bodies a little higher; F1's big low-profile slicks run far lower.
   optimalTyrePressurePsi: number;
+  // Exterior size (see BodyDimensions in types.ts). frontalAreaM2 above is
+  // what the physics uses and is set independently - it sits at roughly
+  // 0.8-0.9 of width x height, the usual fill ratio for a car's silhouette
+  // against its bounding box (lower for an open-wheeler, which is mostly
+  // gaps).
+  dimensions: BodyDimensions;
 }
 
 export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
@@ -77,6 +83,7 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     cgHeightM: 0.65,
     tyreAspectRatio: 0.6,
     optimalTyrePressurePsi: 36,
+    dimensions: { lengthM: 5.15, widthM: 2.0, heightM: 1.78, frontTrackM: 1.72, rearTrackM: 1.72, rideHeightM: 0.15 },
   },
   suv: {
     weightKg: 2100,
@@ -90,6 +97,7 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     cgHeightM: 0.7,
     tyreAspectRatio: 0.5,
     optimalTyrePressurePsi: 34,
+    dimensions: { lengthM: 4.9, widthM: 1.98, heightM: 1.8, frontTrackM: 1.68, rearTrackM: 1.7, rideHeightM: 0.21 },
   },
   supercar: {
     weightKg: 1500,
@@ -104,6 +112,7 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     cgHeightM: 0.43,
     tyreAspectRatio: 0.3,
     optimalTyrePressurePsi: 32,
+    dimensions: { lengthM: 4.55, widthM: 1.95, heightM: 1.2, frontTrackM: 1.67, rearTrackM: 1.62, rideHeightM: 0.1 },
   },
   f1: {
     weightKg: 798,
@@ -122,6 +131,9 @@ export const BODY_TYPE_PRESETS: Record<BodyType, BodyTypePreset> = {
     // vehicleModel.ts), not aspect ratio.
     tyreAspectRatio: 0.45,
     optimalTyrePressurePsi: 22,
+    // Overall width and height are the regulation maximums; ride height is
+    // the plank clearance, a few centimetres.
+    dimensions: { lengthM: 5.5, widthM: 2.0, heightM: 0.95, frontTrackM: 1.6, rearTrackM: 1.55, rideHeightM: 0.03 },
   },
 };
 

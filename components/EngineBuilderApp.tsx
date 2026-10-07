@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import {
   ChassisConfig,
   EngineConfig,
@@ -16,7 +16,7 @@ import {
   DEFAULT_TEST_CONFIG,
   defaultTyresFor,
 } from "@/lib/physics/defaults";
-import { engineSizeLabel } from "@/lib/physics/engineLayout";
+import { buildVehicleState } from "@/lib/physics/vehicleState";
 import { gearboxFromPreset, RealCarPreset } from "@/lib/physics/realCars";
 import { EngineAudioEngine } from "@/lib/audio/EngineAudioEngine";
 import { findClosestCars } from "@/lib/matching/matchCars";
@@ -29,11 +29,13 @@ import {
   subscribeFavorites,
 } from "@/lib/favorites";
 import ChassisForm from "./EngineBuilder/ChassisForm";
-import { CornerMarks, FOCUS_RING } from "./EngineBuilder/FormControls";
+import { CornerMarks, FOCUS_RING, OptionButton } from "./EngineBuilder/FormControls";
 import EngineForm from "./EngineBuilder/EngineForm";
 import GearboxForm from "./EngineBuilder/GearboxForm";
 import TestForm from "./EngineBuilder/TestForm";
 import EnginePreview from "./EngineBuilder/EnginePreview";
+import VehiclePreview from "./EngineBuilder/vehicle3d/VehiclePreview";
+import WindTunnel2D from "./Aero/WindTunnel2D";
 import TipsBox from "./EngineBuilder/TipsBox";
 import StepNav from "./EngineBuilder/StepNav";
 import SimulationRunner from "./Simulation/SimulationRunner";
@@ -57,6 +59,14 @@ export default function EngineBuilderApp() {
   const [saved, setSaved] = useState(false);
   const [previousStep, setPreviousStep] = useState<Step>("chassis");
   const [skipHotLapAnimation, setSkipHotLapAnimation] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"engine" | "vehicle" | "aero">("engine");
+
+  // The whole car as currently configured - one derived snapshot for
+  // anything that reads across chassis/engine/gearbox (see vehicleState.ts).
+  const vehicle = useMemo(
+    () => buildVehicleState(chassis, engine, gearbox, realCar),
+    [chassis, engine, gearbox, realCar],
+  );
 
   const favorites = useSyncExternalStore(
     subscribeFavorites,
@@ -221,20 +231,45 @@ export default function EngineBuilderApp() {
               <div className="relative rounded-2xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md overflow-hidden shadow-[0_0_60px_-12px_rgba(245,158,11,0.5)]">
                 <CornerMarks className="border-amber-500/40" />
                 <div className="px-5 py-3 border-b border-zinc-800/80 flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-sm font-medium text-amber-400">
+                  <span className="flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-medium text-amber-400">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
                     </span>
                     Live Preview
                   </span>
-                  <span className="text-xs text-zinc-500 uppercase tracking-wider truncate">
-                    {engineSizeLabel(engine)}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Preview mode">
+                    {(["engine", "vehicle", "aero"] as const).map((mode) => (
+                      <OptionButton
+                        key={mode}
+                        active={previewMode === mode}
+                        onClick={() => setPreviewMode(mode)}
+                        className="px-2! py-0.5! text-xs! capitalize"
+                      >
+                        {mode}
+                      </OptionButton>
+                    ))}
+                  </div>
+                  {/* With three mode buttons there's little room left; the
+                      wind tunnel titles itself, and phones skip the label. */}
+                  {previewMode !== "aero" && (
+                    <span className="hidden min-w-0 text-xs text-zinc-500 uppercase tracking-wider truncate sm:inline">
+                      {previewMode === "engine" ? vehicle.engine.sizeLabel : vehicle.identity.displayName}
+                    </span>
+                  )}
                 </div>
                 <div className="w-full h-[26rem] relative">
-                  <div className="absolute inset-x-8 bottom-4 h-8 rounded-full bg-black/50 blur-xl" />
-                  <EnginePreview engine={engine} />
+                  {/* Only one preview is mounted at a time, so there's only
+                      ever one WebGL context on the page (the wind tunnel
+                      uses plain 2D canvas, no WebGL at all). */}
+                  {previewMode === "engine" && (
+                    <>
+                      <div className="absolute inset-x-8 bottom-4 h-8 rounded-full bg-black/50 blur-xl" />
+                      <EnginePreview engine={engine} />
+                    </>
+                  )}
+                  {previewMode === "vehicle" && <VehiclePreview vehicle={vehicle} />}
+                  {previewMode === "aero" && <WindTunnel2D />}
                 </div>
               </div>
               {(step === "chassis" || step === "engine") && <TipsBox />}

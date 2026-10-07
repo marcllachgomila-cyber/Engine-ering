@@ -73,6 +73,30 @@ Live at: https://marcllachgomila-cyber.github.io/Engine-ering/
 - `data/cars.json` - Reference-car dataset used for result comparisons.
 - `scripts/generate-car-data.mjs` - Builds `lib/physics/carData.generated.ts` from the JSON files under `lib/physics/carData/` (runs automatically via `predev`/`prebuild`).
 
+## Adding a Dedicated 3D Model
+
+The vehicle viewer shows each body type's generic model unless a real-car preset has its own. To give a preset one:
+
+1. Put the GLB in `public/models/` with a lowercase kebab-case name (e.g. `mclaren-720s.glb`), under 5 MB. Compress it with meshopt (e.g. `gltf-transform meshopt`); Draco isn't used, because its decoder would be fetched from a third-party CDN at runtime.
+2. Add a `model3d` entry to the preset's JSON:
+
+   ```json
+   "model3d": {
+     "file": "mclaren-720s.glb",
+     "yawDeg": 0,
+     "credit": {
+       "title": "Model title",
+       "author": "Author name",
+       "sourceUrl": "https://where-it-came-from",
+       "license": "CC-BY-4.0"
+     }
+   }
+   ```
+
+   `yawDeg` turns the model so its nose faces forward (+X). It's then scaled to the preset's body length and set down on the ground automatically.
+
+`npm run generate:cars` (run before every dev/build) rejects a model that is missing, too large, missing credit fields, or under a licence not known to allow redistribution (accepted: `CC0-1.0`, `CC-BY-4.0`, `CC-BY-3.0`, `CC-BY-SA-4.0`, `MIT`, `own-work`). Don't use manufacturer CAD or models whose terms don't allow redistribution. The viewer shows the credit with a link to the source, loads the model only while that preset is selected, and falls back to the generic model if it fails to load.
+
 ## Technology
 
 The project uses [Next.js](https://nextjs.org), [React](https://react.dev), [TypeScript](https://www.typescriptlang.org), [Tailwind CSS](https://tailwindcss.com), and [Three.js](https://threejs.org) through React Three Fiber for the engine preview.

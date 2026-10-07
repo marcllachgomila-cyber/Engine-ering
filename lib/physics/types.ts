@@ -95,9 +95,52 @@ export interface RealCarPreset {
   // hybrid figures are what they are) - optional, shown nowhere in the UI
   // yet, just carried alongside the data for whoever's reading the file.
   notes?: string;
+  // Optional dedicated 3D model for the viewer. Presets without one (and
+  // custom builds) show their body type's generic model instead.
+  model3d?: VehicleModelRef;
+}
+
+// A preset's own 3D model (its "model3d" field - "model" is the car's
+// name): a GLB under public/models/, loaded only while that preset is
+// selected. Every third-party model must carry its credit
+// and licence here - the viewer displays them, and the generator script
+// refuses a model without them.
+export interface VehicleModelRef {
+  // File name under public/models/, e.g. "mclaren-720s.glb".
+  file: string;
+  // Rotation about the vertical axis (degrees) that turns the model's nose
+  // to face +X, the viewer's forward direction. Models are otherwise
+  // auto-fitted: scaled so their length matches the preset's body length
+  // and set down on the ground plane.
+  yawDeg?: number;
+  credit: {
+    title: string;
+    author: string;
+    // Where the model was obtained, so the licence can be checked.
+    sourceUrl: string;
+    // SPDX-style identifier, e.g. "CC0-1.0" or "CC-BY-4.0".
+    license: string;
+  };
 }
 
 export type BodyType = "minivan" | "suv" | "supercar" | "f1";
+
+// Exterior size of a body style, in metres. Representative figures for the
+// class (like the rest of BODY_TYPE_PRESETS), not any one car's spec sheet.
+// Wheelbase lives alongside these on the preset since the physics already
+// uses it. Nothing in the simulation reads these yet - they exist so the 3D
+// viewer and any future aero model size the car from the same numbers.
+export interface BodyDimensions {
+  lengthM: number;
+  // Overall body width, mirrors excluded.
+  widthM: number;
+  heightM: number;
+  // Wheel centre-to-centre distance across each axle.
+  frontTrackM: number;
+  rearTrackM: number;
+  // Static ground clearance under the main floor.
+  rideHeightM: number;
+}
 
 // Movable-wing aero (the 2026 F1 rules' replacement for DRS): the car runs
 // its normal high-downforce "corner mode" (the body type's
