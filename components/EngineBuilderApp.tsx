@@ -29,7 +29,7 @@ import {
   subscribeFavorites,
 } from "@/lib/favorites";
 import ChassisForm from "./EngineBuilder/ChassisForm";
-import { CornerMarks, FOCUS_RING, OptionButton } from "./EngineBuilder/FormControls";
+import { CornerMarks, FOCUS_RING } from "./EngineBuilder/FormControls";
 import EngineForm from "./EngineBuilder/EngineForm";
 import GearboxForm from "./EngineBuilder/GearboxForm";
 import TestForm from "./EngineBuilder/TestForm";
@@ -44,6 +44,38 @@ import ResultsSummary from "./Simulation/ResultsSummary";
 import MatchList from "./Matches/MatchList";
 import FavoritesList from "./Favorites/FavoritesList";
 import HowItWorks from "./HowItWorks/HowItWorks";
+
+// One preview box in the right-hand column: the bordered card, a header
+// with its title and a short label, and the preview itself. `live` gives
+// the title the pulsing dot the engine preview has always had.
+function PreviewCard({
+  title,
+  label,
+  live = false,
+  children,
+}: {
+  title: string;
+  label: string;
+  live?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative rounded-2xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md overflow-hidden shadow-[0_0_60px_-12px_rgba(245,158,11,0.5)]">
+      <CornerMarks className="border-amber-500/40" />
+      <div className="px-5 py-3 border-b border-zinc-800/80 flex items-center justify-between gap-3">
+        <span className="flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-medium text-amber-400">
+          <span className="relative flex h-2 w-2">
+            {live && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />}
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+          </span>
+          {title}
+        </span>
+        <span className="min-w-0 text-xs text-zinc-500 uppercase tracking-wider truncate">{label}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 type Step = "chassis" | "engine" | "gearbox" | "test" | "simulate" | "results" | "favorites";
 
@@ -60,7 +92,6 @@ export default function EngineBuilderApp() {
   const [saved, setSaved] = useState(false);
   const [previousStep, setPreviousStep] = useState<Step>("chassis");
   const [skipHotLapAnimation, setSkipHotLapAnimation] = useState(false);
-  const [previewMode, setPreviewMode] = useState<"engine" | "vehicle" | "aero">("engine");
 
   // The whole car as currently configured - one derived snapshot for
   // anything that reads across chassis/engine/gearbox (see vehicleState.ts).
@@ -188,8 +219,13 @@ export default function EngineBuilderApp() {
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
         {(step === "chassis" || step === "engine" || step === "gearbox" || step === "test") && (
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 items-start">
-            <div className="order-2 lg:order-1 w-full max-w-3xl mx-auto lg:mx-0">
+          // Three grid items so the previews can sit either side of the form
+          // without being mounted twice: on phones the engine preview leads,
+          // then the form, then the vehicle and wind tunnel; on desktop the
+          // form fills the left column and the previews stack on the right
+          // (row 2 is 1fr so the tall form's extra height lands below them).
+          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_400px] lg:grid-rows-[auto_1fr] gap-8 items-start">
+            <div className="order-2 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2 w-full max-w-3xl mx-auto lg:mx-0">
               <StepNav current={step} onNavigate={(s) => setStep(s)} />
               {step === "chassis" && (
                 <ChassisForm
@@ -230,53 +266,27 @@ export default function EngineBuilderApp() {
                 />
               )}
             </div>
-            <div className="order-1 lg:order-2 lg:sticky lg:top-8 space-y-6">
-              <div className="relative rounded-2xl border border-zinc-800 bg-zinc-900/85 backdrop-blur-md overflow-hidden shadow-[0_0_60px_-12px_rgba(245,158,11,0.5)]">
-                <CornerMarks className="border-amber-500/40" />
-                <div className="px-5 py-3 border-b border-zinc-800/80 flex items-center justify-between gap-3">
-                  <span className="flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-medium text-amber-400">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-                    </span>
-                    Live Preview
-                  </span>
-                  <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Preview mode">
-                    {(["engine", "vehicle", "aero"] as const).map((mode) => (
-                      <OptionButton
-                        key={mode}
-                        active={previewMode === mode}
-                        onClick={() => setPreviewMode(mode)}
-                        className="px-2! py-0.5! text-xs! capitalize"
-                      >
-                        {mode}
-                      </OptionButton>
-                    ))}
-                  </div>
-                  {/* With three mode buttons there's little room left; the
-                      wind tunnel titles itself, and phones skip the label. */}
-                  {previewMode !== "aero" && (
-                    <span className="hidden min-w-0 text-xs text-zinc-500 uppercase tracking-wider truncate sm:inline">
-                      {previewMode === "engine" ? vehicle.engine.sizeLabel : vehicle.identity.displayName}
-                    </span>
-                  )}
+            <div className="order-1 lg:order-none lg:col-start-2 lg:row-start-1">
+              <PreviewCard title="Live Preview" label={vehicle.engine.sizeLabel} live>
+                <div className="w-full h-[26rem] relative">
+                  <div className="absolute inset-x-8 bottom-4 h-8 rounded-full bg-black/50 blur-xl" />
+                  <EnginePreview engine={engine} />
                 </div>
-                {/* The wind tunnel carries its readout under the flow picture, so
-                    it gets a taller panel than the 3D previews. */}
-                <div className={`w-full relative ${previewMode === "aero" ? "h-[38rem]" : "h-[26rem]"}`}>
-                  {/* Only one preview is mounted at a time, so there's only
-                      ever one WebGL context on the page (the wind tunnel
-                      uses plain 2D canvas, no WebGL at all). */}
-                  {previewMode === "engine" && (
-                    <>
-                      <div className="absolute inset-x-8 bottom-4 h-8 rounded-full bg-black/50 blur-xl" />
-                      <EnginePreview engine={engine} />
-                    </>
-                  )}
-                  {previewMode === "vehicle" && <VehiclePreview vehicle={vehicle} />}
-                  {previewMode === "aero" && <WindTunnel2D vehicle={vehicle} />}
+              </PreviewCard>
+            </div>
+            <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2 space-y-6">
+              <PreviewCard title="Vehicle" label={vehicle.identity.displayName}>
+                <div className="w-full h-[26rem] relative">
+                  <VehiclePreview vehicle={vehicle} />
                 </div>
-              </div>
+              </PreviewCard>
+              <PreviewCard title="Wind Tunnel" label="2D section">
+                {/* Taller than the 3D boxes: the force readout sits under
+                    the flow picture. Plain 2D canvas, no WebGL. */}
+                <div className="w-full h-[38rem] relative">
+                  <WindTunnel2D vehicle={vehicle} />
+                </div>
+              </PreviewCard>
               {(step === "chassis" || step === "engine") && <TipsBox />}
             </div>
           </div>
