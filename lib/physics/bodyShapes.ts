@@ -20,6 +20,22 @@ export function sampleProfile(profile: Profile, u: number): number {
   return profile[profile.length - 1][1];
 }
 
+export function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+// Piecewise-linear lookup through sorted (x, value) knots.
+export function lerpKnots(knots: [number, number][], x: number): number {
+  if (x <= knots[0][0]) return knots[0][1];
+  for (let i = 1; i < knots.length; i++) {
+    const [x0, y0] = knots[i - 1];
+    const [x1, y1] = knots[i];
+    if (x <= x1) return y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
+  }
+  return knots[knots.length - 1][1];
+}
+
 // Generic closed-bodywork car: a full-width lower body (bonnet, flanks,
 // boot/deck) plus a narrower glasshouse on top.
 export interface ClosedBodySpec {
@@ -98,6 +114,17 @@ export function closedBodySilhouette(spec: ClosedBodySpec, samples = 50): Profil
   return silhouette;
 }
 
+// The lower body's plan-view width at x, as a fraction of the full width:
+// it narrows over the last stretch of the nose and tail.
+export function closedBodyPlanTaper(spec: ClosedBodySpec, lengthM: number, x: number): number {
+  const halfL = lengthM / 2;
+  return (
+    1 -
+    spec.noseTaper * smoothstep(halfL - 0.12 * lengthM, halfL, x) -
+    spec.tailTaper * smoothstep(-halfL + 0.08 * lengthM, -halfL, x)
+  );
+}
+
 // --- Axles ------------------------------------------------------------------
 
 // Where each body style's axles sit along its length. The physics only
@@ -136,6 +163,40 @@ export function openWheelStations(lengthM: number, axles: AxleLayout) {
     sidepodFrontX: frontX - 0.95,
     sidepodRearX: rearX + 0.45,
     gearboxEndX: rearX - 0.3,
+  };
+}
+
+export const OPEN_WHEEL_SPINE_MAX_WIDTH_M = 0.9;
+export const OPEN_WHEEL_SIDEPOD_MAX_WIDTH_M = 1.45;
+
+// Plan-view full widths as sorted (x, width) knots: the spine narrowing
+// from the tub to the slim nose and down to the gearbox, and the sidepods
+// tapering toward the rear ("coke bottle").
+export function openWheelPlanKnots(
+  lengthM: number,
+  axles: AxleLayout,
+): { spine: [number, number][]; sidepod: [number, number][] } {
+  const { frontX, rearX } = axles;
+  const { noseTipX, cockpitFrontX, rollHoopX, sidepodFrontX, sidepodRearX, gearboxEndX } = openWheelStations(
+    lengthM,
+    axles,
+  );
+  return {
+    spine: [
+      [gearboxEndX, 0.3],
+      [rearX + 0.6, 0.45],
+      [rollHoopX - 0.2, 0.55],
+      [rollHoopX + 0.1, 0.85],
+      [cockpitFrontX, 0.85],
+      [frontX, 0.42],
+      [noseTipX, 0.22],
+    ],
+    sidepod: [
+      [sidepodRearX, 0.55],
+      [sidepodRearX + 0.6, 0.9],
+      [sidepodFrontX - 0.5, OPEN_WHEEL_SIDEPOD_MAX_WIDTH_M],
+      [sidepodFrontX, 1.35],
+    ],
   };
 }
 

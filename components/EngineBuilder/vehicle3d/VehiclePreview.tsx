@@ -12,7 +12,7 @@ import DedicatedModel, { vehicleModelUrl } from "./DedicatedModel";
 import DimensionOverlay from "./DimensionOverlay";
 import FallbackBoundary from "./FallbackBoundary";
 import FlowOverlay3D from "./FlowOverlay3D";
-import { useFlowGrid } from "../../Aero/useFlowGrid";
+import { useFlowGrid, usePlanFlowGrid } from "../../Aero/useFlowGrid";
 import { FAST_POLE, SLOW_POLE, SPEED_LEGEND_GRADIENT } from "@/lib/aero/speedColors";
 import OpenWheelModel from "./OpenWheelModel";
 import { OptionButton } from "../FormControls";
@@ -91,6 +91,7 @@ export default function VehiclePreview({ vehicle, showFlow = false }: { vehicle:
   // Flow overlay: the 2D flow model drawn over the car. Only solved by the
   // viewer that shows it.
   const { grid: flowGrid } = useFlowGrid(vehicle, showFlow);
+  const { grid: planFlowGrid } = usePlanFlowGrid(vehicle, showFlow);
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion, prefersReducedMotion, () => false);
   const [glReady, setGlReady] = useState(false);
   const [renderFailed, setRenderFailed] = useState(false);
@@ -192,7 +193,9 @@ export default function VehiclePreview({ vehicle, showFlow = false }: { vehicle:
               genericModel
             )}
             {showDimensions && <DimensionOverlay vehicle={vehicle} />}
-            {showFlow && flowGrid && <FlowOverlay3D grid={flowGrid} widthM={widthM} animate={!reducedMotion} />}
+            {showFlow && flowGrid && (
+              <FlowOverlay3D grid={flowGrid} plan={planFlowGrid} widthM={widthM} animate={!reducedMotion} />
+            )}
             <ContactShadows
               key={shadowKey}
               frames={1}
@@ -285,7 +288,7 @@ export default function VehiclePreview({ vehicle, showFlow = false }: { vehicle:
           <div className="mb-1.5">
             <div className="text-zinc-400">
               {flowGrid
-                ? `Flow: 2D ${bodyName} section extended across the width · illustrative, not CFD`
+                ? `Flow: 2D side and plan sections of the ${bodyName} body, placed in 3D · illustrative, not CFD`
                 : "Solving flow…"}
             </div>
             {flowGrid && (

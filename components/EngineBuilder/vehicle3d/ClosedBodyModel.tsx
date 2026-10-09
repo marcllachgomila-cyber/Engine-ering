@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ClosedBodySpec } from "@/lib/physics/bodyShapes";
+import { closedBodyPlanTaper, ClosedBodySpec } from "@/lib/physics/bodyShapes";
 import { VehicleState } from "@/lib/physics/vehicleState";
 import {
   ARCH_CLEARANCE_M,
@@ -28,18 +28,11 @@ export default function ClosedBodyModel({ vehicle, spec }: { vehicle: VehicleSta
   const rearRadius = vehicle.tyres.rear.rollingRadiusM;
 
   const lowerBody = useMemo(() => {
-    const halfL = lengthM / 2;
     const shape = bodySideShape(lengthM, rideHeightM, heightM, spec.lowerProfile, [
       { x: axles.frontX, centerY: frontRadius, radius: frontRadius + ARCH_CLEARANCE_M },
       { x: axles.rearX, centerY: rearRadius, radius: rearRadius + ARCH_CLEARANCE_M },
     ]);
-    return shapeWidth(
-      extrudeAcross(shape, widthM),
-      (x) =>
-        1 -
-        spec.noseTaper * smoothstep(halfL - 0.12 * lengthM, halfL, x) -
-        spec.tailTaper * smoothstep(-halfL + 0.08 * lengthM, -halfL, x),
-    );
+    return shapeWidth(extrudeAcross(shape, widthM), (x) => closedBodyPlanTaper(spec, lengthM, x));
   }, [lengthM, widthM, heightM, rideHeightM, axles.frontX, axles.rearX, frontRadius, rearRadius, spec]);
 
   const cabinBody = useMemo(() => {

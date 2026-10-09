@@ -100,18 +100,23 @@ export function wakeOutline(wake: Wake, xEnd: number, samples = 24): { upper: Ve
 
 // --- Sampled field ------------------------------------------------------------
 
-export interface FlowGrid {
+// A velocity field sampled on a regular grid over 0 <= y <= yMax - above
+// the ground for the side section, one half of the symmetric plan view.
+export interface FlowField {
   xMin: number;
   xMax: number;
-  yMax: number; // yMin is the ground, 0
+  yMax: number; // yMin is 0: the ground, or the plan view's centreline
   nx: number;
   ny: number;
   u: Float32Array;
   v: Float32Array;
   // 1 where the node is inside the body.
   solid: Uint8Array;
-  body: BodyOutline;
   wake: Wake;
+}
+
+export interface FlowGrid extends FlowField {
+  body: BodyOutline;
 }
 
 export interface FlowDomain {
@@ -134,18 +139,29 @@ export function domainFor(body: BodyOutline): FlowDomain {
 }
 
 export function sampleFlow(flow: PotentialFlow, body: BodyOutline, domain: FlowDomain, nx = 150): FlowGrid {
+  return { ...sampleField(flow, body.polygon, wakeFromBody(body), domain, nx), body };
+}
+
+// The potential flow around `polygon` sampled over the domain, with the
+// wake laid over it.
+export function sampleField(
+  flow: PotentialFlow,
+  polygon: Vec2[],
+  wake: Wake,
+  domain: FlowDomain,
+  nx = 150,
+): FlowField {
   const ny = Math.max(20, Math.round((nx * domain.yMax) / (domain.xMax - domain.xMin)));
   const u = new Float32Array(nx * ny);
   const v = new Float32Array(nx * ny);
   const solid = new Uint8Array(nx * ny);
-  const wake = wakeFromBody(body);
   const vel: Vec2 = { x: 0, y: 0 };
   for (let j = 0; j < ny; j++) {
     const y = (domain.yMax * j) / (ny - 1);
     for (let i = 0; i < nx; i++) {
       const x = domain.xMin + ((domain.xMax - domain.xMin) * i) / (nx - 1);
       const k = j * nx + i;
-      if (pointInPolygon(body.polygon, x, y)) {
+      if (pointInPolygon(polygon, x, y)) {
         solid[k] = 1;
         continue;
       }
@@ -157,12 +173,12 @@ export function sampleFlow(flow: PotentialFlow, body: BodyOutline, domain: FlowD
       v[k] = vel.y * (1 - weight * (1 - Math.max(0, wakeU)));
     }
   }
-  return { ...domain, nx, ny, u, v, solid, body, wake };
+  return { ...domain, nx, ny, u, v, solid, wake };
 }
 
 // Bilinear lookup; returns false (and zero velocity) inside the body or
 // outside the domain.
-export function velocityAt(grid: FlowGrid, x: number, y: number, out: Vec2): boolean {
+export function velocityAt(grid: FlowField, x: number, y: number, out: Vec2): boolean {
   const fx = ((x - grid.xMin) / (grid.xMax - grid.xMin)) * (grid.nx - 1);
   const fy = (y / grid.yMax) * (grid.ny - 1);
   if (fx < 0 || fy < 0 || fx > grid.nx - 1 || fy > grid.ny - 1) {
@@ -203,7 +219,7 @@ export interface StreamlinePoint {
 // Traces a streamline from (x0, y0) downstream with midpoint (RK2) steps of
 // fixed arc length, stopping at the body, the domain edge, or where the
 // flow stalls (inside the wake's recirculation).
-export function traceStreamline(grid: FlowGrid, x0: number, y0: number, stepM: number, maxSteps = 2000): StreamlinePoint[] {
+export function traceStreamline(grid: FlowField, x0: number, y0: number, stepM: number, maxSteps = 2000): StreamlinePoint[] {
   const points: StreamlinePoint[] = [];
   const a: Vec2 = { x: 0, y: 0 };
   const b: Vec2 = { x: 0, y: 0 };

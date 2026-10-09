@@ -1,5 +1,12 @@
 import * as THREE from "three";
-import { AxleLayout, axleLayout as layoutAxles, Profile, sampleProfile } from "@/lib/physics/bodyShapes";
+import {
+  AxleLayout,
+  axleLayout as layoutAxles,
+  lerpKnots,
+  Profile,
+  sampleProfile,
+  smoothstep,
+} from "@/lib/physics/bodyShapes";
 import { VehicleState } from "@/lib/physics/vehicleState";
 
 // Shared building blocks for the placeholder vehicle models. Scene units are
@@ -178,21 +185,7 @@ export function shapeWidth(
   return { geometry, edges };
 }
 
-export function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
-  return t * t * (3 - 2 * t);
-}
-
-// Piecewise-linear lookup through sorted (x, value) knots.
-export function lerpKnots(knots: [number, number][], x: number): number {
-  if (x <= knots[0][0]) return knots[0][1];
-  for (let i = 1; i < knots.length; i++) {
-    const [x0, y0] = knots[i - 1];
-    const [x1, y1] = knots[i];
-    if (x <= x1) return y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
-  }
-  return knots[knots.length - 1][1];
-}
+export { lerpKnots, smoothstep };
 
 // Shared CAD-style palette, so every model reads as one family.
 export const VEHICLE_COLORS = {

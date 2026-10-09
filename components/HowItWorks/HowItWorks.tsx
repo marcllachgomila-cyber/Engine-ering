@@ -839,8 +839,12 @@ b &= \frac{h}{2}\,\bigl(1 + 0.12\,\xi\bigr)
         </P>
         <P>
           The 3D flow view draws the same 2D solution on a few vertical slices across the middle
-          70% of the car&rsquo;s width. It&rsquo;s the 2D section extended sideways, not a 3D
-          solution, so there&rsquo;s no flow around the sides, no 3D wake and no trailing vortices.
+          70% of the car&rsquo;s width. For the flow around the sides it adds a second 2D solve
+          looking down from above: the body&rsquo;s footprint at flank height (corners rounded,
+          wheels left out), solved the same way but with no ground plane, since in plan the flow
+          is mirror-symmetric about the centreline instead. That solution is drawn on two
+          horizontal sheets along the flanks. The two sections don&rsquo;t interact and neither is
+          3D, so there&rsquo;s still no 3D wake and no trailing vortices.
         </P>
       </>
     ),

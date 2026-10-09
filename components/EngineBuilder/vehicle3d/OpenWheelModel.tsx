@@ -3,7 +3,13 @@
 import { useMemo } from "react";
 import { Edges } from "@react-three/drei";
 import * as THREE from "three";
-import { openWheelSpineChains, openWheelStations } from "@/lib/physics/bodyShapes";
+import {
+  OPEN_WHEEL_SIDEPOD_MAX_WIDTH_M as SIDEPOD_MAX_WIDTH_M,
+  OPEN_WHEEL_SPINE_MAX_WIDTH_M as SPINE_MAX_WIDTH_M,
+  openWheelPlanKnots,
+  openWheelSpineChains,
+  openWheelStations,
+} from "@/lib/physics/bodyShapes";
 import { AeroMode } from "@/lib/physics/types";
 import { VehicleState } from "@/lib/physics/vehicleState";
 import { axleLayout, extrudeAcross, lerpKnots, pointsShape, shapeWidth, VEHICLE_COLORS } from "./geometry";
@@ -16,8 +22,6 @@ import Wheels from "./Wheels";
 // with the vehicle data. It's a schematic of the layout every modern F1 car
 // shares, not any team's or season's car.
 
-const SPINE_MAX_WIDTH_M = 0.9;
-const SIDEPOD_MAX_WIDTH_M = 1.45;
 const TUBE_RADIUS_M = 0.025;
 
 // Wing flap pitch (negative = trailing edge up, the downforce-making attitude
@@ -79,7 +83,7 @@ export default function OpenWheelModel({ vehicle, aeroMode }: { vehicle: Vehicle
   const halfL = lengthM / 2;
 
   // Key stations along the car (shared with the 2D wind tunnel's section).
-  const { noseTipX, cockpitFrontX, rollHoopX, sidepodFrontX, sidepodRearX, gearboxEndX } = openWheelStations(
+  const { cockpitFrontX, rollHoopX, sidepodFrontX, sidepodRearX } = openWheelStations(
     lengthM,
     axles,
   );
@@ -89,17 +93,9 @@ export default function OpenWheelModel({ vehicle, aeroMode }: { vehicle: Vehicle
   const spineBody = useMemo(() => {
     const { upper, lower } = openWheelSpineChains(lengthM, heightM, { frontX, rearX });
     const shape = pointsShape([...upper, ...[...lower].reverse()]);
-    const knots: [number, number][] = [
-      [gearboxEndX, 0.3],
-      [rearX + 0.6, 0.45],
-      [rollHoopX - 0.2, 0.55],
-      [rollHoopX + 0.1, 0.85],
-      [cockpitFrontX, 0.85],
-      [frontX, 0.42],
-      [noseTipX, 0.22],
-    ];
+    const knots = openWheelPlanKnots(lengthM, { frontX, rearX }).spine;
     return shapeWidth(extrudeAcross(shape, SPINE_MAX_WIDTH_M, 0.03), (x) => lerpKnots(knots, x) / SPINE_MAX_WIDTH_M);
-  }, [lengthM, heightM, noseTipX, frontX, cockpitFrontX, rollHoopX, rearX, gearboxEndX]);
+  }, [lengthM, heightM, frontX, rearX]);
 
   // Sidepods: radiator inlets behind the front wheels, tapering in plan
   // and height toward the rear ("coke bottle").
@@ -112,17 +108,12 @@ export default function OpenWheelModel({ vehicle, aeroMode }: { vehicle: Vehicle
       [sidepodRearX, 0.25],
       [sidepodRearX, 0.12],
     ]);
-    const knots: [number, number][] = [
-      [sidepodRearX, 0.55],
-      [sidepodRearX + 0.6, 0.9],
-      [sidepodFrontX - 0.5, SIDEPOD_MAX_WIDTH_M],
-      [sidepodFrontX, 1.35],
-    ];
+    const knots = openWheelPlanKnots(lengthM, { frontX, rearX }).sidepod;
     return shapeWidth(
       extrudeAcross(shape, SIDEPOD_MAX_WIDTH_M, 0.04),
       (x) => lerpKnots(knots, x) / SIDEPOD_MAX_WIDTH_M,
     );
-  }, [sidepodFrontX, sidepodRearX]);
+  }, [lengthM, frontX, rearX, sidepodFrontX, sidepodRearX]);
 
   const halo = useMemo(() => {
     const attachX = rollHoopX + 0.05;
