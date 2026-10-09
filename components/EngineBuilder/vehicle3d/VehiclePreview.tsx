@@ -78,7 +78,9 @@ function ViewerMessage({ title, detail }: { title: string; detail: string }) {
   );
 }
 
-export default function VehiclePreview({ vehicle }: { vehicle: VehicleState }) {
+// showFlow: the air-flow viewer - the same car with the flow overlay always
+// on and no dimension overlay.
+export default function VehiclePreview({ vehicle, showFlow = false }: { vehicle: VehicleState; showFlow?: boolean }) {
   const { lengthM, widthM, heightM, wheelbaseM } = vehicle.dimensions;
   const Model = BODY_TYPE_MODELS[vehicle.identity.bodyType];
 
@@ -86,9 +88,8 @@ export default function VehiclePreview({ vehicle }: { vehicle: VehicleState }) {
   // one already selected, which doubles as "reset view".
   const [view, setView] = useState<{ preset: ViewPreset; requestId: number }>({ preset: "iso", requestId: 0 });
   const [showDimensions, setShowDimensions] = useState(false);
-  // Flow overlay: the 2D flow model drawn over the car. Only solved once
-  // it's first switched on.
-  const [showFlow, setShowFlow] = useState(false);
+  // Flow overlay: the 2D flow model drawn over the car. Only solved by the
+  // viewer that shows it.
   const { grid: flowGrid } = useFlowGrid(vehicle, showFlow);
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion, prefersReducedMotion, () => false);
   const [glReady, setGlReady] = useState(false);
@@ -243,13 +244,18 @@ export default function VehiclePreview({ vehicle }: { vehicle: VehicleState }) {
               {VIEW_LABELS[preset]}
             </OptionButton>
           ))}
-          <div className="my-0.5 border-t border-zinc-800" />
-          <OptionButton active={showDimensions} onClick={() => setShowDimensions((s) => !s)} className={TOOL_BUTTON}>
-            Dims
-          </OptionButton>
-          <OptionButton active={showFlow} onClick={() => setShowFlow((s) => !s)} className={TOOL_BUTTON}>
-            Flow
-          </OptionButton>
+          {!showFlow && (
+            <>
+              <div className="my-0.5 border-t border-zinc-800" />
+              <OptionButton
+                active={showDimensions}
+                onClick={() => setShowDimensions((s) => !s)}
+                className={TOOL_BUTTON}
+              >
+                Dims
+              </OptionButton>
+            </>
+          )}
         </div>
       )}
 

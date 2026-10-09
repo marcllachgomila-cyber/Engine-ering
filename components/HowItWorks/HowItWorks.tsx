@@ -524,9 +524,9 @@ k_{\text{slip}}\, F_{\max}, & F_{\text{wheel}} > F_{\max} \text{ and traction co
             { symbol: String.raw`\rho_{\text{air}}`, desc: "air density, the standard sea-level reference value used throughout" },
             {
               symbol: String.raw`C_d`,
-              desc: "drag coefficient, set by body type (a boxy minivan or SUV carries a higher coefficient than a low, shaped supercar body; an open-wheel F1 car runs higher still)",
+              desc: "drag coefficient, set by body type (a boxy minivan or SUV carries a higher coefficient than a low, shaped supercar body; an open-wheel F1 car runs higher still) and adjusted by any aero kit (below)",
             },
-            { symbol: String.raw`A`, desc: "frontal area, also set by body type" },
+            { symbol: String.raw`A`, desc: "frontal area, also set by body type (the aero kit leaves it unchanged)" },
             { symbol: String.raw`v_{\text{rel}}`, desc: "speed relative to the surrounding air, not just speed relative to the road" },
           ]}
         />
@@ -591,12 +591,263 @@ k_{\text{slip}}\, F_{\max}, & F_{\text{wheel}} > F_{\max} \text{ and traction co
           C_l instead slowly loses tyre load as it speeds up, the same lift a plane wing produces
           just working against it here instead of for it.
         </P>
+        <P>
+          The results screen also gives the drag power, <code>P = F_drag · v</code>, and the speed
+          at which downforce would equal the car&rsquo;s weight (the &ldquo;could drive upside
+          down&rdquo; figure). That speed exists only for a car that makes downforce:
+        </P>
+        <Formula
+          tex={String.raw`v_{\,F_{\text{down}} = mg} = \sqrt{\frac{m\,g}{\tfrac{1}{2}\,\rho_{\text{air}}\,C_l\,A}} \qquad (C_l > 0)`}
+          vars={[
+            { symbol: String.raw`m\,g`, desc: "the car's weight" },
+            { symbol: String.raw`C_l\,A`, desc: "lift area: downforce per unit of dynamic pressure" },
+          ]}
+        />
+        <H3>Aero kit: wing, splitter, diffuser and ride height</H3>
+        <P>
+          A custom road car can be fitted with bolt-on aero in the Chassis step: a rear wing (low
+          or high downforce), a front splitter, a flat floor with a diffuser, and a ride height up
+          to 40&nbsp;mm above or below standard. An F1 car&rsquo;s aero is its whole regulated
+          package and is already in its coefficients, so the kit isn&rsquo;t offered for it. Real-car
+          presets keep their standard aero.
+        </P>
+        <P>
+          Each part is sized as a force area (an added <code>C_d·A</code> and <code>C_l·A</code>, in
+          m²) rather than as a coefficient. A given wing makes a given force at a given speed
+          whatever it&rsquo;s bolted to, so it mustn&rsquo;t make more downforce on a minivan just
+          because the minivan has a bigger frontal area. The parts are converted to coefficient
+          changes on the car&rsquo;s own frontal area and added to the body type&rsquo;s values:
+        </P>
+        <Formula
+          tex={String.raw`\begin{aligned}
+\Delta C_{d,i} &= \frac{\Delta (C_d A)_i}{A}, \qquad \Delta C_{l,i} = \frac{\Delta (C_l A)_i}{A} \\[4pt]
+C_d &= \max\!\Bigl(0.15,\ C_{d,\text{body}} + \sum_i \Delta C_{d,i}\Bigr) \\
+C_l &= C_{l,\text{body}} + \sum_i \Delta C_{l,i}
+\end{aligned}`}
+          vars={[
+            { symbol: String.raw`\Delta (C_d A)_i,\ \Delta (C_l A)_i`, desc: "drag and downforce area added by part i" },
+            { symbol: String.raw`C_{d,\text{body}},\ C_{l,\text{body}}`, desc: "the body type's standard coefficients" },
+            { symbol: String.raw`A`, desc: "the car's frontal area, unchanged by the kit" },
+          ]}
+        />
+        <P>
+          The part sizes are representative figures from the range reported for production-car
+          add-ons, not measurements of any one car. What they&rsquo;re built to get right is the
+          trade-off each part makes:
+        </P>
+        <Ul>
+          <Li>
+            <b>Rear wing, low downforce</b>: +0.06 m² of drag area and +0.30 m² of downforce area,
+            a lift-to-drag ratio of 5, which is efficient downforce.
+          </Li>
+          <Li>
+            <b>Rear wing, high downforce</b>: +0.20 m² of drag area and +0.90 m² of downforce area.
+            That&rsquo;s three times the downforce at a worse ratio (about 4.5), so drag climbs faster
+            than downforce.
+          </Li>
+          <Li>
+            <b>Front splitter</b>: +0.02 m² of drag area and +0.24 m² of downforce area, front
+            downforce for very little drag.
+          </Li>
+          <Li>
+            <b>Flat floor + diffuser</b>: −0.04 m² of drag area, because a smooth underbody cuts
+            drag, and +0.30 m² of downforce area. Its downforce depends on ride height (ground
+            effect), as described next.
+          </Li>
+        </Ul>
+        <P>
+          On a 1.95&nbsp;m² supercar, the high wing alone adds about +0.10 to <code>C_d</code> and
+          +0.45 to <code>C_l</code>.
+        </P>
+        <P>
+          Ride height acts on the body itself. Lowering it forces less air under the car, which
+          trims drag and lift a little, and raising it does the opposite. A diffuser makes more
+          downforce the closer it runs to the ground, within limits. The ride-height range stops
+          short of the very low heights where real ground effect stalls, which isn&rsquo;t modelled.
+          Ride height also moves the centre of gravity by the same amount, which feeds into the
+          weight-transfer formula in the Friction &amp; Traction chapter:
+        </P>
+        <Formula
+          tex={String.raw`\begin{aligned}
+\Delta C_{d,\text{ride}} &= 0.0004\,\delta, \qquad \Delta C_{l,\text{ride}} = -0.001\,\delta \\
+f_{\text{diffuser}} &= \operatorname{clamp}\!\left(1 - 0.006\,\delta,\ 0.5,\ 1.5\right) \\
+h &= h_0 + \delta / 1000
+\end{aligned}`}
+          vars={[
+            { symbol: String.raw`\delta`, desc: "ride-height change in mm (+ raised, − lowered), from −40 to +40" },
+            { symbol: String.raw`f_{\text{diffuser}}`, desc: "multiplier on the diffuser's downforce area" },
+            { symbol: String.raw`h,\ h_0`, desc: "centre-of-gravity height with the change, and as standard, in metres" },
+          ]}
+        />
+        <P>
+          The kit only changes <code>C_d</code>, <code>C_l</code> and CG height. Every simulation
+          picks those up through the drag, downforce and weight-transfer formulas above, so a
+          wing costs top speed and buys cornering and braking grip without any special-case
+          code. The default final drive is also re-picked for the new drag (Gearbox chapter). Not
+          modelled: the parts&rsquo; own mass, and the front/rear balance of the downforce. The
+          data has no front/rear split, so all downforce is treated as acting on the whole car.
+        </P>
+        <H3>What the aero changed</H3>
+        <P>
+          To show what a kit actually did, the Aerodynamics section of the results reruns the same
+          test with the same engine, gearbox and tyres, but with the kit removed. Both runs go
+          through the same simulation, so any difference comes from the kit alone. The plain-language
+          explanations next to it use one rule of thumb for top speed. At a drag-limited top speed
+          the power available equals the drag power, <code>½ρ C_dA v³</code>, so with the same
+          power:
+        </P>
+        <Formula
+          tex={String.raw`\frac{v_{\text{top}}'}{v_{\text{top}}} \approx \left(\frac{C_d A}{(C_d A)'}\right)^{1/3}`}
+          vars={[
+            { symbol: String.raw`v_{\text{top}},\ v_{\text{top}}'`, desc: "top speed without and with the kit" },
+            { symbol: String.raw`C_d A,\ (C_d A)'`, desc: "drag area without and with the kit" },
+          ]}
+        />
+        <P>
+          This estimate is printed next to the simulated change, which also includes rolling
+          resistance and gearing, so you can see how close the rule of thumb gets. A 10% increase
+          in drag area costs roughly 3% of top speed.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: "windtunnel",
+    num: "04",
+    title: "Wind Tunnel & Flow View",
+    render: () => (
+      <>
+        <P>
+          The 2D wind tunnel and the flow overlay in the 3D viewer show how air moves around the
+          selected body. They&rsquo;re for visualisation. None of the drag, downforce or lap figures
+          are read from them. Those come from the coefficients in the Aerodynamics chapter. This
+          chapter describes how the flow picture is made and which parts of it are solved and
+          which are estimated.
+        </P>
+        <H3>The body section</H3>
+        <P>
+          The flow is solved in 2D, side-on, through one section of the car. For a closed body
+          (minivan, SUV, supercar), that section is the side silhouette: at each point along the
+          car, the higher of the lower body and the cabin. For an F1 car, it&rsquo;s the
+          centreline: nose, monocoque, airbox and engine cover. Wheels aren&rsquo;t part of either.
+          The shapes are the same ones the 3D viewer builds its models from, scaled to the car&rsquo;s
+          length, height and ride height, so the tunnel and the 3D model always match. They&rsquo;re
+          representative shapes for each class, not any manufacturer&rsquo;s surfaces.
+        </P>
+        <P>
+          The outline is smoothed to round off sharp corners at the windscreen and roof, then
+          split into panels about 10&nbsp;cm long. A sharp corner would cause a speed spike in the
+          flow that a real, curved roof doesn&rsquo;t have.
+        </P>
+        <H3>Potential flow by the panel method</H3>
+        <P>
+          The flow around that outline is solved as 2D incompressible potential flow, using the
+          constant-strength source panel method (the non-lifting half of the Hess–Smith method).
+          Each panel carries a source of unknown strength <code>σ_j</code>. The strengths are set so
+          that no air flows through the body: at each panel&rsquo;s midpoint, the velocity normal to
+          the surface is zero. That gives one linear equation per panel, solved together by
+          Gaussian elimination:
+        </P>
+        <Formula
+          tex={String.raw`\begin{aligned}
+\tfrac{1}{2}\,\sigma_i + \sum_{j \ne i} A_{ij}\,\sigma_j &= -\,\mathbf{U}_\infty \cdot \hat{\mathbf{n}}_i \\[4pt]
+\mathbf{u}(\mathbf{x}) &= \mathbf{U}_\infty + \sum_j \sigma_j\, \mathbf{v}_j(\mathbf{x})
+\end{aligned}`}
+          vars={[
+            { symbol: String.raw`\sigma_j`, desc: "source strength of panel j (the unknowns)" },
+            { symbol: String.raw`A_{ij}`, desc: "normal velocity at panel i's midpoint induced by a unit source on panel j, in closed form" },
+            { symbol: String.raw`\tfrac{1}{2}\,\sigma_i`, desc: "a panel's own normal velocity at its midpoint" },
+            { symbol: String.raw`\mathbf{U}_\infty`, desc: "the oncoming air (freestream)" },
+            { symbol: String.raw`\hat{\mathbf{n}}_i`, desc: "outward unit normal of panel i" },
+            { symbol: String.raw`\mathbf{v}_j(\mathbf{x})`, desc: "velocity induced at point x by a unit source on panel j" },
+          ]}
+        />
+        <P>
+          The road is modelled by the method of images: a mirror copy of the body sits under the
+          ground with the same source strengths. By symmetry, no air then crosses the ground line,
+          which turns it into a solid floor. That captures how the air speeds up through the gap
+          under the car. Everything is solved relative to the freestream speed, so one solution
+          works for every speed, and it&rsquo;s computed once per body shape and shared by the 2D
+          and 3D views.
+        </P>
+        <P>
+          Within its assumptions this is an exact solution. It gets the stagnation point at the
+          nose, the faster flow over the roof, and the ground effect under the floor right. But
+          potential flow has no viscosity: no boundary layer, no separation and no wake. On its
+          own it predicts zero drag (d&rsquo;Alembert&rsquo;s paradox), and with sources only there&rsquo;s
+          no circulation, so no lift either. Separation and the wake are added on top, as
+          estimates.
+        </P>
+        <H3>Where the flow separates</H3>
+        <P>
+          Where the flow leaves the body is decided from its geometry, using the best-known result
+          for a car&rsquo;s rear, the slanted-back Ahmed body. Behind the highest point of the
+          roof, the model finds the rear slope and measures its angle:
+        </P>
+        <Ul>
+          <Li>
+            <b>Below about 30°</b>, the flow stays attached down the slope and leaves at the
+            tail&rsquo;s base edges (fastback).
+          </Li>
+          <Li>
+            <b>Above about 30°</b>, the flow separates at the roof&rsquo;s trailing edge, and the
+            whole slope sits in the wake (a hatchback or a squared-off tail). The wake is taller as
+            a result.
+          </Li>
+        </Ul>
+        <P>
+          The real switch is a 3D effect involving trailing vortices, and it isn&rsquo;t perfectly
+          sharp. A single 30° threshold is the simplification.
+        </P>
+        <H3>The wake</H3>
+        <P>
+          Behind the body, potential flow would wrongly close back up into a second stagnation
+          point. The tunnel replaces it with an empirical sketch of a bluff-body wake. It&rsquo;s
+          shaped like published measurements, but it&rsquo;s not solved from anything, and no
+          numbers are read from it. The wake starts at the base, spans the height <code>h</code>{" "}
+          between the underbody&rsquo;s trailing edge and the upper separation point, and slowly
+          widens downstream:
+        </P>
+        <Formula
+          tex={String.raw`\begin{aligned}
+\xi &= \frac{x - x_{\text{base}}}{h} \\
+\frac{u_{\text{wake}}}{U_\infty} &= 1 - \frac{1.25}{\sqrt{1 + \xi^2}} \\
+b &= \frac{h}{2}\,\bigl(1 + 0.12\,\xi\bigr)
+\end{aligned}`}
+          vars={[
+            { symbol: String.raw`\xi`, desc: "distance behind the base, in base heights" },
+            { symbol: String.raw`h`, desc: "wake height at the base, from the underbody trailing edge to the upper separation point" },
+            { symbol: String.raw`u_{\text{wake}}`, desc: "streamwise velocity on the wake's centreline" },
+            { symbol: String.raw`b`, desc: "wake half-width" },
+          ]}
+        />
+        <P>
+          That gives reversed flow right behind the base (−0.25 of freestream), a recirculation
+          bubble that closes about 0.75&nbsp;h downstream, and a speed deficit that fades with
+          distance: about 40% at 3&nbsp;h and 20% at 6&nbsp;h. The wake blends into the potential
+          flow over a band 0.25&nbsp;h wide, and over a separated rear slope, the air under the
+          shear layer is treated as dead, recirculating air.
+        </P>
+        <H3>Drawing it</H3>
+        <P>
+          The combined field is sampled on a grid, so the animated particles can look up their
+          velocity cheaply every frame. Streamlines are traced through it with midpoint (RK2)
+          steps, stopping at the body, the edge of the tunnel, or where the flow stalls in the
+          wake. Colour shows local speed relative to the freestream: blue for slower air (down to
+          0.4×), grey at freestream, and amber for faster air (up to 1.6×). The legend carries
+          numbers so colour is never the only cue.
+        </P>
+        <P>
+          The 3D flow view draws the same 2D solution on a few vertical slices across the middle
+          70% of the car&rsquo;s width. It&rsquo;s the 2D section extended sideways, not a 3D
+          solution, so there&rsquo;s no flow around the sides, no 3D wake and no trailing vortices.
+        </P>
       </>
     ),
   },
   {
     id: "drivetrain",
-    num: "04",
+    num: "05",
     title: "Gearbox & Drivetrain",
     render: () => (
       <>
@@ -737,7 +988,7 @@ k &= 1, 2, \dots, N
   },
   {
     id: "braking",
-    num: "05",
+    num: "06",
     title: "Braking & Thermal Fade",
     render: () => (
       <>
@@ -826,7 +1077,7 @@ T &\leftarrow T + \Delta T
   },
   {
     id: "mass",
-    num: "06",
+    num: "07",
     title: "Vehicle Mass & Weight Transfer",
     render: () => (
       <>
@@ -882,7 +1133,7 @@ T &\leftarrow T + \Delta T
   },
   {
     id: "straightline",
-    num: "07",
+    num: "08",
     title: "Straight-Line Simulation",
     render: () => (
       <>
@@ -967,7 +1218,7 @@ topSpeed = lastValidSpeed`}</Pseudocode>
   },
   {
     id: "hotlap",
-    num: "08",
+    num: "09",
     title: "Hot Lap Simulation",
     render: () => (
       <>
@@ -1120,7 +1371,7 @@ v_{\text{corner}} &= \sqrt{\dfrac{\mu_{\text{lat}}\, m\, g}{m\lvert\kappa\rvert 
   },
   {
     id: "matching",
-    num: "09",
+    num: "10",
     title: "Real-Car Matching",
     render: () => (
       <>

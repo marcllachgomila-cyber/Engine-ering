@@ -29,7 +29,7 @@ import {
   subscribeFavorites,
 } from "@/lib/favorites";
 import ChassisForm from "./EngineBuilder/ChassisForm";
-import { CornerMarks, FOCUS_RING } from "./EngineBuilder/FormControls";
+import { CornerMarks, FOCUS_RING, OptionButton } from "./EngineBuilder/FormControls";
 import EngineForm from "./EngineBuilder/EngineForm";
 import GearboxForm from "./EngineBuilder/GearboxForm";
 import TestForm from "./EngineBuilder/TestForm";
@@ -55,7 +55,7 @@ function PreviewCard({
   children,
 }: {
   title: string;
-  label: string;
+  label: React.ReactNode;
   live?: boolean;
   children: React.ReactNode;
 }) {
@@ -81,6 +81,7 @@ type Step = "chassis" | "engine" | "gearbox" | "test" | "simulate" | "results" |
 
 export default function EngineBuilderApp() {
   const [step, setStep] = useState<Step>("chassis");
+  const [flowView, setFlowView] = useState<"3d" | "2d">("3d");
   const [chassis, setChassis] = useState<ChassisConfig>(DEFAULT_CHASSIS);
   const [engine, setEngine] = useState<EngineConfig>(DEFAULT_ENGINE);
   const [gearbox, setGearbox] = useState<GearboxConfig>(DEFAULT_GEARBOX);
@@ -280,12 +281,34 @@ export default function EngineBuilderApp() {
                   <VehiclePreview vehicle={vehicle} />
                 </div>
               </PreviewCard>
-              <PreviewCard title="Wind Tunnel" label="2D section">
-                {/* Taller than the 3D boxes: the force readout sits under
-                    the flow picture. Plain 2D canvas, no WebGL. */}
-                <div className="w-full h-[38rem] relative">
-                  <WindTunnel2D vehicle={vehicle} />
-                </div>
+              <PreviewCard
+                title="Air Flow"
+                label={
+                  <span className="flex gap-1" role="group" aria-label="Air flow view">
+                    {(["3d", "2d"] as const).map((v) => (
+                      <OptionButton
+                        key={v}
+                        active={flowView === v}
+                        onClick={() => setFlowView(v)}
+                        className="px-2! py-0.5! text-[10px]! uppercase tracking-wider"
+                      >
+                        {v}
+                      </OptionButton>
+                    ))}
+                  </span>
+                }
+              >
+                {flowView === "3d" ? (
+                  <div className="w-full h-[26rem] relative">
+                    <VehiclePreview vehicle={vehicle} showFlow />
+                  </div>
+                ) : (
+                  // Taller than the 3D boxes: the force readout sits under
+                  // the flow picture. Plain 2D canvas, no WebGL.
+                  <div className="w-full h-[38rem] relative">
+                    <WindTunnel2D vehicle={vehicle} />
+                  </div>
+                )}
               </PreviewCard>
               {(step === "chassis" || step === "engine") && <TipsBox />}
             </div>
