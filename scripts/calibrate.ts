@@ -18,7 +18,8 @@ const REFERENCE: { id: string; zeroToHundredS: number; topSpeedKph: number; hp: 
   { id: "lamborghini-huracan", zeroToHundredS: 3.2, topSpeedKph: 325, hp: 602, torqueNm: 560 },
   { id: "mclaren-720s", zeroToHundredS: 2.9, topSpeedKph: 341, hp: 710, torqueNm: 770 },
   { id: "ferrari-f8-tributo", zeroToHundredS: 2.9, topSpeedKph: 340, hp: 710, torqueNm: 770 },
-  { id: "porsche-911-turbo-s", zeroToHundredS: 2.7, topSpeedKph: 330, hp: 641, torqueNm: 800 },
+  // 1994 964 Turbo 3.6 S - period figures vary by source.
+  { id: "porsche-911-turbo-s", zeroToHundredS: 4.6, topSpeedKph: 280, hp: 380, torqueNm: 520 },
   { id: "bugatti-chiron", zeroToHundredS: 2.4, topSpeedKph: 420, hp: 1479, torqueNm: 1600, limited: true },
   { id: "f1-2024", zeroToHundredS: 2.6, topSpeedKph: 350, hp: 1000, torqueNm: 0 },
 ];

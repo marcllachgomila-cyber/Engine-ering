@@ -1,31 +1,33 @@
 {
   "id": "porsche-911-turbo-s",
   "make": "Porsche",
-  "model": "911 Turbo S",
+  "model": "911 Turbo S 1994",
   "category": "supercar",
+  "notes": "964-generation 911 Turbo 3.6 S (1994): 3.6 L single-turbo flat-six with the X88 package, 385 PS (380 hp) at 5,750 rpm and 520 Nm; five-speed manual (G50/52), rear-wheel drive; 18-inch Speedline wheels on 225/40 and 265/35 tyres. A 1990s engine makes far less cylinder pressure than a modern one, so baseBmepBar is lowered (with the real 0.85 bar of boost) to land on the published power and torque. Redline isn't published in the sources found; 6,200 rpm is fitted so the model's power peak matches.",
   "engine": {
     "cylinders": 6,
     "layout": "flat",
-    "displacementL": 3.8,
-    "redlineRpm": 7200,
-    "maxRevRpm": 7500,
+    "displacementL": 3.6,
+    "redlineRpm": 6200,
+    "maxRevRpm": 6400,
     "aspiration": "turbo",
     "fuelType": "petrol",
-    "boostBar": 1.23
+    "boostBar": 0.85,
+    "baseBmepBar": 10.3
   },
   "gearbox": {
-    "transmissionType": "auto",
-    "gearCount": 8,
-    "drivetrain": "awd",
-    "dualClutch": true,
+    "transmissionType": "manual",
+    "gearCount": 5,
+    "drivetrain": "rwd",
+    "dualClutch": false,
     "autoShiftStrategy": "maxPower"
   },
   "chassis": {
-    "weightKg": 1640,
-    "frontWheelDiameterIn": 20,
-    "rearWheelDiameterIn": 21,
-    "frontWheelWidthMm": 255,
-    "rearWheelWidthMm": 315
+    "weightKg": 1470,
+    "frontWheelDiameterIn": 18,
+    "rearWheelDiameterIn": 18,
+    "frontWheelWidthMm": 225,
+    "rearWheelWidthMm": 265
   },
   "model3d": {
     "file": "porsche-911.glb",
