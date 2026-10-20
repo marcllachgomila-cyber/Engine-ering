@@ -75,13 +75,13 @@ function drawStatic(ctx: CanvasRenderingContext2D, grid: FlowGrid, view: View, w
   ctx.setLineDash([]);
 
   // Body.
-  ctx.beginPath();
-  grid.body.polygon.forEach((p: Vec2, i) => (i ? ctx.lineTo(toX(p.x), toY(p.y)) : ctx.moveTo(toX(p.x), toY(p.y))));
-  ctx.closePath();
-  ctx.fillStyle = "#b8b5ae";
-  ctx.fill();
-  ctx.strokeStyle = "#f5a000";
-  ctx.stroke();
+  for (const polygon of [grid.body.polygon, ...grid.body.extraSolids]) {
+    tracePolygon(ctx, polygon, view);
+    ctx.fillStyle = "#b8b5ae";
+    ctx.fill();
+    ctx.strokeStyle = "#f5a000";
+    ctx.stroke();
+  }
 
   // Ground plane.
   ctx.strokeStyle = "#6b6860";
@@ -89,6 +89,46 @@ function drawStatic(ctx: CanvasRenderingContext2D, grid: FlowGrid, view: View, w
   ctx.moveTo(0, toY(0) - 0.5);
   ctx.lineTo(widthPx, toY(0) - 0.5);
   ctx.stroke();
+}
+
+function tracePolygon(ctx: CanvasRenderingContext2D, polygon: Vec2[], { toX, toY }: View) {
+  ctx.beginPath();
+  polygon.forEach((p, i) => (i ? ctx.lineTo(toX(p.x), toY(p.y)) : ctx.moveTo(toX(p.x), toY(p.y))));
+  ctx.closePath();
+}
+
+// A dedicated model's side picture (see VehicleModelRef.sideView), spanning
+// the model's length from the ground up to heightV of it.
+interface SidePicture {
+  image: HTMLImageElement;
+  heightV: number;
+}
+
+// What sits over the particles: a dedicated model's side picture - drawn on
+// top so the car reads as itself, wheels and all, with the flow passing
+// behind its off-centre parts - outlined with the centreline section the
+// air is actually solved around, and the assumed separation points.
+function drawOverlay(
+  ctx: CanvasRenderingContext2D,
+  grid: FlowGrid,
+  view: View,
+  widthPx: number,
+  picture: SidePicture | null,
+) {
+  const { toX, toY } = view;
+  ctx.clearRect(0, 0, widthPx, view.height);
+
+  if (picture && picture.image.complete && picture.image.naturalWidth) {
+    const { lengthM } = grid.body;
+    const heightM = picture.heightV * lengthM;
+    ctx.drawImage(picture.image, toX(-lengthM / 2), toY(heightM), lengthM * view.scale, heightM * view.scale);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#f5a000";
+    for (const polygon of [grid.body.polygon, ...grid.body.extraSolids]) {
+      tracePolygon(ctx, polygon, view);
+      ctx.stroke();
+    }
+  }
 
   // Assumed separation points.
   ctx.fillStyle = "#171614";
@@ -108,28 +148,45 @@ export default function WindTunnel2D({ vehicle, showReadout = true }: { vehicle:
   const containerRef = useRef<HTMLDivElement>(null);
   const staticRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
 
   const { body, grid } = useFlowGrid(vehicle);
   const domain = useMemo(() => domainFor(body), [body]);
+  // basePath isn't applied to plain asset URLs (see next.config.ts).
+  const sideView = vehicle.identity.model3d?.sideView;
+  const sideImageUrl = sideView ? `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/models/${sideView.image}` : null;
+  const sideImageHeightV = sideView?.imageHeightV ?? 0;
 
   useEffect(() => {
     const container = containerRef.current;
     const staticCanvas = staticRef.current;
     const particleCanvas = particlesRef.current;
-    if (!grid || !container || !staticCanvas || !particleCanvas) return;
+    const overlayCanvas = overlayRef.current;
+    if (!grid || !container || !staticCanvas || !particleCanvas || !overlayCanvas) return;
     const staticCtx = staticCanvas.getContext("2d");
     const ctx = particleCanvas.getContext("2d");
-    if (!staticCtx || !ctx) return;
+    const overlayCtx = overlayCanvas.getContext("2d");
+    if (!staticCtx || !ctx || !overlayCtx) return;
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let view = makeView(grid, container.clientWidth);
     let widthPx = container.clientWidth;
 
+    // Until (or unless) the picture loads, the static layer's plain section
+    // stands in for it.
+    let picture: SidePicture | null = null;
+    if (sideImageUrl) {
+      const image = new Image();
+      image.onload = () => drawOverlay(overlayCtx, grid, view, widthPx, picture);
+      image.src = sideImageUrl;
+      picture = { image, heightV: sideImageHeightV };
+    }
+
     const layout = () => {
       widthPx = container.clientWidth;
       view = makeView(grid, widthPx);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      for (const canvas of [staticCanvas, particleCanvas]) {
+      for (const canvas of [staticCanvas, particleCanvas, overlayCanvas]) {
         canvas.width = Math.round(widthPx * dpr);
         canvas.height = Math.round(view.height * dpr);
         canvas.style.width = `${widthPx}px`;
@@ -137,7 +194,9 @@ export default function WindTunnel2D({ vehicle, showReadout = true }: { vehicle:
       }
       staticCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawStatic(staticCtx, grid, view, widthPx);
+      drawOverlay(overlayCtx, grid, view, widthPx, picture);
     };
     layout();
     const resizeObserver = new ResizeObserver(layout);
@@ -218,17 +277,19 @@ export default function WindTunnel2D({ vehicle, showReadout = true }: { vehicle:
       resizeObserver.disconnect();
       intersection.disconnect();
     };
-  }, [grid]);
+  }, [grid, sideImageUrl, sideImageHeightV]);
 
   const bodyName = vehicle.identity.bodyType === "f1" ? "open-wheel" : vehicle.identity.bodyType;
+  // A preset whose 3D model carries its own side view is drawn from it.
+  const fromModel = !!sideView;
   const slope = body.rearSlope;
   const wakeHeightM = body.separationTop.y - body.separationBottom.y;
 
   return (
     <div className="absolute inset-0 flex flex-col font-mono text-[10px] text-zinc-500">
       <div className="px-4 pt-3 pb-2 uppercase tracking-wider text-zinc-400">
-        Generic {bodyName} shape · {body.section === "silhouette" ? "side silhouette" : "centreline section"} ·
-        illustrative
+        {fromModel ? `${vehicle.identity.displayName} model` : `Generic ${bodyName} shape`} ·{" "}
+        {body.section === "silhouette" ? "side silhouette" : "centreline section"} · illustrative
       </div>
       {/* The tunnel's height is fixed by the panel width and the domain's
           aspect ratio; it sits centred in whatever height is left. */}
@@ -245,6 +306,7 @@ export default function WindTunnel2D({ vehicle, showReadout = true }: { vehicle:
             role="img"
             aria-label="Animated airflow around a reference car side profile, coloured by local speed relative to the freestream"
           />
+          <canvas ref={overlayRef} className="pointer-events-none absolute inset-0" aria-hidden />
           {!grid && (
             <div className="absolute inset-0 flex items-center justify-center uppercase tracking-wider text-zinc-400">
               Solving flow…
@@ -293,14 +355,20 @@ export default function WindTunnel2D({ vehicle, showReadout = true }: { vehicle:
           <summary className="cursor-pointer text-zinc-400">Model &amp; assumptions · not CFD</summary>
           <ul className="mt-1 list-disc space-y-0.5 pl-4 leading-snug">
             <li>
-              2D incompressible potential flow (source-panel method) around the body type&rsquo;s generic shape,
-              with the road as a mirror-image ground plane. Inviscid: no boundary layer, no drag or lift from this
-              solution. A preset uses its body type&rsquo;s shape, not the real car&rsquo;s.
+              2D incompressible potential flow (source-panel method) around{" "}
+              {fromModel ? "a cut along the centreline of this car's 3D model" : "the body type's generic shape"}
+              , with the road as a mirror-image ground plane. Inviscid: no boundary layer, no drag or lift from this
+              solution.{" "}
+              {fromModel
+                ? "The plan view (flow around the sides, in the 3D overlay) still uses the generic shape."
+                : "A preset uses its body type's shape, not the real car's."}
             </li>
             <li>
-              {body.section === "silhouette"
-                ? "The section is the side silhouette (body and cabin together); wheels aren't modelled."
-                : "Open-wheel: the section is the centreline (nose, cockpit, engine cover) only - wings, wheels and the floor, where most of an F1 car's downforce comes from, aren't modelled."}
+              {fromModel
+                ? "The section (outlined) is whatever the centreline cut passes through - body, cabin, splitter, diffuser and a full-width wing - so air flows under the wing and along the floor. Wheels, mirrors and wing supports sit off-centre: they're in the picture, drawn over the flow, but the air here doesn't go around them."
+                : body.section === "silhouette"
+                  ? "The section is the side silhouette (body and cabin together); wheels aren't modelled."
+                  : "Open-wheel: the section is the centreline (nose, cockpit, engine cover) only - wings, wheels and the floor, where most of an F1 car's downforce comes from, aren't modelled."}
             </li>
             <li>
               Separation follows the slanted-back body result: a rear slope steeper than about{" "}

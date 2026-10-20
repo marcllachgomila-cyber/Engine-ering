@@ -17,7 +17,10 @@ export function cachedFlow(body: BodyOutline): FlowGrid | null {
 export function solveFlow(body: BodyOutline): FlowGrid {
   const cached = cache.get(body.key);
   if (cached) return cached;
-  const flow = solvePotentialFlow(densifyPolygon(body.polygon, PANEL_SPACING_M), { ground: true });
+  const flow = solvePotentialFlow(
+    [body.polygon, ...body.extraSolids].map((polygon) => densifyPolygon(polygon, PANEL_SPACING_M)),
+    { ground: true },
+  );
   const grid = sampleFlow(flow, body, domainFor(body));
   cache.set(body.key, grid);
   return grid;
@@ -34,8 +37,8 @@ export function cachedPlanFlow(outline: PlanOutline): PlanFlowGrid | null {
 export function solvePlanFlow(outline: PlanOutline): PlanFlowGrid {
   const cached = planCache.get(outline.key);
   if (cached) return cached;
-  const flow = solvePotentialFlow(densifyPolygon(outline.polygon, PANEL_SPACING_M), { ground: false });
-  const grid = { ...sampleField(flow, outline.polygon, outline.wake, planDomain(outline)), outline };
+  const flow = solvePotentialFlow([densifyPolygon(outline.polygon, PANEL_SPACING_M)], { ground: false });
+  const grid = { ...sampleField(flow, [outline.polygon], outline.wake, planDomain(outline)), outline };
   planCache.set(outline.key, grid);
   return grid;
 }

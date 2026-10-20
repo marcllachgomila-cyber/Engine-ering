@@ -133,10 +133,12 @@ export interface PotentialFlow {
 }
 
 // Solves for the source strengths that make every panel's control point
-// flow-tangent (zero normal velocity) in a unit freestream along +x. With
-// `ground`, the body must sit above y = 0, which then becomes a streamline.
-export function solvePotentialFlow(polygon: Vec2[], options: { ground: boolean }): PotentialFlow {
-  const panels = buildPanels(polygon);
+// flow-tangent (zero normal velocity) in a unit freestream along +x. Each
+// polygon is a separate solid (a car body and a rear wing above it, say);
+// they're solved together, so each one's flow accounts for the others. With
+// `ground`, the bodies must sit above y = 0, which then becomes a streamline.
+export function solvePotentialFlow(polygons: Vec2[][], options: { ground: boolean }): PotentialFlow {
+  const panels = polygons.flatMap(buildPanels);
   const images = options.ground ? panels.map(mirrorPanel) : [];
   const n = panels.length;
   const A = Array.from({ length: n }, () => new Float64Array(n));

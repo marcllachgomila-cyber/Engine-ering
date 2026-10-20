@@ -287,9 +287,11 @@ export default function VehiclePreview({ vehicle, showFlow = false }: { vehicle:
         {showFlow && (
           <div className="mb-1.5">
             <div className="text-zinc-400">
-              {flowGrid
-                ? `Flow: 2D side and plan sections of the ${bodyName} body, placed in 3D · illustrative, not CFD`
-                : "Solving flow…"}
+              {!flowGrid
+                ? "Solving flow…"
+                : modelRef?.sideView
+                  ? `Flow: 2D centreline section of this model and plan section of the ${bodyName} body, placed in 3D · illustrative, not CFD`
+                  : `Flow: 2D side and plan sections of the ${bodyName} body, placed in 3D · illustrative, not CFD`}
             </div>
             {flowGrid && (
               <div className="mt-1 flex items-center gap-1.5">

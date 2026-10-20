@@ -77,6 +77,20 @@ function validateModel(model, file) {
       `licence "${credit.license}" isn't on the redistributable list (${[...REDISTRIBUTABLE_LICENSES].join(", ")}) - check its terms before adding it`,
     );
   }
+  const view = model.sideView;
+  if (view !== undefined) {
+    const inUnit = (n) => typeof n === "number" && n >= 0 && n <= 1;
+    const outlineOk = (outline) =>
+      Array.isArray(outline) && outline.length >= 3 && outline.every((p) => p.length === 2 && inUnit(p[0]) && inUnit(p[1]));
+    if (!Array.isArray(view.section) || view.section.length === 0 || !view.section.every(outlineOk) || !inUnit(view.imageHeightV)) {
+      fail("sideView is malformed - regenerate it with scripts/extract-side-view.mjs");
+    }
+    try {
+      statSync(join(MODELS_DIR, view.image));
+    } catch {
+      fail(`sideView image not found: ${join(MODELS_DIR, view.image)} - regenerate it with scripts/extract-side-view.mjs`);
+    }
+  }
 }
 
 const files = walk(CAR_DATA_DIR).sort();

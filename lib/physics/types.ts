@@ -121,6 +121,21 @@ export interface VehicleModelRef {
     // SPDX-style identifier, e.g. "CC0-1.0" or "CC-BY-4.0".
     license: string;
   };
+  // What the 2D wind tunnel shows for this model in place of the body
+  // type's generic shape. Generated from the model by
+  // scripts/extract-side-view.mjs - re-run it if the file or yawDeg
+  // changes. Every value is a fraction of the model's overall length (the
+  // viewer's uniform scale): u from the nose, v from the ground.
+  sideView?: {
+    // Side-on picture of the whole model under public/models/, nose left,
+    // spanning u 0-1 and v 0-imageHeightV.
+    image: string;
+    imageHeightV: number;
+    // Closed outlines, as [u, v], of a cut along the car's centreline - what
+    // the flow is solved around. The first (largest) is the body; any
+    // others are separate pieces such as a rear wing's plank.
+    section: [number, number][][];
+  };
 }
 
 export type BodyType = "minivan" | "suv" | "supercar" | "f1";

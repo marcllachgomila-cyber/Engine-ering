@@ -37,6 +37,9 @@ export interface BodyOutline {
   // the centreline section of an open-wheeler.
   section: "silhouette" | "centreline";
   polygon: Vec2[];
+  // Further solid pieces of the section the flow goes around (a rear
+  // wing's plank above the deck) - no separation or wake of their own.
+  extraSolids: Vec2[][];
   lengthM: number;
   heightM: number;
   rideHeightM: number;
@@ -166,6 +169,7 @@ function outlineFromChains(
   upperRaw: Vec2[],
   lower: Vec2[],
   dims: { lengthM: number; heightM: number; rideHeightM: number },
+  extraSolids: Vec2[][] = [],
 ): BodyOutline {
   const upper = resampleCurve(upperRaw, OUTLINE_SPACING_M);
   const rearSlope = findRearSlope(upper);
@@ -178,6 +182,7 @@ function outlineFromChains(
     // Counter-clockwise: along the bottom nose to tail, up the base, then
     // back over the top from tail to nose.
     polygon: [...lower, ...[...upper].reverse()],
+    extraSolids,
     ...dims,
     tailTop,
     separationBottom: lower[lower.length - 1],
@@ -204,13 +209,73 @@ export function profileOutline(
   return outlineFromChains(`profile:${name}`, name, "silhouette", upper, lower, { lengthM, heightM, rideHeightM });
 }
 
+// The tail's base on a model's section: the stretch of outline within this
+// share of the length from its rearmost point.
+const MODEL_TAIL_BAND = 0.015;
+
+// A dedicated model's centreline section (see VehicleModelRef.sideView),
+// placed and scaled the way the 3D viewer fits the model. The body's outline
+// is split at its nose into the two ways round to the tail - over the top
+// and along the floor - which end where they reach the tail's base, the
+// same upper/lower edges the generic shapes are built from.
+function modelSectionOutline(
+  key: string,
+  name: string,
+  section: [number, number][][],
+  lengthM: number,
+): BodyOutline {
+  const toFlow = ([u, v]: [number, number]): Vec2 => ({ x: -lengthM / 2 + u * lengthM, y: v * lengthM });
+  // Repeated points would make zero-length panels.
+  const distinct = (outline: Vec2[]) =>
+    outline.filter((p, i) => {
+      const prev = outline[(i + outline.length - 1) % outline.length];
+      return Math.hypot(p.x - prev.x, p.y - prev.y) > 1e-4;
+    });
+  const [body, ...rest] = section.map((outline) => distinct(outline.map(toFlow)));
+  const nose = body.reduce((best, p, i) => (p.x < body[best].x ? i : best), 0);
+  const xBase = Math.max(...body.map((p) => p.x)) - MODEL_TAIL_BAND * lengthM;
+  const toTail = (step: 1 | -1) => {
+    const chain: Vec2[] = [];
+    for (let k = 0; k < body.length; k++) {
+      const p = body[(nose + step * k + body.length) % body.length];
+      chain.push(p);
+      if (p.x >= xBase) break;
+    }
+    return chain;
+  };
+  const meanY = (chain: Vec2[]) => chain.reduce((sum, p) => sum + p.y, 0) / chain.length;
+  const [a, b] = [toTail(1), toTail(-1)];
+  const [upper, lower] = meanY(a) > meanY(b) ? [a, b] : [b, a];
+  const all = [body, ...rest].flat();
+  return outlineFromChains(
+    key,
+    name,
+    "centreline",
+    upper,
+    // Both edges start at the nose; the upper one keeps it.
+    resampleCurve(lower, OUTLINE_SPACING_M).slice(1),
+    {
+      lengthM,
+      heightM: Math.max(...all.map((p) => p.y)),
+      rideHeightM: Math.min(...lower.map((p) => p.y)),
+    },
+    rest,
+  );
+}
+
 // The selected vehicle's own section: the side silhouette (body and cabin
 // together) for closed bodies, the centreline section for an open-wheeler.
-// Wheels aren't part of either - the section is through the body.
+// Wheels aren't part of either - the section is through the body. A preset
+// whose 3D model carries its own side view uses that model's centreline
+// section instead of the generic shape.
 export function vehicleBodyOutline(vehicle: VehicleState): BodyOutline {
-  const { bodyType, displayName } = vehicle.identity;
+  const { bodyType, displayName, model3d } = vehicle.identity;
   const { lengthM, heightM, rideHeightM } = vehicle.dimensions;
   const shape = BODY_SHAPES[bodyType];
+
+  if (model3d?.sideView) {
+    return modelSectionOutline(`model:${model3d.file}:${lengthM}`, displayName, model3d.sideView.section, lengthM);
+  }
   const key = `${bodyType}:${lengthM}:${heightM}:${rideHeightM}:${vehicle.dimensions.wheelbaseM}`;
   const dims = { lengthM, heightM, rideHeightM };
 

@@ -7,7 +7,8 @@ import { domainFor, sampleFlow, traceStreamline } from "../lib/aero/flowField";
 import { REFERENCE_BODY, vehicleBodyOutline, CRITICAL_REAR_SLANT_DEG, profileOutline } from "../lib/aero/bodyOutline";
 import { BODY_TYPE_PRESETS, DEFAULT_CHASSIS, DEFAULT_ENGINE, DEFAULT_GEARBOX, defaultTyresFor } from "../lib/physics/defaults";
 import { buildVehicleState } from "../lib/physics/vehicleState";
-import { BodyType } from "../lib/physics/types";
+import { BodyType, RealCarPreset } from "../lib/physics/types";
+import { CAR_PRESET_DATA } from "../lib/physics/carData.generated";
 
 let failures = 0;
 function check(name: string, ok: boolean, detail: string) {
@@ -32,7 +33,7 @@ const circle: Vec2[] = Array.from({ length: 120 }, (_, i) => {
   const t = (2 * Math.PI * i) / 120;
   return { x: Math.cos(t), y: Math.sin(t) };
 });
-const cyl = solvePotentialFlow(circle, { ground: false });
+const cyl = solvePotentialFlow([circle], { ground: false });
 const cylSpeeds = surfaceSpeeds(cyl);
 const peak = Math.max(...cylSpeeds);
 check("peak surface speed", Math.abs(peak - 2) < 0.01, `${peak.toFixed(4)} U`);
@@ -47,7 +48,7 @@ check("net source strength (closed body)", Math.abs(cylNet) < 1e-6, cylNet.toExp
 console.log(`\n${REFERENCE_BODY.name} over a ground plane`);
 const polygon = densifyPolygon(REFERENCE_BODY.polygon, 0.1);
 let t0 = performance.now();
-const flow = solvePotentialFlow(polygon, { ground: true });
+const flow = solvePotentialFlow([polygon], { ground: true });
 const solveMs = performance.now() - t0;
 const maxNormal = Math.max(
   ...flow.panels.map((p) => {
@@ -91,19 +92,31 @@ check("sampling cost", sampleMs < 1500, `${sampleMs.toFixed(0)} ms (Node; a phon
 const line = traceStreamline(grid, domain.xMin, 0.5 * REFERENCE_BODY.heightM + 1.5, 0.05);
 check("streamline crosses the tunnel", line.length > 10 && line[line.length - 1].x > REFERENCE_BODY.lengthM / 2, `${line.length} points, ends at x=${line[line.length - 1].x.toFixed(2)} m`);
 
-// 4. Every body type's own outline (what the tunnel shows for that car).
+// 4. Every body type's own outline (what the tunnel shows for that car),
+// plus every preset whose 3D model brings its own section.
 console.log(`
 Vehicle sections (rear slope > ${CRITICAL_REAR_SLANT_DEG} deg separates at the roof edge)`);
-for (const bodyType of Object.keys(BODY_TYPE_PRESETS) as BodyType[]) {
+const sections: { name: string; bodyType: BodyType; realCar: RealCarPreset | null }[] = [
+  ...(Object.keys(BODY_TYPE_PRESETS) as BodyType[]).map((bodyType) => ({ name: bodyType, bodyType, realCar: null })),
+  ...CAR_PRESET_DATA.filter((car) => car.model3d?.sideView).map((car) => ({
+    name: car.id,
+    bodyType: car.category,
+    realCar: car,
+  })),
+];
+for (const { name, bodyType, realCar } of sections) {
   const vehicle = buildVehicleState(
     { ...DEFAULT_CHASSIS, bodyType, weightKg: BODY_TYPE_PRESETS[bodyType].weightKg, ...defaultTyresFor(bodyType) },
     DEFAULT_ENGINE,
     DEFAULT_GEARBOX,
-    null,
+    realCar,
   );
   const body = vehicleBodyOutline(vehicle);
   const t = performance.now();
-  const f = solvePotentialFlow(densifyPolygon(body.polygon, 0.1), { ground: true });
+  const f = solvePotentialFlow(
+    [body.polygon, ...body.extraSolids].map((polygon) => densifyPolygon(polygon, 0.1)),
+    { ground: true },
+  );
   const g = sampleFlow(f, body, domainFor(body));
   const ms = performance.now() - t;
   const tangency = Math.max(
@@ -117,11 +130,11 @@ for (const bodyType of Object.keys(BODY_TYPE_PRESETS) as BodyType[]) {
   const slope = body.rearSlope ? `${body.rearSlope.angleDeg.toFixed(1)} deg` : "none";
   const wakeH = body.separationTop.y - body.separationBottom.y;
   console.log(
-    `  ${bodyType.padEnd(9)} ${body.section.padEnd(10)} ${String(f.panels.length).padStart(3)} panels  rear slope ${slope.padEnd(9)} -> ${body.separatesAtRoof ? "separates at roof edge" : "attached to tail     "}  wake h ${wakeH.toFixed(2)} m  ${ms.toFixed(0)} ms (grid ${g.nx}x${g.ny})`,
+    `  ${name.padEnd(9)} ${body.section.padEnd(10)} ${String(f.panels.length).padStart(3)} panels  rear slope ${slope.padEnd(9)} -> ${body.separatesAtRoof ? "separates at roof edge" : "attached to tail     "}  wake h ${wakeH.toFixed(2)} m  ${ms.toFixed(0)} ms (grid ${g.nx}x${g.ny})`,
   );
-  check(`${bodyType} tangency`, tangency < 2e-3, tangency.toExponential(2));
-  check(`${bodyType} mass conservation`, Math.abs(net) / gross < 0.01, `${((100 * Math.abs(net)) / gross).toFixed(2)}% of total`);
-  check(`${bodyType} wake above ground`, body.separationBottom.y > 0 && wakeH > 0, `base ${body.separationBottom.y.toFixed(2)}-${body.separationTop.y.toFixed(2)} m`);
+  check(`${name} tangency`, tangency < 2e-3, tangency.toExponential(2));
+  check(`${name} mass conservation`, Math.abs(net) / gross < 0.01, `${((100 * Math.abs(net)) / gross).toFixed(2)}% of total`);
+  check(`${name} wake above ground`, body.separationBottom.y > 0 && wakeH > 0, `base ${body.separationBottom.y.toFixed(2)}-${body.separationTop.y.toFixed(2)} m`);
 }
 
 // 5. Separation responds to geometry: synthetic fastbacks with a known rear

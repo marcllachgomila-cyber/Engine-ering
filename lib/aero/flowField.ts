@@ -139,14 +139,14 @@ export function domainFor(body: BodyOutline): FlowDomain {
 }
 
 export function sampleFlow(flow: PotentialFlow, body: BodyOutline, domain: FlowDomain, nx = 150): FlowGrid {
-  return { ...sampleField(flow, body.polygon, wakeFromBody(body), domain, nx), body };
+  return { ...sampleField(flow, [body.polygon, ...body.extraSolids], wakeFromBody(body), domain, nx), body };
 }
 
-// The potential flow around `polygon` sampled over the domain, with the
+// The potential flow around `polygons` sampled over the domain, with the
 // wake laid over it.
 export function sampleField(
   flow: PotentialFlow,
-  polygon: Vec2[],
+  polygons: Vec2[][],
   wake: Wake,
   domain: FlowDomain,
   nx = 150,
@@ -161,7 +161,7 @@ export function sampleField(
     for (let i = 0; i < nx; i++) {
       const x = domain.xMin + ((domain.xMax - domain.xMin) * i) / (nx - 1);
       const k = j * nx + i;
-      if (pointInPolygon(polygon, x, y)) {
+      if (polygons.some((polygon) => pointInPolygon(polygon, x, y))) {
         solid[k] = 1;
         continue;
       }
