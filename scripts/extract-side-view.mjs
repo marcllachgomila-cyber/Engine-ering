@@ -32,9 +32,10 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 const MODELS_DIR = join(fileURLToPath(new URL(".", import.meta.url)), "..", "public", "models");
 // Section raster: cells across the model's length (~5 mm on a car).
 const SECTION_CELLS = 1000;
-// Outline simplification tolerance, as a fraction of length (~1.5 mm). The
-// app resamples the outline much coarser than this anyway.
-const SECTION_TOLERANCE = 0.0003;
+// Outline simplification tolerance, as a fraction of length (~3.5 mm on a
+// car): just under one raster cell, so the cell staircase along sloping
+// edges is smoothed out. The app resamples far coarser than this anyway.
+const SECTION_TOLERANCE = 0.0008;
 // Pieces of the cut smaller than this share of the body's area (a badge
 // that happens to cross the centreline) are dropped. A rear wing's plank is
 // well under 1% of a car's section, so this has to be small.
