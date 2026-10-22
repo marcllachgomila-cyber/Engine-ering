@@ -113,6 +113,12 @@ export interface VehicleModelRef {
   // auto-fitted: scaled so their length matches the preset's body length
   // and set down on the ground plane.
   yawDeg?: number;
+  // For models that are an empty shell under the skin (no engine bay or
+  // front trunk): openings in the centreline cut narrower than this fraction
+  // of the length (intakes, a diffuser) are sealed, so the wind tunnel's
+  // section is solid rather than just the skin. Used only by
+  // scripts/extract-side-view.mjs; 0 or absent leaves the cut as it is.
+  sectionSealGap?: number;
   credit: {
     title: string;
     author: string;

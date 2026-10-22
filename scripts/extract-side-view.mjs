@@ -50,6 +50,9 @@ const preset = JSON.parse(readFileSync(presetPath, "utf8"));
 if (!preset.model3d) throw new Error(`${presetPath} has no model3d`);
 const modelFile = preset.model3d.file;
 const imageFile = modelFile.replace(/\.glb$/, "-side.png");
+// Openings in the cut narrower than model3d.sectionSealGap (a fraction of
+// length) are sealed before the outside is found, as a radius in cells.
+const SECTION_CLOSE_CELLS = Math.round(((preset.model3d.sectionSealGap ?? 0) * SECTION_CELLS) / 2);
 
 await MeshoptDecoder.ready;
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -96,14 +99,16 @@ turned.traverse((obj) => {
 // produce degenerate cuts.
 
 const zCut = (box.min.z + box.max.z) / 2 + (box.max.z - box.min.z) * 0.0037;
-// One empty cell of margin all round, so the fill can get past parts that
-// reach the model's extremes (a splitter tip, the top of a wing).
+// Empty cells of margin all round, so the fill can get past parts that reach
+// the model's extremes (a splitter tip, the top of a wing) even with the
+// walls thickened for the closing.
+const MARGIN = 1 + SECTION_CLOSE_CELLS;
 const cell = 1 / SECTION_CELLS; // in units of length
-const cols = SECTION_CELLS + 2;
-const rows = Math.ceil(heightV / cell) + 2;
+const cols = SECTION_CELLS + 2 * MARGIN;
+const rows = Math.ceil(heightV / cell) + 2 * MARGIN;
 const wall = new Uint8Array(cols * rows);
-const colOf = (u) => Math.min(cols - 2, Math.max(1, Math.floor(u / cell) + 1));
-const rowOf = (v) => Math.min(rows - 2, Math.max(1, rows - 2 - Math.floor(v / cell)));
+const colOf = (u) => Math.min(cols - 1 - MARGIN, Math.max(MARGIN, Math.floor(u / cell) + MARGIN));
+const rowOf = (v) => Math.min(rows - 1 - MARGIN, Math.max(MARGIN, rows - 1 - MARGIN - Math.floor(v / cell)));
 
 for (const { corners } of triangles) {
   const hits = [];
@@ -126,13 +131,35 @@ for (const { corners } of triangles) {
   }
 }
 
-const outside = new Uint8Array(cols * rows);
+// Square dilation by n cells, done as a row pass then a column pass.
+function dilate(grid, n) {
+  if (n <= 0) return grid;
+  const across = new Uint8Array(cols * rows);
+  const out = new Uint8Array(cols * rows);
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      if (!grid[r * cols + c]) continue;
+      for (let d = Math.max(0, c - n); d <= Math.min(cols - 1, c + n); d++) across[r * cols + d] = 1;
+    }
+  for (let c = 0; c < cols; c++)
+    for (let r = 0; r < rows; r++) {
+      if (!across[r * cols + c]) continue;
+      for (let d = Math.max(0, r - n); d <= Math.min(rows - 1, r + n); d++) out[d * cols + c] = 1;
+    }
+  return out;
+}
+
+// The fill runs against walls thickened by SECTION_CLOSE_CELLS, so it can't
+// get through narrow openings, and the outside it finds is then grown back
+// by the same amount to meet the real walls again (a morphological closing).
+const fillWall = dilate(wall, SECTION_CLOSE_CELLS);
+let outside = new Uint8Array(cols * rows);
 const queue = [];
 for (let c = 0; c < cols; c++) queue.push(c, (rows - 1) * cols + c);
 for (let r = 0; r < rows; r++) queue.push(r * cols, r * cols + cols - 1);
 while (queue.length) {
   const k = queue.pop();
-  if (outside[k] || wall[k]) continue;
+  if (outside[k] || fillWall[k]) continue;
   outside[k] = 1;
   const c = k % cols;
   if (c > 0) queue.push(k - 1);
@@ -140,7 +167,11 @@ while (queue.length) {
   if (k >= cols) queue.push(k - cols);
   if (k < (rows - 1) * cols) queue.push(k + cols);
 }
-const solid = (c, r) => c >= 0 && c < cols && r >= 0 && r < rows && !outside[r * cols + c];
+if (SECTION_CLOSE_CELLS > 0) {
+  outside = dilate(outside, SECTION_CLOSE_CELLS);
+  for (let k = 0; k < cols * rows; k++) if (wall[k]) outside[k] = 0;
+}
+const solid =(c, r) => c >= 0 && c < cols && r >= 0 && r < rows && !outside[r * cols + c];
 
 // Label the solid pieces (8-connected), then trace each one's outer edge.
 const label = new Int32Array(cols * rows).fill(-1);
@@ -198,7 +229,7 @@ function traceOutline(piece) {
     if (!moved || (c === sc && r === sr)) break;
     points.push([c, r]);
   }
-  return points.map(([pc, pr]) => [(pc - 0.5) * cell, (rows - 2 - pr + 0.5) * cell]);
+  return points.map(([pc, pr]) => [(pc - MARGIN + 0.5) * cell, (rows - 1 - MARGIN - pr + 0.5) * cell]);
 }
 
 function simplify(points, tolerance) {

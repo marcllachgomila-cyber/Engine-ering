@@ -95,6 +95,8 @@ The vehicle viewer shows each body type's generic model unless a real-car preset
 
    `yawDeg` turns the model so its nose faces forward (+X). It's then scaled to the preset's body length and set down on the ground automatically.
 
+   If the model is an empty shell under the skin (no engine bay or front trunk), add `"sectionSealGap": 0.02` so `scripts/extract-side-view.mjs` seals intake and diffuser openings narrower than that fraction of the length; otherwise the wind tunnel's centreline section comes out as just the skin.
+
 `npm run generate:cars` (run before every dev/build) rejects a model that is missing, too large, missing credit fields, or under a licence not known to allow redistribution (accepted: `CC0-1.0`, `CC-BY-4.0`, `CC-BY-3.0`, `CC-BY-SA-4.0`, `MIT`, `own-work`). Don't use manufacturer CAD or models whose terms don't allow redistribution. The viewer shows the credit with a link to the source, loads the model only while that preset is selected, and falls back to the generic model if it fails to load.
 
 ## Technology

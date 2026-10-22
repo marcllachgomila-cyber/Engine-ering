@@ -77,6 +77,10 @@ function validateModel(model, file) {
       `licence "${credit.license}" isn't on the redistributable list (${[...REDISTRIBUTABLE_LICENSES].join(", ")}) - check its terms before adding it`,
     );
   }
+  const gap = model.sectionSealGap;
+  if (gap !== undefined && !(typeof gap === "number" && gap >= 0 && gap <= 0.1)) {
+    fail(`sectionSealGap must be a fraction of length between 0 and 0.1, got ${JSON.stringify(gap)}`);
+  }
   const view = model.sideView;
   if (view !== undefined) {
     const inUnit = (n) => typeof n === "number" && n >= 0 && n <= 1;
