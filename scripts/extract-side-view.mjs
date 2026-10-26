@@ -38,8 +38,9 @@ const SECTION_CELLS = 1000;
 const SECTION_TOLERANCE = 0.0008;
 // Pieces of the cut smaller than this share of the body's area (a badge
 // that happens to cross the centreline) are dropped. A rear wing's plank is
-// well under 1% of a car's section, so this has to be small.
-const MIN_PIECE_AREA = 0.002;
+// well under 1% of a car's section (the Huracan Performante's is ~0.14%), so
+// this has to be small.
+const MIN_PIECE_AREA = 0.001;
 // The picture's width in pixels, rendered at 2x and averaged down.
 const IMAGE_WIDTH = 1600;
 const SUPERSAMPLE = 2;
